@@ -755,4 +755,101 @@ ipcMain.handle('get-members-pagination', async (_, page, pageSize, options) => {
       data: { members: [], total: 0 }
     };
   }
+});
+
+// 엑셀 회원 데이터 임포트
+ipcMain.handle('import-members-excel', async (_, data) => {
+  try {
+    const db = getDatabase();
+    if (!db) {
+      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
+    }
+
+    const now = new Date().toISOString();
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    // 트랜잭션 시작
+    db.prepare('BEGIN TRANSACTION').run();
+
+    try {
+      for (const row of data) {
+        try {
+          // 필수 필드 검증
+          if (!row.name) {
+            throw new Error('이름은 필수 입력 항목입니다.');
+          }
+
+          // 데이터 정제
+          const member = {
+            name: row.name,
+            phone: row.phone || null,
+            email: row.email || null,
+            gender: row.gender || null,
+            birthDate: row.birthDate || null,
+            joinDate: row.joinDate || now,
+            membershipType: row.membershipType || null,
+            membershipStart: row.membershipStart || null,
+            membershipEnd: row.membershipEnd || null,
+            notes: row.notes || null
+          };
+
+          // 회원 추가
+          const result = db.prepare(`
+            INSERT INTO members (
+              name, phone, email, gender, birth_date, join_date, 
+              membership_type, membership_start, membership_end, 
+              notes, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            member.name,
+            member.phone,
+            member.email,
+            member.gender,
+            member.birthDate,
+            member.joinDate,
+            member.membershipType,
+            member.membershipStart,
+            member.membershipEnd,
+            member.notes,
+            now,
+            now
+          );
+
+          if (result.changes > 0) {
+            successCount++;
+          } else {
+            throw new Error('회원 추가 실패');
+          }
+        } catch (error) {
+          failedCount++;
+          errors.push(`${row.name || '알 수 없음'}: ${error.message}`);
+        }
+      }
+
+      // 트랜잭션 커밋
+      db.prepare('COMMIT').run();
+
+      return {
+        success: true,
+        data: {
+          successCount,
+          failedCount,
+          errors
+        }
+      };
+    } catch (error) {
+      // 트랜잭션 롤백
+      db.prepare('ROLLBACK').run();
+      throw error;
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+    electronLog.error('엑셀 회원 데이터 임포트 오류:', errorMessage);
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
 }); 

@@ -1,4 +1,14 @@
-import { ipcRenderer } from 'electron';
+// 안전하게 ipcRenderer를 가져오는 코드 (브라우저 환경에서도 에러 안나게)
+let safeIpcRenderer: typeof import('electron').ipcRenderer | undefined = undefined;
+
+try {
+  // electron 환경에서만 require 사용
+  // @ts-ignore
+  safeIpcRenderer = window.require ? window.require('electron').ipcRenderer : undefined;
+} catch (e) {
+  safeIpcRenderer = undefined;
+}
+
 import { Member } from '../models/types';
 import * as electronLog from 'electron-log';
 import { Payment, MembershipType, Staff, Locker } from '../models/types';
@@ -10,7 +20,7 @@ export class IpcMemberService {
    */
   static async getAll(): Promise<Member[]> {
     try {
-      const response = await ipcRenderer.invoke('get-all-members');
+      const response = await safeIpcRenderer?.invoke('get-all-members');
       if (response.success) {
         return response.data || [];
       } else {
@@ -34,7 +44,7 @@ export class IpcMemberService {
         throw new Error('회원 이름은 필수 입력 항목입니다.');
       }
 
-      const response = await ipcRenderer.invoke('add-member', member);
+      const response = await safeIpcRenderer?.invoke('add-member', member);
       if (response.success) {
         return response.id as number;
       } else {
@@ -61,7 +71,7 @@ export class IpcMemberService {
         throw new Error('회원 이름은 필수 입력 항목입니다.');
       }
 
-      const response = await ipcRenderer.invoke('update-member', member);
+      const response = await safeIpcRenderer?.invoke('update-member', member);
       if (response.success) {
         return response.updated as boolean;
       } else {
@@ -85,7 +95,7 @@ export class IpcMemberService {
         throw new Error('삭제할 회원 ID가 필요합니다.');
       }
 
-      const response = await ipcRenderer.invoke('delete-member', id);
+      const response = await safeIpcRenderer?.invoke('delete-member', id);
       if (response.success) {
         return response.deleted as boolean;
       } else {
@@ -105,7 +115,7 @@ export class IpcMemberService {
    */
   static async deleteAll(): Promise<boolean> {
     try {
-      const response = await ipcRenderer.invoke('delete-all-members');
+      const response = await safeIpcRenderer?.invoke('delete-all-members');
       if (response.success) {
         console.log('IPC: 모든 회원 삭제 완료');
         return true;
@@ -125,7 +135,7 @@ export class IpcMemberService {
 // 엑셀 파일 선택
 export async function selectExcelFile(): Promise<string | null> {
   try {
-    return await ipcRenderer.invoke('select-excel-file');
+    return await safeIpcRenderer?.invoke('select-excel-file');
   } catch (error) {
     console.error('엑셀 파일 선택 IPC 오류:', error);
     return null;
@@ -135,7 +145,7 @@ export async function selectExcelFile(): Promise<string | null> {
 // 수동 백업 실행
 export async function createManualBackup(): Promise<{ success: boolean, path?: string, error?: string }> {
   try {
-    return await ipcRenderer.invoke('manual-backup');
+    return await safeIpcRenderer?.invoke('manual-backup');
   } catch (error) {
     console.error('수동 백업 IPC 오류:', error);
     return { success: false, error: '백업 생성 중 오류가 발생했습니다.' };
@@ -145,7 +155,7 @@ export async function createManualBackup(): Promise<{ success: boolean, path?: s
 // 더미 회원 데이터 생성
 export async function generateDummyMembers(count: number = 50): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('generate-dummy-members', count);
+    return await safeIpcRenderer?.invoke('generate-dummy-members', count);
   } catch (error) {
     console.error('더미 회원 데이터 생성 IPC 오류:', error);
     return { success: false, error: '더미 데이터 생성 중 오류가 발생했습니다.' };
@@ -166,7 +176,7 @@ export async function getDashboardStats(): Promise<{
   };
 }> {
   try {
-    const response = await ipcRenderer.invoke('get-dashboard-stats');
+    const response = await safeIpcRenderer?.invoke('get-dashboard-stats');
     if (response.success) {
       return response.data;
     } else {
@@ -205,7 +215,7 @@ export async function getDashboardStats(): Promise<{
 
 export async function getAllPayments(): Promise<{ success: boolean, data?: Payment[], error?: string }> {
   try {
-    return await ipcRenderer.invoke('get-all-payments');
+    return await safeIpcRenderer?.invoke('get-all-payments');
   } catch (error) {
     console.error('결제 목록 조회 IPC 오류:', error);
     return { success: false, error: '결제 목록 조회 중 오류 발생' };
@@ -215,7 +225,7 @@ export async function getAllPayments(): Promise<{ success: boolean, data?: Payme
 // Omit<Payment, 'id'> 대신 Omit<Payment, 'id' | 'memberName'> 전달
 export const addPayment = async (payment: Omit<Payment, 'id' | 'createdAt'>) => {
   try {
-    const response = await ipcRenderer.invoke('add-payment', payment);
+    const response = await safeIpcRenderer?.invoke('add-payment', payment);
     return response;
   } catch (error) {
     console.error('addPayment 오류:', error);
@@ -229,7 +239,7 @@ export const updatePayment = async (payment: Payment) => {
   try {
     // id와 createdAt을 제외한 나머지 필드만 업데이트
     const { id, createdAt, ...updateData } = payment;
-    const response = await ipcRenderer.invoke('update-payment', id, updateData);
+    const response = await safeIpcRenderer?.invoke('update-payment', id, updateData);
     return response;
   } catch (error) {
     console.error('updatePayment 오류:', error);
@@ -239,7 +249,7 @@ export const updatePayment = async (payment: Payment) => {
 
 export async function deletePayment(id: number): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('delete-payment', id);
+    return await safeIpcRenderer?.invoke('delete-payment', id);
   } catch (error) {
     console.error('결제 삭제 IPC 오류:', error);
     return { success: false, error: '결제 삭제 중 오류 발생' };
@@ -250,7 +260,7 @@ export async function deletePayment(id: number): Promise<{ success: boolean, err
 
 export async function getAllMembershipTypes(): Promise<{ success: boolean, data?: MembershipType[], error?: string }> {
   try {
-    return await ipcRenderer.invoke('get-all-membership-types');
+    return await safeIpcRenderer?.invoke('get-all-membership-types');
   } catch (error) {
     console.error('이용권 종류 목록 조회 IPC 오류:', error);
     return { success: false, error: '이용권 종류 목록 조회 중 오류 발생' };
@@ -259,7 +269,7 @@ export async function getAllMembershipTypes(): Promise<{ success: boolean, data?
 
 export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): Promise<{ success: boolean, id?: number, error?: string }> {
   try {
-    return await ipcRenderer.invoke('add-membership-type', typeData);
+    return await safeIpcRenderer?.invoke('add-membership-type', typeData);
   } catch (error) {
     console.error('이용권 종류 추가 IPC 오류:', error);
     return { success: false, error: '이용권 종류 추가 중 오류 발생' };
@@ -268,7 +278,7 @@ export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): P
 
 export async function updateMembershipType(typeData: MembershipType): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('update-membership-type', typeData);
+    return await safeIpcRenderer?.invoke('update-membership-type', typeData);
   } catch (error) {
     console.error('이용권 종류 업데이트 IPC 오류:', error);
     return { success: false, error: '이용권 종류 업데이트 중 오류 발생' };
@@ -277,7 +287,7 @@ export async function updateMembershipType(typeData: MembershipType): Promise<{ 
 
 export async function deleteMembershipType(id: number): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('delete-membership-type', id);
+    return await safeIpcRenderer?.invoke('delete-membership-type', id);
   } catch (error) {
     console.error('이용권 종류 삭제 IPC 오류:', error);
     return { success: false, error: '이용권 종류 삭제 중 오류 발생' };
@@ -294,7 +304,7 @@ export class IpcPaymentService {
    */
   static async getAll(): Promise<Member[]> {
     try {
-      const response = await ipcRenderer.invoke('get-all-members');
+      const response = await safeIpcRenderer?.invoke('get-all-members');
       if (response.success) {
         return response.data || [];
       } else {
@@ -312,7 +322,7 @@ export class IpcPaymentService {
    */
   static async add(member: Member): Promise<number> {
     try {
-      const response = await ipcRenderer.invoke('add-member', member);
+      const response = await safeIpcRenderer?.invoke('add-member', member);
       if (response.success) {
         return response.id as number;
       } else {
@@ -329,7 +339,7 @@ export class IpcPaymentService {
    */
   static async update(member: Member): Promise<boolean> {
     try {
-      const response = await ipcRenderer.invoke('update-member', member);
+      const response = await safeIpcRenderer?.invoke('update-member', member);
       if (response.success) {
         return response.updated as boolean;
       } else {
@@ -346,7 +356,7 @@ export class IpcPaymentService {
    */
   static async delete(id: number): Promise<boolean> {
     try {
-      const response = await ipcRenderer.invoke('delete-member', id);
+      const response = await safeIpcRenderer?.invoke('delete-member', id);
       if (response.success) {
         return response.deleted as boolean;
       } else {
@@ -365,7 +375,7 @@ export class IpcPaymentService {
   static async deleteAll(): Promise<boolean> {
     try {
       // 메인 프로세스에 'delete-all-members' 라는 이름으로 요청을 보냅니다.
-      const response = await ipcRenderer.invoke('delete-all-members'); 
+      const response = await safeIpcRenderer?.invoke('delete-all-members'); 
       if (response.success) {
         console.log('IPC: 모든 회원 삭제 완료');
         return true;
@@ -382,7 +392,7 @@ export class IpcPaymentService {
 // 다른 내보내기와 함께 이 함수도 추가
 export const getAllMembers = async () => {
   try {
-    const response = await ipcRenderer.invoke('get-all-members');
+    const response = await safeIpcRenderer?.invoke('get-all-members');
     return response;
   } catch (error) {
     console.error('getAllMembers 오류:', error);
@@ -394,7 +404,7 @@ export const getAllMembers = async () => {
 
 export async function getAllStaff(): Promise<{ success: boolean, data?: Staff[], error?: string }> {
   try {
-    return await ipcRenderer.invoke('get-all-staff');
+    return await safeIpcRenderer?.invoke('get-all-staff');
   } catch (error) {
     console.error('스태프 목록 조회 IPC 오류:', error);
     return { success: false, error: '스태프 목록 조회 중 오류 발생' };
@@ -403,7 +413,7 @@ export async function getAllStaff(): Promise<{ success: boolean, data?: Staff[],
 
 export async function getStaffById(id: number): Promise<{ success: boolean, data?: Staff, error?: string }> {
   try {
-    return await ipcRenderer.invoke('get-staff-by-id', id);
+    return await safeIpcRenderer?.invoke('get-staff-by-id', id);
   } catch (error) {
     console.error('스태프 조회 IPC 오류:', error);
     return { success: false, error: '스태프 조회 중 오류 발생' };
@@ -412,7 +422,7 @@ export async function getStaffById(id: number): Promise<{ success: boolean, data
 
 export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean, data?: number, error?: string }> {
   try {
-    return await ipcRenderer.invoke('add-staff', staff);
+    return await safeIpcRenderer?.invoke('add-staff', staff);
   } catch (error) {
     console.error('스태프 추가 IPC 오류:', error);
     return { success: false, error: '스태프 추가 중 오류 발생' };
@@ -421,7 +431,7 @@ export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedA
 
 export async function updateStaff(id: number, staff: Partial<Staff>): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('update-staff', id, staff);
+    return await safeIpcRenderer?.invoke('update-staff', id, staff);
   } catch (error) {
     console.error('스태프 업데이트 IPC 오류:', error);
     return { success: false, error: '스태프 업데이트 중 오류 발생' };
@@ -430,7 +440,7 @@ export async function updateStaff(id: number, staff: Partial<Staff>): Promise<{ 
 
 export async function deleteStaff(id: number): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('delete-staff', id);
+    return await safeIpcRenderer?.invoke('delete-staff', id);
   } catch (error) {
     console.error('스태프 삭제 IPC 오류:', error);
     return { success: false, error: '스태프 삭제 중 오류 발생' };
@@ -441,7 +451,7 @@ export async function deleteStaff(id: number): Promise<{ success: boolean, error
 
 export async function getAllLockers(): Promise<{ success: boolean, data?: Locker[], error?: string }> {
   try {
-    return await ipcRenderer.invoke('get-all-lockers');
+    return await safeIpcRenderer?.invoke('get-all-lockers');
   } catch (error) {
     console.error('락커 목록 조회 IPC 오류:', error);
     return { success: false, error: '락커 목록 조회 중 오류 발생' };
@@ -450,7 +460,7 @@ export async function getAllLockers(): Promise<{ success: boolean, data?: Locker
 
 export async function getLockerById(id: number): Promise<{ success: boolean, data?: Locker, error?: string }> {
   try {
-    return await ipcRenderer.invoke('get-locker-by-id', id);
+    return await safeIpcRenderer?.invoke('get-locker-by-id', id);
   } catch (error) {
     console.error('락커 조회 IPC 오류:', error);
     return { success: false, error: '락커 조회 중 오류 발생' };
@@ -459,7 +469,7 @@ export async function getLockerById(id: number): Promise<{ success: boolean, dat
 
 export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean, data?: number, error?: string }> {
   try {
-    return await ipcRenderer.invoke('add-locker', locker);
+    return await safeIpcRenderer?.invoke('add-locker', locker);
   } catch (error) {
     console.error('락커 추가 IPC 오류:', error);
     return { success: false, error: '락커 추가 중 오류 발생' };
@@ -468,7 +478,7 @@ export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updat
 
 export async function updateLocker(id: number, locker: Partial<Locker>): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('update-locker', id, locker);
+    return await safeIpcRenderer?.invoke('update-locker', id, locker);
   } catch (error) {
     console.error('락커 업데이트 IPC 오류:', error);
     return { success: false, error: '락커 업데이트 중 오류 발생' };
@@ -477,7 +487,7 @@ export async function updateLocker(id: number, locker: Partial<Locker>): Promise
 
 export async function deleteLocker(id: number): Promise<{ success: boolean, error?: string }> {
   try {
-    return await ipcRenderer.invoke('delete-locker', id);
+    return await safeIpcRenderer?.invoke('delete-locker', id);
   } catch (error) {
     console.error('락커 삭제 IPC 오류:', error);
     return { success: false, error: '락커 삭제 중 오류 발생' };
@@ -496,7 +506,8 @@ export const importMembersFromExcel = async (data: any[]): Promise<ApiResponse<{
   errors: string[];
 }>> => {
   try {
-    const result = await window.electron.ipcRenderer.invoke('import-members-excel', data);
+    if (!safeIpcRenderer) throw new Error('이 기능은 Electron 환경에서만 동작합니다.');
+    const result = await safeIpcRenderer.invoke('import-members-excel', data);
     return {
       success: true,
       data: result
@@ -513,7 +524,7 @@ export const importMembersFromExcel = async (data: any[]): Promise<ApiResponse<{
 export async function getMembersForAttendance() {
   try {
     // 모든 회원을 불러오는 IPC 호출 (get-all-members 채널 사용)
-    const response = await ipcRenderer.invoke('get-all-members');
+    const response = await safeIpcRenderer?.invoke('get-all-members');
     return response;
   } catch (error) {
     return { success: false, error: '출석용 회원 목록 불러오기 실패' };
@@ -524,7 +535,7 @@ export async function getMembersForAttendance() {
 export async function getAttendanceByDate(date: string) {
   try {
     // 해당 날짜의 출석 기록을 불러오는 IPC 호출 
-    const response = await ipcRenderer.invoke('get-attendance-by-date', date);
+    const response = await safeIpcRenderer?.invoke('get-attendance-by-date', date);
     return response;
   } catch (error) {
     console.error('출석 기록 조회 IPC 오류:', error);
@@ -547,7 +558,7 @@ export async function getMembersWithPagination(
   }
 ): Promise<{ success: boolean, data?: { members: Member[]; total: number }, error?: string }> {
   try {
-    const response = await ipcRenderer.invoke('get-members-pagination', page, pageSize, options);
+    const response = await safeIpcRenderer?.invoke('get-members-pagination', page, pageSize, options);
     return response;
   } catch (error) {
     console.error('페이지네이션 회원 목록 조회 IPC 오류:', error);
