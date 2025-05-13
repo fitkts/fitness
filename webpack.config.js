@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 // 공통 설정
 const commonConfig = {
@@ -9,6 +10,22 @@ const commonConfig = {
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+  },
+  optimization: {
+    minimize: process.env.NODE_ENV === 'production',
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          compress: {
+            drop_console: process.env.NODE_ENV === 'production',
+          },
+          format: {
+            comments: false,
+          },
+        },
+        extractComments: false,
+      }),
+    ],
   },
   module: {
     rules: [
@@ -47,6 +64,12 @@ const mainConfig = {
     path: path.resolve(__dirname, 'dist/main'),
     filename: 'main.js',
   },
+  ignoreWarnings: [
+    {
+      module: /chokidar[\\/]lib[\\/]fsevents-handler\.js/,
+      message: /Can't resolve 'fsevents'/,
+    },
+  ],
 };
 
 // 렌더러 프로세스 설정
@@ -67,7 +90,7 @@ const rendererConfig = {
     hot: true,
     historyApiFallback: true,
     devMiddleware: {
-      publicPath: './',
+      publicPath: '/',
     },
     headers: {
       'Access-Control-Allow-Origin': '*',
@@ -76,9 +99,14 @@ const rendererConfig = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './src/renderer/index.html',
-      filename: 'index.html',
-      publicPath: './'
+      filename: 'index.html'
     }),
+  ],
+  ignoreWarnings: [
+    {
+      module: /chokidar[\\/]lib[\\/]fsevents-handler\.js/,
+      message: /Can't resolve 'fsevents'/,
+    },
   ],
 };
 

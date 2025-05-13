@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Member, memberSchema } from '../models/types';
+import { Member, memberSchema, Staff } from '../models/types';
 import { z } from 'zod';
 import Modal from './common/Modal';
 import { useToast, ToastType } from '../contexts/ToastContext';
+import { getAllStaff } from '../database/ipcService';
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentIsViewMode, setCurrentIsViewMode] = useState(isViewMode);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   
   let showToast: (type: ToastType, message: string) => void;
   try {
@@ -62,6 +64,21 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
     setErrors({});
     setCurrentIsViewMode(isViewMode);
   }, [member, isOpen, isViewMode]);
+
+  // 직원 목록 로드
+  useEffect(() => {
+    const loadStaff = async () => {
+      try {
+        const response = await getAllStaff();
+        if (response.success && response.data) {
+          setStaffList(response.data);
+        }
+      } catch (error) {
+        console.error('직원 목록 로드 오류:', error);
+      }
+    };
+    loadStaff();
+  }, []);
 
   // 날짜 계산 헬퍼 함수
   const calculateEndDate = (startDate: string, type: string): string => {
@@ -156,6 +173,11 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
     if (name === 'phone') {
       const formattedPhone = formatPhoneNumber(value);
       setFormData(prev => ({ ...prev, phone: formattedPhone }));
+    } else if (name === 'staffId') {
+      // 담당자 선택 시 staffName도 동기화
+      const staffId = value ? Number(value) : undefined;
+      const staffName = staffId ? staffList.find(s => s.id === staffId)?.name : undefined;
+      setFormData(prev => ({ ...prev, staffId, staffName }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -264,6 +286,10 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
                     <div>
                       <p className="text-sm text-gray-500">가입일</p>
                       <p className="font-medium">{formatDate(formData.joinDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">담당자</p>
+                      <p className="font-medium">{formData.staffName || '-'}</p>
                     </div>
                   </div>
                   
@@ -421,25 +447,6 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    회원권 종류
-                  </label>
-                  <select
-                    name="membershipType"
-                    value={formData.membershipType}
-                    onChange={handleChange}
-                    className="input"
-                  >
-                    <option value="1개월권">1개월권</option>
-                    <option value="3개월권">3개월권</option>
-                    <option value="6개월권">6개월권</option>
-                    <option value="12개월권">12개월권</option>
-                    <option value="PT 10회">PT 10회</option>
-                    <option value="PT 20회">PT 20회</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     회원권 시작일
                   </label>
                   <input
@@ -453,19 +460,21 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    회원권 종료일
+                    담당자
                   </label>
-                  <input
-                    type="date"
-                    name="membershipEnd"
-                    value={formData.membershipEnd}
+                  <select
+                    name="staffId"
+                    value={formData.staffId || ''}
                     onChange={handleChange}
-                    className={`input ${errors.membershipEnd ? 'border-red-500' : ''}`}
-                    readOnly // 자동 계산되므로 읽기 전용
-                  />
-                  {errors.membershipEnd && (
-                    <p className="text-red-500 text-xs mt-1">{errors.membershipEnd}</p>
-                  )}
+                    className="input"
+                  >
+                    <option value="">담당자 선택</option>
+                    {staffList.map(staff => (
+                      <option key={staff.id} value={staff.id}>
+                        {staff.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

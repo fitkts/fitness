@@ -11,7 +11,7 @@ try {
 
 import { Member } from '../models/types';
 import * as electronLog from 'electron-log';
-import { Payment, MembershipType, Staff, Locker } from '../models/types';
+import { Payment, MembershipType, Staff, Locker, MemberFilter } from '../models/types';
 
 // 렌더러 프로세스에서 사용할 IPC 서비스
 export class IpcMemberService {
@@ -551,11 +551,7 @@ export async function getAttendanceByDate(date: string) {
 export async function getMembersWithPagination(
   page: number,
   pageSize: number,
-  options?: {
-    search?: string;
-    status?: 'active' | 'expired' | 'all';
-    membershipType?: string;
-  }
+  options?: MemberFilter
 ): Promise<{ success: boolean, data?: { members: Member[]; total: number }, error?: string }> {
   try {
     const response = await safeIpcRenderer?.invoke('get-members-pagination', page, pageSize, options);

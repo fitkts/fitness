@@ -1,5 +1,6 @@
 import { getDatabase } from './setup';
 import { Member } from '../models/types';
+import { MemberFilter } from '../models/types';
 import * as electronLog from 'electron-log';
 
 // 회원 추가
@@ -356,11 +357,7 @@ export async function updateLastVisit(memberId: number, visitDate: string): Prom
 export async function getMembersWithPagination(
   page: number,
   pageSize: number,
-  options?: {
-    search?: string;
-    status?: 'active' | 'expired' | 'all';
-    membershipType?: string;
-  }
+  options?: MemberFilter
 ): Promise<{ members: Member[]; total: number }> {
   try {
     const db = getDatabase();
@@ -415,8 +412,29 @@ export async function getMembersWithPagination(
       params.push(now);
     }
     
-    // 정렬 및 페이지네이션
-    query += ` ORDER BY name ASC LIMIT ? OFFSET ?`;
+    // 정렬 처리
+    if (options?.sortKey && options?.sortDirection) {
+      const sortKey = options.sortKey;
+      const direction = options.sortDirection === 'ascending' ? 'ASC' : 'DESC';
+      
+      // 컬럼명 매핑
+      const columnMapping: { [key: string]: string } = {
+        name: 'name',
+        gender: 'gender',
+        phone: 'phone',
+        membershipType: 'membership_type',
+        membershipEnd: 'membership_end',
+        createdAt: 'created_at'
+      };
+      
+      const dbColumn = columnMapping[sortKey] || 'name';
+      query += ` ORDER BY ${dbColumn} ${direction}`;
+    } else {
+      query += ` ORDER BY name ASC`; // 기본 정렬
+    }
+    
+    // 페이지네이션
+    query += ` LIMIT ? OFFSET ?`;
     params.push(pageSize, offset);
     
     const members = db.prepare(query).all(...params) as Member[];

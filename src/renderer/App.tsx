@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/common/AppLayout';
 import Dashboard from '../pages/Dashboard';
 import Members from '../pages/Members';
 import Attendance from '../pages/Attendance';
 import Payment from '../pages/Payment';
-import ExcelImport from '../pages/ExcelImport';
 import Backup from '../pages/Backup';
 import Settings from '../pages/Settings';
 import Lockers from '../pages/Lockers';
@@ -19,7 +18,6 @@ enum Page {
   Payment = '결제 관리',
   Lockers = '락카 관리',
   Staff = '직원 관리',
-  ExcelImport = '엑셀 가져오기',
   Backup = '백업 관리',
   Settings = '설정'
 }
@@ -51,8 +49,6 @@ const App: React.FC = () => {
         return <Lockers />;
       case Page.Staff:
         return <Staff />;
-      case Page.ExcelImport:
-        return <ExcelImport />;
       case Page.Backup:
         return <Backup />;
       case Page.Settings:
@@ -63,23 +59,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* 사이드바 */}
-      <Sidebar 
-        currentPage={currentPage}
-        onPageChange={handlePageChange}
-        pages={Object.values(Page)}
-      />
-      
-      {/* 메인 컨텐츠 */}
-      <div className="flex-1 overflow-auto">
-        <main className="p-6">
-          <PageTransition>
-            {renderPage()}
-          </PageTransition>
-        </main>
-      </div>
-    </div>
+    <AppLayout
+      currentPage={currentPage}
+      onPageChange={handlePageChange}
+      pages={Object.values(Page)}
+    >
+      <main className="p-6">
+        <PageTransition>
+          {renderPage()}
+        </PageTransition>
+      </main>
+    </AppLayout>
   );
 };
 

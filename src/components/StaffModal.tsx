@@ -43,7 +43,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<Staff>(defaultStaff as Staff);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [currentIsViewMode, setCurrentIsViewMode] = useState(isViewMode);
+  const [currentIsViewMode, setCurrentIsViewMode] = useState(!!isViewMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
 
@@ -51,9 +51,10 @@ const StaffModal: React.FC<StaffModalProps> = ({
     if (staff) {
       setFormData({
         ...staff,
+        permissions: staff.permissions ?? defaultPermissions,
         notes: staff.notes || '',
       });
-      setCurrentIsViewMode(isViewMode);
+      setCurrentIsViewMode(!!isViewMode);
     } else {
       setFormData(defaultStaff as Staff);
       setCurrentIsViewMode(false);
@@ -95,7 +96,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
         newErrors.email = '유효한 이메일을 입력하세요';
       }
       
-      if (formData.phone && !/^\d{2,3}-\d{3,4}-\d{4}$/.test(formData.phone)) {
+      if (formData.phone && !/^[\d-]{9,13}$/.test(formData.phone)) {
         newErrors.phone = '유효한 전화번호를 입력하세요';
       }
       
@@ -105,7 +106,9 @@ const StaffModal: React.FC<StaffModalProps> = ({
       }
 
       setIsSubmitting(true);
-      const success = await onSave(formData);
+      // status가 없으면 'active'로 강제
+      const submitData = { ...formData, status: formData.status || 'active' };
+      const success = await onSave(submitData);
       
       if (success) {
         showToast('success', currentIsViewMode ? '직원 정보가 수정되었습니다.' : '새 직원이 등록되었습니다.');
@@ -247,10 +250,10 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 <input
                   type="text"
                   name="name"
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={handleChange}
                   className={`input w-full ${errors.name ? 'border-red-500' : ''}`}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   required
                 />
                 {errors.name && (
@@ -264,10 +267,10 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 </label>
                 <select
                   name="position"
-                  value={formData.position}
+                  value={formData.position || ''}
                   onChange={handleChange}
                   className="input w-full"
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                 >
                   <option value="원장">원장</option>
                   <option value="팀장">팀장</option>
@@ -283,11 +286,11 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 <input
                   type="tel"
                   name="phone"
-                  value={formData.phone}
+                  value={formData.phone || ''}
                   onChange={handleChange}
                   className="input w-full"
                   placeholder="000-0000-0000"
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                 />
               </div>
               
@@ -298,10 +301,10 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 <input
                   type="email"
                   name="email"
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleChange}
                   className={`input w-full ${errors.email ? 'border-red-500' : ''}`}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -315,10 +318,10 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 <input
                   type="date"
                   name="hireDate"
-                  value={formData.hireDate}
+                  value={formData.hireDate || ''}
                   onChange={handleChange}
                   className="input w-full"
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                 />
               </div>
               
@@ -328,10 +331,10 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 </label>
                 <select
                   name="status"
-                  value={formData.status}
+                  value={formData.status || ''}
                   onChange={handleChange}
                   className="input w-full"
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                 >
                   <option value="active">재직 중</option>
                   <option value="inactive">퇴사</option>
@@ -387,7 +390,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="dashboard"
                   checked={formData.permissions.dashboard}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="dashboard" className="ml-2 text-sm text-gray-700">
@@ -402,7 +405,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="members"
                   checked={formData.permissions.members}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="members" className="ml-2 text-sm text-gray-700">
@@ -417,7 +420,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="attendance"
                   checked={formData.permissions.attendance}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="attendance" className="ml-2 text-sm text-gray-700">
@@ -432,7 +435,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="payment"
                   checked={formData.permissions.payment}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="payment" className="ml-2 text-sm text-gray-700">
@@ -447,7 +450,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="lockers"
                   checked={formData.permissions.lockers}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="lockers" className="ml-2 text-sm text-gray-700">
@@ -462,7 +465,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="staff"
                   checked={formData.permissions.staff}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="staff" className="ml-2 text-sm text-gray-700">
@@ -477,7 +480,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="excel"
                   checked={formData.permissions.excel}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="excel" className="ml-2 text-sm text-gray-700">
@@ -492,7 +495,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="backup"
                   checked={formData.permissions.backup}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="backup" className="ml-2 text-sm text-gray-700">
@@ -507,7 +510,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                   name="settings"
                   checked={formData.permissions.settings}
                   onChange={handlePermissionChange}
-                  disabled={currentIsViewMode}
+                  disabled={!!currentIsViewMode}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="settings" className="ml-2 text-sm text-gray-700">
@@ -525,7 +528,7 @@ const StaffModal: React.FC<StaffModalProps> = ({
                 value={formData.notes || ''}
                 onChange={handleChange}
                 className="input w-full h-24"
-                disabled={currentIsViewMode}
+                disabled={!!currentIsViewMode}
               ></textarea>
             </div>
           </div>

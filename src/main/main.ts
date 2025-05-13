@@ -13,21 +13,16 @@ import { Staff } from '../models/types';
 import * as lockerRepository from '../database/lockerRepository';
 import { Locker } from '../models/types';
 
-// 개발 모드 확인 디버깅
-electronLog.info('NODE_ENV 원본값:', process.env.NODE_ENV);
-electronLog.info('process.argv:', process.argv);
-
-// 개발 모드 설정 - 직접 수정 대신 조건부 로직
-let forceDevelopment = false;
-// 원래 NODE_ENV가 development면 그대로 사용
-const isDevelopment = process.env.NODE_ENV === 'development' || forceDevelopment;
+// 개발 모드 설정
+const isDevelopment = process.env.NODE_ENV === 'development';
 electronLog.info('개발 모드 설정:', isDevelopment);
 
 // 개발 환경에서만 electron-reload 적용
 if (isDevelopment) {
   try {
-    require('electron-reload')(require('path').join(__dirname, '../../'), {
-      electron: require(require('path').join(__dirname, '../../node_modules/electron'))
+    const electronReload = require('electron-reload');
+    electronReload(__dirname, {
+      electron: path.join(__dirname, '../../node_modules/electron')
     });
     electronLog.info('electron-reload 활성화됨');
   } catch (e) {
@@ -41,7 +36,7 @@ electronLog.info('데이터베이스 사용:', useDatabase);
 
 // 로그 설정
 electronLog.transports.file.level = 'info';
-electronLog.info('애플리케이션 작');
+electronLog.info('애플리케이션 시작');
 electronLog.info('데이터베이스 사용:', useDatabase);
 
 let mainWindow: BrowserWindow | null = null;
@@ -85,6 +80,7 @@ function createWindow() {
   // 개발 모드에서는 localhost:5000, 프로덕션 모드에서는 로컬 파일
   // 특수한 경우 강제로 개발 서버 사용 가능
   const forceDevServer = true;  // 항상 개발 서버 사용하도록 설정
+  
   const startUrl = (isDevelopment || forceDevServer)
     ? 'http://localhost:5000'
     : `file://${path.join(__dirname, '../renderer/index.html')}`;
@@ -132,11 +128,37 @@ function createWindow() {
 // Electron초기 마치성
 app.whenReady().then(async () => {
   try {
+    // 캐시 비활성화 설정 추가
+    app.commandLine.appendSwitch('disable-http-cache');
+    
     // 이베스 초기(개발 모드서택으로 행)
     if (useDatabase) {
       try {
         await setupDatabase();
         electronLog.info('이베스 초기료');
+        // members 테이블에 staff_id, staff_name 컬럼이 없으면 추가
+        try {
+          const db = getDatabase();
+          db.prepare('ALTER TABLE members ADD COLUMN staff_id INTEGER').run();
+        } catch (e) { /* 이미 있으면 무시 */ }
+        try {
+          const db = getDatabase();
+          db.prepare('ALTER TABLE members ADD COLUMN staff_name TEXT').run();
+        } catch (e) { /* 이미 있으면 무시 */ }
+        // staff 테이블에 isActive 컬럼이 없으면 추가
+        try {
+          const db = getDatabase();
+          db.prepare('ALTER TABLE staff ADD COLUMN isActive INTEGER DEFAULT 1').run();
+        } catch (e) { /* 이미 있으면 무시 */ }
+        // staff 테이블에 createdAt, updatedAt 컬럼이 없으면 추가
+        try {
+          const db = getDatabase();
+          db.prepare('ALTER TABLE staff ADD COLUMN createdAt TEXT').run();
+        } catch (e) { /* 이미 있으면 무시 */ }
+        try {
+          const db = getDatabase();
+          db.prepare('ALTER TABLE staff ADD COLUMN updatedAt TEXT').run();
+        } catch (e) { /* 이미 있으면 무시 */ }
       } catch (dbError) {
         electronLog.error('이베스 초기류:', dbError);
         if (!isDevelopment) {
@@ -218,7 +240,9 @@ ipcMain.handle('get-all-members', () => {
         membership_start as membershipStart, 
         membership_end as membershipEnd, 
         last_visit as lastVisit, 
-        notes, 
+        notes,
+        staff_id as staffId,
+        staff_name as staffName,
         created_at as createdAt, 
         updated_at as updatedAt
       FROM members
@@ -251,8 +275,8 @@ ipcMain.handle('add-member', (_, member) => {
       INSERT INTO members (
         name, phone, email, gender, birth_date, join_date, 
         membership_type, membership_start, membership_end, 
-        notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        notes, staff_id, staff_name, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       member.name, 
       member.phone || null, 
@@ -263,7 +287,9 @@ ipcMain.handle('add-member', (_, member) => {
       member.membershipType || null, 
       member.membershipStart || null, 
       member.membershipEnd || null, 
-      member.notes || null, 
+      member.notes || null,
+      member.staffId || null,
+      member.staffName || null,
       now, 
       now
     );
@@ -312,6 +338,8 @@ ipcMain.handle('update-member', (_, member) => {
         membership_start = ?,
         membership_end = ?,
         notes = ?,
+        staff_id = ?,
+        staff_name = ?,
         updated_at = ?
       WHERE id = ?
     `).run(
@@ -324,7 +352,9 @@ ipcMain.handle('update-member', (_, member) => {
       member.membershipType || null, 
       member.membershipStart || null, 
       member.membershipEnd || null, 
-      member.notes || null, 
+      member.notes || null,
+      member.staffId || null,
+      member.staffName || null,
       now,
       member.id
     );
@@ -589,11 +619,17 @@ ipcMain.handle('delete-membership-type', async (_, id) => {
 // 모든 스태프 조회
 ipcMain.handle('get-all-staff', async () => {
   try {
-    const staff = await staffRepository.getAllStaff();
+    const db = getDatabase();
+    const staff = db.prepare(`
+      SELECT id, name, phone, email, position, isActive, createdAt, updatedAt
+      FROM staff
+      WHERE isActive = 1
+      ORDER BY name ASC
+    `).all();
     return { success: true, data: staff };
   } catch (error) {
-    electronLog.error('스태프 목록 조회 오류:', error);
-    return { success: false, error: (error as Error).message };
+    console.error('직원 목록 가져오기 오류:', error);
+    return { success: false, error: '직원 목록을 가져오는데 실패했습니다.' };
   }
 });
 
@@ -792,7 +828,9 @@ ipcMain.handle('import-members-excel', async (_, data) => {
             membershipType: row.membershipType || null,
             membershipStart: row.membershipStart || null,
             membershipEnd: row.membershipEnd || null,
-            notes: row.notes || null
+            notes: row.notes || null,
+            staffId: row.staffId || null,
+            staffName: row.staffName || null
           };
 
           // 회원 추가
@@ -800,8 +838,8 @@ ipcMain.handle('import-members-excel', async (_, data) => {
             INSERT INTO members (
               name, phone, email, gender, birth_date, join_date, 
               membership_type, membership_start, membership_end, 
-              notes, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              notes, staff_id, staff_name, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).run(
             member.name,
             member.phone,
@@ -813,6 +851,8 @@ ipcMain.handle('import-members-excel', async (_, data) => {
             member.membershipStart,
             member.membershipEnd,
             member.notes,
+            member.staffId || null,
+            member.staffName || null,
             now,
             now
           );

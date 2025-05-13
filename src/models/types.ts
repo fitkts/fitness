@@ -14,6 +14,8 @@ export const memberSchema = z.object({
   membershipEnd: z.string().optional().or(z.literal('')),
   lastVisit: z.string().optional(),
   notes: z.string().optional(),
+  staffId: z.number().optional(),
+  staffName: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
@@ -105,11 +107,13 @@ export type Staff = z.infer<typeof staffSchema>;
 export type Locker = z.infer<typeof lockerSchema>;
 
 // 회원 필터링을 위한 타입
-export interface MemberFilter {
-  search: string;
-  membershipType?: string;
+export type MemberFilter = {
+  search?: string;
   status?: 'active' | 'expired' | 'all';
-}
+  membershipType?: string;
+  sortKey?: string;
+  sortDirection?: 'ascending' | 'descending' | null;
+};
 
 // 차트 데이터 타입
 export interface ChartData {

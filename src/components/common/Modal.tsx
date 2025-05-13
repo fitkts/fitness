@@ -59,7 +59,7 @@ const Modal: React.FC<ModalProps> = ({
       case 'sm': return 'max-w-sm';
       case 'md': return 'max-w-md';
       case 'lg': return 'max-w-lg';
-      case 'xl': return 'max-w-4xl';
+      case 'xl': return 'max-w-2xl md:max-w-3xl lg:max-w-4xl'; // 데스크탑에서 더 넓게, 모바일에서는 적당히
       default: return 'max-w-md';
     }
   };
@@ -74,12 +74,12 @@ const Modal: React.FC<ModalProps> = ({
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-lg',
-    xl: 'max-w-xl'
+    xl: 'max-w-2xl md:max-w-3xl lg:max-w-4xl',
   };
 
   return createPortal(
     <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-8 ${
         isOpen ? 'animate-fadeIn' : 'animate-fadeOut'
       }`}
       onClick={handleOutsideClick}
@@ -87,7 +87,7 @@ const Modal: React.FC<ModalProps> = ({
       <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" />
       <div
         ref={modalRef}
-        className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full animate-slideIn`}
+        className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-y-auto px-2 sm:px-6 py-4 animate-slideIn`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">

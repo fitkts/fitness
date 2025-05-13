@@ -135,7 +135,7 @@ const Dashboard: React.FC = () => {
     icon: React.ReactNode,
     colorClass: string
   ) => (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-4 w-full min-w-0">
       <div className="flex items-center">
         <div className={`p-3 rounded-full ${colorClass} text-white mr-4`}>
           {icon}
@@ -195,8 +195,8 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">대시보드</h1>
+    <div className="p-2 md:p-4 lg:p-8 max-w-4xl mx-auto transition-all duration-300 ease-in-out">
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">대시보드</h1>
 
       {loading ? (
         <div className="text-center py-10">
@@ -206,50 +206,52 @@ const Dashboard: React.FC = () => {
       ) : (
         <>
           {/* 통계 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6 w-full min-w-0 overflow-x-auto">
             {renderStatCard(
               '총 회원 수',
               stats.totalMembers,
-              <Users size={20} />,
+              <Users size={20} />, 
               'bg-blue-500'
             )}
             {renderStatCard(
               '오늘 출석',
               stats.attendanceToday,
-              <Calendar size={20} />,
+              <Calendar size={20} />, 
               'bg-green-500'
             )}
             {renderStatCard(
               '이번 달 신규 회원',
               stats.newMembersThisMonth,
-              <TrendingUp size={20} />,
+              <TrendingUp size={20} />, 
               'bg-purple-500'
             )}
             {renderStatCard(
               '활성 회원',
               stats.activeMembers,
-              <Users size={20} />,
+              <Users size={20} />, 
               'bg-yellow-500'
             )}
           </div>
 
           {/* 차트 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">월별 방문 현황</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6 w-full min-w-0 overflow-x-auto">
+            <div className="bg-white rounded-lg shadow p-2 md:p-4 w-full min-w-0">
+              <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">월별 방문 현황</h2>
               {stats.monthlyAttendance.length > 0 ? (
-                <Line data={attendanceData} />
+                <div className="aspect-[2/1] min-h-[180px] md:min-h-[250px]">
+                  <Line data={attendanceData} options={{ maintainAspectRatio: false }} />
+                </div>
               ) : (
                 <div className="text-center p-6 text-gray-500">
                   <p>방문 데이터가 없습니다</p>
                 </div>
               )}
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">회원권 분포</h2>
+            <div className="bg-white rounded-lg shadow p-2 md:p-4 w-full min-w-0">
+              <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">회원권 분포</h2>
               {stats.membershipDistribution.length > 0 ? (
-                <div className="h-64">
-                  <Doughnut data={membershipData} />
+                <div className="aspect-square min-h-[180px] md:min-h-[250px]">
+                  <Doughnut data={membershipData} options={{ maintainAspectRatio: false }} />
                 </div>
               ) : (
                 <div className="text-center p-6 text-gray-500">
@@ -260,8 +262,8 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* 최근 활동 */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">최근 활동</h2>
+          <div className="bg-white rounded-lg shadow p-2 md:p-4 w-full min-w-0">
+            <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">최근 활동</h2>
             {renderRecentActivity()}
           </div>
         </>

@@ -86,15 +86,12 @@ export const useMemberStore = create<MemberState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       console.log('IPC: 회원 수정 요청:', updatedMember);
-      await IpcMemberService.update(updatedMember); // update는 보통 반환값이 없을 수 있음
+      await IpcMemberService.update(updatedMember);
       console.log('IPC: 회원 수정 완료 (ID:', updatedMember.id, ')');
 
-      set((state) => ({
-        members: state.members.map((member) =>
-          member.id === updatedMember.id ? updatedMember : member
-        ),
-        isLoading: false,
-      }));
+      // 수정 후 목록을 새로 불러와서 DB와 싱크 맞추기
+      await get().fetchMembers();
+      set({ isLoading: false });
     } catch (err) {
       console.error("IPC: 회원 수정 실패:", err);
       const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류 발생';

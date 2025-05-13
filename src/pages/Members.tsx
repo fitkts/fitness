@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, Filter, Database, AlertTriangle, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download, Upload, X as CloseIcon } from 'lucide-react';
-import { Member, MemberFilter } from '../models/types';
+import { Member, MemberFilter, Staff } from '../models/types';
 import MemberModal from '../components/MemberModal';
 import { useToast } from '../contexts/ToastContext';
 import { useMemberStore } from '../stores/memberStore';
-import { getMembersWithPagination, importMembersFromExcel } from '../database/ipcService';
+import { getMembersWithPagination, importMembersFromExcel, getAllStaff } from '../database/ipcService';
 import * as XLSX from 'xlsx';
 
 const Members: React.FC = () => {
@@ -39,10 +39,13 @@ const Members: React.FC = () => {
   // 페이지네이션 관련 상태 추가
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [pageSize] = useState<number>(20); // 한 페이지당 표시할 회원 수
+  const [pageSize, setPageSize] = useState<number>(30);
+  const [showAll, setShowAll] = useState<boolean>(false);
   const [pagedMembers, setPagedMembers] = useState<Member[]>([]);
   
   const [excelInfoOpen, setExcelInfoOpen] = useState(false);
+  
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   
   // useToast를 try-catch로 감싸서 오류 방지
   let showToast;
@@ -61,6 +64,21 @@ const Members: React.FC = () => {
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
+
+  // 직원 목록 로드
+  useEffect(() => {
+    const loadStaff = async () => {
+      try {
+        const response = await getAllStaff();
+        if (response.success && response.data) {
+          setStaffList(response.data);
+        }
+      } catch (error) {
+        console.error('직원 목록 로드 오류:', error);
+      }
+    };
+    loadStaff();
+  }, []);
 
   // 모달 닫기 핸들러
   const handleCloseModal = () => {
@@ -191,6 +209,19 @@ const Members: React.FC = () => {
         return 0;
       }
       
+      // 성별 정렬 로직 추가
+      if (sortConfig.key === 'gender') {
+        const genderOrder = { '남': 1, '여': 2, '': 3 };
+        const aValue = (a[sortConfig.key] as string) || '';
+        const bValue = (b[sortConfig.key] as string) || '';
+        
+        if (sortConfig.direction === 'ascending') {
+          return (genderOrder[aValue as keyof typeof genderOrder] || 3) - (genderOrder[bValue as keyof typeof genderOrder] || 3);
+        } else {
+          return (genderOrder[bValue as keyof typeof genderOrder] || 3) - (genderOrder[aValue as keyof typeof genderOrder] || 3);
+        }
+      }
+      
       // 문자열 비교
       if (typeof a[sortConfig.key as keyof Member] === 'string') {
         const aValue = (a[sortConfig.key as keyof Member] as string) || '';
@@ -203,10 +234,10 @@ const Members: React.FC = () => {
         }
       }
       
-      // 날짜 비교 (membershipEnd 필드)
-      if (sortConfig.key === 'membershipEnd') {
-        const aDate = a.membershipEnd ? new Date(a.membershipEnd).getTime() : 0;
-        const bDate = b.membershipEnd ? new Date(b.membershipEnd).getTime() : 0;
+      // 날짜 비교 (membershipEnd, createdAt 필드)
+      if (sortConfig.key === 'membershipEnd' || sortConfig.key === 'createdAt') {
+        const aDate = a[sortConfig.key] ? new Date(a[sortConfig.key] as string).getTime() : 0;
+        const bDate = b[sortConfig.key] ? new Date(b[sortConfig.key] as string).getTime() : 0;
         
         if (sortConfig.direction === 'ascending') {
           return aDate - bDate;
@@ -284,18 +315,38 @@ const Members: React.FC = () => {
     });
   };
 
+  // 페이지당 표시 회원 수 변경 핸들러
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // 페이지 크기가 변경되면 첫 페이지로 이동
+    loadMembers(); // 즉시 데이터 다시 로드
+  };
+
+  // 전체 보기 토글 핸들러
+  const handleShowAllToggle = () => {
+    setShowAll(!showAll);
+    setCurrentPage(1);
+    loadMembers(); // 즉시 데이터 다시 로드
+  };
+
   // 회원 목록 로드 함수 수정
   const loadMembers = async () => {
     try {
-      const response = await getMembersWithPagination(currentPage, pageSize, {
-        search: filter.search,
-        status: filter.status,
-        membershipType: filter.membershipType
-      });
+      const response = await getMembersWithPagination(
+        showAll ? 1 : currentPage, 
+        showAll ? members.length : pageSize, 
+        {
+          search: filter.search,
+          status: filter.status,
+          membershipType: filter.membershipType,
+          sortKey: sortConfig.key,
+          sortDirection: sortConfig.direction
+        }
+      );
       
       if (response.success && response.data) {
         setPagedMembers(response.data.members);
-        setTotalPages(Math.ceil(response.data.total / pageSize));
+        setTotalPages(showAll ? 1 : Math.ceil(response.data.total / pageSize));
       } else {
         console.error('회원 목록 로드 오류:', response.error);
         showToast?.('error', '회원 목록을 불러오는데 실패했습니다.');
@@ -309,7 +360,7 @@ const Members: React.FC = () => {
   // 페이지 변경 시 데이터 다시 로드
   useEffect(() => {
     loadMembers();
-  }, [currentPage, filter]);
+  }, [currentPage, filter, sortConfig, pageSize, showAll]); // pageSize와 showAll 의존성 추가
   
   // 페이지 변경 핸들러
   const handlePageChange = (newPage: number) => {
@@ -619,103 +670,199 @@ const Members: React.FC = () => {
       {/* 회원 목록 테이블 */}
       {!isLoading && !error && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className={`border border-gray-300 rounded-md px-2 py-1.5 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  showAll ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={showAll}
+              >
+                <option value={10}>10개씩 보기</option>
+                <option value={20}>20개씩 보기</option>
+                <option value={30}>30개씩 보기</option>
+                <option value={50}>50개씩 보기</option>
+              </select>
+              <button
+                onClick={handleShowAllToggle}
+                className={`px-2 py-1.5 sm:px-3 text-sm rounded-md transition-colors ${
+                  showAll 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {showAll ? '페이지 보기' : '전체 보기'}
+              </button>
+            </div>
+            <div className="text-sm text-gray-500">
+              총 {members.length}명의 회원
+              {!showAll && ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, members.length)}번째 표시)`}
+            </div>
+          </div>
+          {/* 반응형 테이블: 가로 스크롤, 패딩 조정, 모바일에서 폰트/패딩 축소 */}
+          <div className="w-full overflow-x-auto" style={{ maxHeight: 'calc(100vh - 350px)', minWidth: 600 }}>
+            <table className="min-w-full divide-y divide-gray-200 text-sm sm:text-base">
+              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 <tr>
-                  <th 
-                    className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => requestSort('name')}
-                  >
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('name')}>
                     <div className="flex items-center">
                       이름
-                      {sortConfig.key === 'name' && sortConfig.direction === 'ascending' && <ChevronUp className="ml-1" size={14} />}
-                      {sortConfig.key === 'name' && sortConfig.direction === 'descending' && <ChevronDown className="ml-1" size={14} />}
+                      {sortConfig.key === 'name' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
                     </div>
                   </th>
-                  <th 
-                    className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => requestSort('phone')}
-                  >
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('gender')}>
+                    <div className="flex items-center">
+                      성별
+                      {sortConfig.key === 'gender' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('phone')}>
                     <div className="flex items-center">
                       연락처
-                      {sortConfig.key === 'phone' && sortConfig.direction === 'ascending' && <ChevronUp className="ml-1" size={14} />}
-                      {sortConfig.key === 'phone' && sortConfig.direction === 'descending' && <ChevronDown className="ml-1" size={14} />}
+                      {sortConfig.key === 'phone' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
                     </div>
                   </th>
-                  <th 
-                    className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => requestSort('membershipType')}
-                  >
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('membershipType')}>
                     <div className="flex items-center">
                       회원권 종류
-                      {sortConfig.key === 'membershipType' && sortConfig.direction === 'ascending' && <ChevronUp className="ml-1" size={14} />}
-                      {sortConfig.key === 'membershipType' && sortConfig.direction === 'descending' && <ChevronDown className="ml-1" size={14} />}
+                      {sortConfig.key === 'membershipType' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
                     </div>
                   </th>
-                  <th 
-                    className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => requestSort('membershipEnd')}
-                  >
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('membershipEnd')}>
                     <div className="flex items-center">
                       만료일
-                      {sortConfig.key === 'membershipEnd' && sortConfig.direction === 'ascending' && <ChevronUp className="ml-1" size={14} />}
-                      {sortConfig.key === 'membershipEnd' && sortConfig.direction === 'descending' && <ChevronDown className="ml-1" size={14} />}
+                      {sortConfig.key === 'membershipEnd' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
                     </div>
                   </th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                  <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('createdAt')}>
+                    <div className="flex items-center">
+                      최초 등록일
+                      {sortConfig.key === 'createdAt' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('staffName')}>
+                    <div className="flex items-center">
+                      담당자
+                      {sortConfig.key === 'staffName' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'ascending' ? (
+                            <ChevronUp className="text-blue-500" size={14} />
+                          ) : sortConfig.direction === 'descending' ? (
+                            <ChevronDown className="text-blue-500" size={14} />
+                          ) : null}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">작업</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white">
                 {pagedMembers.length > 0 ? (
                   pagedMembers.map((member) => (
-                    <tr key={member.id} className="hover:bg-gray-50 transition-colors cursor-pointer" 
-                        onClick={() => handleViewMember(member)}>
-                      <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{member.name}</td>
-                      <td className="py-4 px-4 whitespace-nowrap text-gray-700">{member.phone || '-'}</td>
-                      <td className="py-4 px-4 whitespace-nowrap text-gray-700">{member.membershipType || '-'}</td>
-                      <td className="py-4 px-4 whitespace-nowrap text-gray-700">{formatDate(member.membershipEnd)}</td>
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <tr
+                      key={member.id}
+                      className="hover:bg-blue-50 transition-colors duration-150 cursor-pointer group"
+                      onClick={() => handleViewMember(member)}
+                    >
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap font-medium text-gray-900 group-hover:text-blue-600">{member.name}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.gender || '-'}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.phone || '-'}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.membershipType || '-'}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{formatDate(member.membershipEnd)}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{formatDate(member.createdAt)}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.staffName || '-'}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           getMembershipStatus(member.membershipEnd) === 'active' 
-                                ? 'bg-green-100 text-green-800' 
+                            ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {getMembershipStatus(member.membershipEnd) === 'active' ? '활성' : '만료'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 whitespace-nowrap text-center">
-                        <div className="flex justify-center space-x-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-center">
+                        <div className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
                               handleViewMember(member);
                             }} 
-                            className="text-blue-500 hover:text-blue-700 transition-colors" 
+                            className="text-blue-500 hover:text-blue-700 transition-colors p-1" 
                             title="상세보기"
                           >
-                            <Info size={18} />
+                            <Info size={16} />
                           </button>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEditMember(member);
                             }} 
-                            className="text-yellow-500 hover:text-yellow-700 transition-colors" 
+                            className="text-yellow-500 hover:text-yellow-700 transition-colors p-1" 
                             title="수정"
                           >
-                            <Edit size={18} />
+                            <Edit size={16} />
                           </button>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(member.id!);
                             }} 
-                            className="text-red-500 hover:text-red-700 transition-colors" 
+                            className="text-red-500 hover:text-red-700 transition-colors p-1" 
                             title="삭제"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -723,7 +870,7 @@ const Members: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 px-4 text-center text-gray-500">
+                    <td colSpan={9} className="py-8 px-4 text-center text-gray-500">
                       <div className="flex flex-col items-center justify-center">
                         <Database size={48} className="text-gray-300 mb-3" />
                         <p className="text-lg">회원 정보가 없습니다.</p>
@@ -736,8 +883,8 @@ const Members: React.FC = () => {
             </table>
           </div>
           
-          {/* 페이지네이션 추가 */}
-          {renderPagination()}
+          {/* 페이지네이션은 전체 보기 모드일 때는 숨김 */}
+          {!showAll && renderPagination()}
         </div>
       )}
 
