@@ -5,6 +5,10 @@ import { z } from 'zod';
 import Modal from './common/Modal';
 import { useToast, ToastType } from '../contexts/ToastContext';
 import { getAllStaff } from '../database/ipcService';
+import MemberBasicInfoForm from './member/MemberBasicInfoForm';
+import MembershipInfoForm from './member/MembershipInfoForm';
+import MemberNotesForm from './member/MemberNotesForm';
+import MemberViewDetails from './member/MemberViewDetails';
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -244,269 +248,46 @@ const MemberModal: React.FC<MemberModalProps> = ({ isOpen, onClose, onSave, onEd
       size="xl"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {/* 회원 상세 정보 카드 */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-blue-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-blue-800">회원 상세 정보</h3>
+            <h3 className="text-lg font-semibold text-blue-800">
+              {currentIsViewMode ? '회원 상세 정보' : (isEditMode ? '회원 정보 수정' : '신규 회원 등록')}
+            </h3>
           </div>
           
           {currentIsViewMode ? (
-            <div className="p-4">
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* 회원 기본 정보 - 왼쪽 */}
-                <div className="flex-1 space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-3xl font-bold border border-gray-300">
-                      {formData.name?.charAt(0) || '?'}
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-xl font-bold">{formData.name}</h3>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
-                          {formData.gender || '성별 미지정'}
-                        </span>
-                        {formData.birthDate && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
-                            {formatDate(formData.birthDate)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <p className="text-sm text-gray-500">연락처</p>
-                      <p className="font-medium">{formData.phone || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">이메일</p>
-                      <p className="font-medium">{formData.email || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">가입일</p>
-                      <p className="font-medium">{formatDate(formData.joinDate)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">담당자</p>
-                      <p className="font-medium">{formData.staffName || '-'}</p>
-                    </div>
-                  </div>
-                  
-                  {formData.notes && (
-                    <div className="mt-4 p-3 bg-yellow-50 rounded-md">
-                      <p className="text-sm text-gray-500 mb-1">메모</p>
-                      <p className="text-sm">{formData.notes}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 현재 이용권 정보 (상세 보기 모드에서만 표시) */}
-                <div className="flex-1 mt-6 md:mt-0">
-                  <div className="bg-white rounded-lg border p-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-lg font-semibold">현재 이용권</h4>
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        membershipStatus === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {membershipStatus === 'active' ? '사용중' : '만료'}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-3 mt-4">
-                      <div className="text-center p-3 bg-gray-50 rounded">
-                        <p className="text-sm text-gray-500">이용권 종류</p>
-                        <p className="font-semibold text-lg">{formData.membershipType || '-'}</p>
-                      </div>
-                      
-                      <div className="text-center p-3 bg-gray-50 rounded">
-                        <p className="text-sm text-gray-500">시작일</p>
-                        <p className="font-semibold">{formatDate(formData.membershipStart)}</p>
-                      </div>
-                      
-                      <div className="text-center p-3 bg-gray-50 rounded">
-                        <p className="text-sm text-gray-500">종료일</p>
-                        <p className="font-semibold">{formatDate(formData.membershipEnd)}</p>
-                      </div>
-                    </div>
-                    
-                    {membershipStatus === 'active' && (
-                      <div className="mt-4 text-center">
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-500" 
-                            style={{ 
-                              width: `${Math.max(0, Math.min(100, daysLeft / 30 * 100))}%` 
-                            }}
-                          ></div>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-gray-700">
-                          {daysLeft}일 남음
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MemberViewDetails 
+              formData={formData}
+              membershipStatus={membershipStatus}
+              daysLeft={daysLeft}
+              formatDate={formatDate}
+            />
           ) : (
             <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    이름 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className={`input ${errors.name ? 'border-red-500' : ''}`}
-                    required
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    전화번호
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className={`input ${errors.phone ? 'border-red-500' : ''}`}
-                    placeholder="000-0000-0000"
-                  />
-                  {errors.phone && (
-                    <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    이메일
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`input ${errors.email ? 'border-red-500' : ''}`}
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    성별
-                  </label>
-                  <select
-                    name="gender"
-                    value={formData.gender}
-                    onChange={handleChange}
-                    className="input"
-                  >
-                    <option value="남성">남성</option>
-                    <option value="여성">여성</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    생년월일
-                  </label>
-                  <input
-                    type="date"
-                    name="birthDate"
-                    value={formData.birthDate}
-                    onChange={handleChange}
-                    className="input"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    가입일
-                  </label>
-                  <input
-                    type="date"
-                    name="joinDate"
-                    value={formData.joinDate}
-                    onChange={handleChange}
-                    className="input"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    회원권 시작일
-                  </label>
-                  <input
-                    type="date"
-                    name="membershipStart"
-                    value={formData.membershipStart}
-                    onChange={handleChange}
-                    className="input"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    담당자
-                  </label>
-                  <select
-                    name="staffId"
-                    value={formData.staffId || ''}
-                    onChange={handleChange}
-                    className="input"
-                  >
-                    <option value="">담당자 선택</option>
-                    {staffList.map(staff => (
-                      <option key={staff.id} value={staff.id}>
-                        {staff.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <MemberBasicInfoForm
+                formData={formData}
+                handleChange={handleChange}
+                errors={errors}
+                isViewMode={false}
+                isSubmitting={isSubmitting}
+              />
+              <MembershipInfoForm
+                formData={formData}
+                staffList={staffList}
+                handleChange={handleChange}
+                errors={errors}
+                isSubmitting={isSubmitting}
+              />
             </div>
           )}
         </div>
         
-        {/* 메모 카드 */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">메모</h3>
-          </div>
-          
-          <div className="p-4">
-            {currentIsViewMode ? (
-              <div className="bg-gray-50 p-3 rounded">
-                {formData.notes ? (
-                  <p>{formData.notes}</p>
-                ) : (
-                  <p className="text-gray-500">등록된 메모가 없습니다.</p>
-                )}
-              </div>
-            ) : (
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                className="input w-full h-24"
-                placeholder="회원에 대한 특이사항이나 메모를 입력하세요."
-              ></textarea>
-            )}
-          </div>
-        </div>
+        <MemberNotesForm 
+          notes={formData.notes}
+          handleChange={(e) => handleChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>)}
+          isViewMode={currentIsViewMode}
+          isSubmitting={isSubmitting}
+        />
         
         <div className="flex justify-end space-x-3 pt-4">
           <button 

@@ -59,15 +59,46 @@ export const membershipTypeSchema = z.object({
   availableFacilities: z.array(z.string()).optional(),
 });
 
+// StaffStatus enum 정의 추가
+export enum StaffStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
+// StaffPosition enum 정의 추가
+export enum StaffPosition {
+  MANAGER = '관리자',
+  FRONT_DESK = '프론트 데스크',
+  TRAINER = '트레이너',
+  PART_TIME = '아르바이트',
+  GENERAL = '일반 직원',
+  INTERN = '인턴'
+}
+
+// StaffPermissions 타입 정의 추가
+export type StaffPermissions = {
+  dashboard: boolean;
+  members: boolean;
+  attendance: boolean;
+  payment: boolean;
+  lockers: boolean;
+  staff: boolean;
+  excel: boolean;
+  backup: boolean;
+  settings: boolean;
+};
+
 // 스태프 스키마
 export const staffSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, { message: '이름은 필수입니다' }),
   position: z.string().min(1, { message: '직책은 필수입니다' }),
   phone: z.string().optional(),
-  email: z.string().optional(),
-  hireDate: z.string(),
-  status: z.enum(['active', 'inactive']),
+  email: z.string().email({ message: '유효한 이메일을 입력하세요' }).optional().or(z.literal('')),
+  hireDate: z.string().min(1, { message: '입사일은 필수입니다' }),
+  status: z.nativeEnum(StaffStatus, {
+    errorMap: () => ({ message: '유효한 상태를 선택해주세요' }),
+  }),
   permissions: z.object({
     dashboard: z.boolean(),
     members: z.boolean(),

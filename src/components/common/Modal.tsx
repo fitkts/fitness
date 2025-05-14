@@ -6,9 +6,10 @@ import { ToastProvider } from '@/contexts/ToastContext';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  footer?: React.ReactNode;
 }
 
 const Modal: React.FC<ModalProps> = ({ 
@@ -16,7 +17,8 @@ const Modal: React.FC<ModalProps> = ({
   onClose, 
   title, 
   children,
-  size = 'md'
+  size = 'md',
+  footer
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -100,6 +102,11 @@ const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
         <div className="p-4">{children}</div>
+        {footer && (
+          <div className="flex justify-end space-x-2 p-4 border-t">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     modalRoot

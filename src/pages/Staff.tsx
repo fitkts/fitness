@@ -24,9 +24,26 @@ const Staff: React.FC = () => {
   const { showToast } = useToast();
 
   // 데이터 로드
-  useEffect(() => {
-    loadStaff();
-  }, []);
+  const loadStaff = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await getAllStaff();
+      if (response.success && response.data) {
+        // 데이터를 날짜 기준으로 정렬하여 저장
+        const sortedData = response.data.sort((a, b) => {
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        });
+        setStaffList(sortedData);
+      } else {
+        setError('직원 목록을 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      setError('직원 목록을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 필터/정렬/페이지네이션 적용된 직원 목록
   useEffect(() => {
@@ -71,29 +88,13 @@ const Staff: React.FC = () => {
     return { total, active, inactive };
   }, [staffList]);
 
-  // 데이터 불러오기
-  const loadStaff = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await getAllStaff();
-      if (response.success && response.data) {
-        setStaffList(response.data);
-      } else {
-        setError('직원 목록을 불러오는데 실패했습니다.');
-      }
-    } catch (error) {
-      setError('직원 목록을 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 모달 핸들러
   const handleCloseModal = () => {
     setModalOpen(false);
-    setSelectedStaff(null);
-    setIsViewMode(false);
+    setTimeout(() => {
+      setSelectedStaff(null);
+      setIsViewMode(false);
+    }, 300);
   };
   const handleAddStaff = () => {
     setSelectedStaff(null);
@@ -119,15 +120,24 @@ const Staff: React.FC = () => {
         const { id, ...updateFields } = staff;
         const response = await updateStaff(id, updateFields);
         success = response.success;
-        if (success) showToast('success', '직원 정보가 수정되었습니다.');
-        else showToast('error', '직원 정보 수정에 실패했습니다.');
+        if (success) {
+          showToast('success', '직원 정보가 수정되었습니다.');
+          // 데이터베이스에서 최신 데이터를 다시 불러옴
+          await loadStaff();
+        } else {
+          showToast('error', '직원 정보 수정에 실패했습니다.');
+        }
       } else {
         const response = await addStaff(staff);
         success = response.success;
-        if (success) showToast('success', '새 직원이 추가되었습니다.');
-        else showToast('error', '직원 추가에 실패했습니다.');
+        if (success) {
+          showToast('success', '새 직원이 추가되었습니다.');
+          // 데이터베이스에서 최신 데이터를 다시 불러옴
+          await loadStaff();
+        } else {
+          showToast('error', '직원 추가에 실패했습니다.');
+        }
       }
-      if (success) await loadStaff();
       return success;
     } catch (error) {
       showToast('error', '직원 정보 저장 중 오류가 발생했습니다.');
@@ -140,6 +150,7 @@ const Staff: React.FC = () => {
         const response = await deleteStaff(id);
         if (response.success) {
           showToast('success', '직원이 삭제되었습니다.');
+          // 데이터베이스에서 최신 데이터를 다시 불러옴
           await loadStaff();
         } else {
           showToast('error', '직원 삭제에 실패했습니다.');
@@ -172,6 +183,22 @@ const Staff: React.FC = () => {
     setShowAll(!showAll);
     setCurrentPage(1);
   };
+
+  // 컴포넌트 마운트 시와 페이지 포커스 시 데이터 로드
+  useEffect(() => {
+    loadStaff();
+
+    // 페이지 포커스 이벤트 리스너 추가
+    const handleFocus = () => {
+      loadStaff();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // 로딩/에러
   if (loading) {
@@ -383,7 +410,13 @@ const Staff: React.FC = () => {
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{staff.position}</td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{staff.phone}</td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
-                      <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${staff.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{staff.status === 'active' ? '재직 중' : '퇴사'}</span>
+                      <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        staff.status === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {staff.status === 'active' ? '재직 중' : '퇴사'}
+                      </span>
                     </td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-center">
                       <div className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
