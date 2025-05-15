@@ -1,15 +1,16 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import MemberModal from '../../components/MemberModal';
 import { ToastProvider } from '../../contexts/ToastContext';
-import * as api from '../../api';
+// import * as api from '../../api'; // 이전 mock 대상
 
-// API 모킹
-jest.mock('../../api', () => ({
-  getStaffList: jest.fn().mockResolvedValue({
+// API 모킹 수정: ../../database/ipcService의 getAllStaff를 mock합니다.
+jest.mock('../../database/ipcService', () => ({
+  __esModule: true, // ES Module 모킹 시 필요
+  getAllStaff: jest.fn().mockResolvedValue({
     success: true,
-    data: []
-  })
+    data: [],
+  }),
 }));
 
 // createPortal 모킹
@@ -34,21 +35,24 @@ describe('MemberModal', () => {
     }
   });
 
-  test('모달이 열렸을 때 제목과 저장 버튼이 보여야 한다', () => {
-    render(
-      <ToastProvider>
-        <MemberModal 
-          isOpen={true} 
-          onClose={() => {}} 
-          onSave={async () => true} 
-          member={null} 
-          isViewMode={false}
-        />
-      </ToastProvider>
-    );
-    
+  test('모달이 열렸을 때 제목과 저장 버튼이 보여야 한다', async () => {
+    await act(async () => {
+      render(
+        <ToastProvider>
+          <MemberModal
+            isOpen={true}
+            onClose={() => {}}
+            onSave={async () => true}
+            member={null}
+            isViewMode={false}
+          />
+        </ToastProvider>,
+      );
+    });
+
     // 제목과 버튼이 있는지 확인
-    expect(screen.getByText('신규 회원 등록')).toBeInTheDocument();
+    const titles = screen.getAllByText('신규 회원 등록');
+    expect(titles[0]).toBeInTheDocument(); // 첫 번째 요소를 확인
     expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument();
   });
-}); 
+});

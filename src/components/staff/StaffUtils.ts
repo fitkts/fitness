@@ -1,4 +1,4 @@
-import { Staff } from '../../types/staff';
+import { Staff, StaffStatus } from '../../types/staff';
 
 // 기본 권한 설정
 export const defaultPermissions = {
@@ -20,7 +20,7 @@ export const defaultStaff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'> = {
   phone: '',
   email: '',
   hireDate: new Date().toISOString().split('T')[0],
-  status: 'active',
+  status: StaffStatus.ACTIVE,
   permissions: defaultPermissions,
   notes: '',
 };
@@ -29,7 +29,7 @@ export const defaultStaff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'> = {
 export const formatPhoneNumber = (value: string): string => {
   const numbers = value.replace(/[^\d]/g, '');
   const limitedNumbers = numbers.slice(0, 11);
-  
+
   if (limitedNumbers.length <= 3) {
     return limitedNumbers;
   } else if (limitedNumbers.length <= 7) {
@@ -94,19 +94,19 @@ export const partTimePermissions = {
 // Staff 유효성 검사
 export const validateStaffForm = (formData: Staff): Record<string, string> => {
   const errors: Record<string, string> = {};
-  
+
   if (!formData.name.trim()) {
     errors.name = '이름은 필수입니다';
   }
-  
+
   if (!formData.position.trim()) {
     errors.position = '직책은 필수입니다';
   }
-  
+
   if (formData.email && !formData.email.includes('@')) {
     errors.email = '유효한 이메일을 입력하세요';
   }
-  
+
   if (formData.phone && !/^[\d-]{9,13}$/.test(formData.phone)) {
     errors.phone = '유효한 전화번호를 입력하세요';
   }
@@ -115,6 +115,6 @@ export const validateStaffForm = (formData: Staff): Record<string, string> => {
   if (!formData.hireDate) {
     errors.hireDate = '입사일은 필수입니다';
   }
-  
+
   return errors;
-}; 
+};

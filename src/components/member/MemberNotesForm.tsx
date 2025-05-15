@@ -43,4 +43,4 @@ const MemberNotesForm: React.FC<MemberNotesFormProps> = ({
   );
 };
 
-export default MemberNotesForm; 
+export default MemberNotesForm;

@@ -5,11 +5,7 @@ interface PageTransitionProps {
 }
 
 const PageTransition: React.FC<PageTransitionProps> = ({ children }) => {
-  return (
-    <div className="animate-slideIn">
-      {children}
-    </div>
-  );
+  return <div className="animate-slideIn">{children}</div>;
 };
 
-export default PageTransition; 
+export default PageTransition;

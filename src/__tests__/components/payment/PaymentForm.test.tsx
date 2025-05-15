@@ -2,7 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PaymentForm from '../../../components/payment/PaymentForm';
-import { Payment, PaymentMethod, PaymentStatus, MembershipTypeEnum } from '../../../types/payment';
+import {
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+  MembershipTypeEnum,
+} from '../../../types/payment';
 
 // 기본 테스트 데이터 설정
 const mockPayment: Payment = {
@@ -56,7 +61,7 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 모든 필수 필드가 존재하는지 확인
@@ -86,22 +91,22 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 뷰 모드에서는 모든 입력 필드가 div로 렌더링 되므로 입력 필드가 없어야 함
     expect(screen.queryByPlaceholderText(/회원 검색/i)).not.toBeInTheDocument();
-    
+
     // 대신 정보가 표시되어야 함
     expect(screen.getByText('홍길동')).toBeInTheDocument();
     expect(screen.getByText(MembershipTypeEnum.MONTH_1)).toBeInTheDocument();
     expect(screen.getByText('150,000원')).toBeInTheDocument();
     expect(screen.getByText(PaymentMethod.CARD)).toBeInTheDocument();
-    
+
     // 날짜가 여러 번 나타날 수 있으므로 수정
     const dateElements = screen.getAllByText('2023-06-01');
     expect(dateElements.length).toBeGreaterThan(0);
-    
+
     expect(screen.getByText('2023-07-01')).toBeInTheDocument(); // 종료일
     expect(screen.getByText(PaymentStatus.COMPLETED)).toBeInTheDocument();
     expect(screen.getByText('테스트 메모')).toBeInTheDocument();
@@ -121,18 +126,18 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 회원 검색 입력 필드가 있어야 함
     const searchInput = screen.getByPlaceholderText(/회원 검색/i);
     expect(searchInput).toBeInTheDocument();
-    
+
     // 필터링된 회원 목록이 표시되어야 함
-    expect(screen.getByText('김철수')).toBeInTheDocument();
-    
+    expect(screen.getByText(/김철수/)).toBeInTheDocument();
+
     // 회원 선택 시 onSelectMember 호출되어야 함
-    fireEvent.click(screen.getByText('김철수'));
+    fireEvent.click(screen.getByText(/김철수/));
     expect(mockOnSelectMember).toHaveBeenCalledWith(2, '김철수');
   });
 
@@ -150,13 +155,13 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 이용권 관리 버튼이 있어야 함
     const manageButton = screen.getByText(/\+ 이용권 관리/i);
     expect(manageButton).toBeInTheDocument();
-    
+
     // 버튼 클릭 시 onOpenMembershipTypeModal 호출되어야 함
     fireEvent.click(manageButton);
     expect(mockOnOpenMembershipTypeModal).toHaveBeenCalled();
@@ -176,13 +181,13 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 금액 입력 필드가 있어야 함
     const amountInput = screen.getByDisplayValue('150,000');
     expect(amountInput).toBeInTheDocument();
-    
+
     // 입력 값 변경 시 handleChange 호출되어야 함
     fireEvent.change(amountInput, { target: { value: '200,000' } });
     expect(mockHandleChange).toHaveBeenCalled();
@@ -193,7 +198,7 @@ describe('PaymentForm 컴포넌트', () => {
       <PaymentForm
         formData={mockPayment}
         errors={{
-          member: '회원 정보는 필수입니다',
+          memberId: '회원 정보는 필수입니다',
           amount: '유효한 금액을 입력하세요',
         }}
         memberSearch=""
@@ -205,7 +210,7 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 에러 메시지가 표시되어야 함
@@ -227,15 +232,15 @@ describe('PaymentForm 컴포넌트', () => {
         onSelectMember={mockOnSelectMember}
         handleChange={mockHandleChange}
         onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
-      />
+      />,
     );
 
     // 회원 검색 입력 필드가 비활성화되어야 함
     const searchInput = screen.getByPlaceholderText(/회원 검색/i);
     expect(searchInput).toBeDisabled();
-    
+
     // 이용권 관리 버튼이 비활성화되어야 함
     const manageButton = screen.getByText(/\+ 이용권 관리/i);
     expect(manageButton).toBeDisabled();
   });
-}); 
+});

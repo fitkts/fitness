@@ -5,7 +5,7 @@ export enum PaymentMethod {
   CARD = '카드',
   CASH = '현금',
   BANK_TRANSFER = '계좌이체',
-  OTHER = '기타'
+  OTHER = '기타',
 }
 
 // 결제 상태 enum
@@ -13,7 +13,7 @@ export enum PaymentStatus {
   COMPLETED = '완료',
   PENDING = '대기',
   CANCELLED = '취소',
-  REFUNDED = '환불'
+  REFUNDED = '환불',
 }
 
 // 회원권 유형 enum
@@ -24,7 +24,7 @@ export enum MembershipTypeEnum {
   MONTH_12 = '12개월권',
   PT_10 = 'PT 10회',
   PT_20 = 'PT 20회',
-  CUSTOM = '커스텀'
+  CUSTOM = '커스텀',
 }
 
 // 결제 스키마
@@ -34,15 +34,15 @@ export const paymentSchema = z.object({
   memberName: z.string().min(1, { message: '회원 이름은 필수입니다' }),
   amount: z.number().min(0, { message: '금액은 0 이상이어야 합니다' }),
   paymentDate: z.string().min(1, { message: '결제일은 필수입니다' }),
-  paymentMethod: z.nativeEnum(PaymentMethod, { 
-    errorMap: () => ({ message: '유효한 결제 방법을 선택해주세요' }) 
+  paymentMethod: z.nativeEnum(PaymentMethod, {
+    errorMap: () => ({ message: '유효한 결제 방법을 선택해주세요' }),
   }),
   membershipType: z.string().min(1, { message: '이용권 종류는 필수입니다' }),
   receiptNumber: z.string().optional(),
   startDate: z.string().min(1, { message: '시작일은 필수입니다' }),
   endDate: z.string().optional(),
-  status: z.nativeEnum(PaymentStatus, { 
-    errorMap: () => ({ message: '유효한 상태를 선택해주세요' }) 
+  status: z.nativeEnum(PaymentStatus, {
+    errorMap: () => ({ message: '유효한 상태를 선택해주세요' }),
   }),
   notes: z.string().optional(),
   createdAt: z.string().optional(),
@@ -56,7 +56,9 @@ export type Payment = z.infer<typeof paymentSchema>;
 export const membershipTypeSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, { message: '이용권 이름은 필수입니다' }),
-  durationMonths: z.number().min(1, { message: '기간(개월)은 1 이상이어야 합니다' }),
+  durationMonths: z
+    .number()
+    .min(1, { message: '기간(개월)은 1 이상이어야 합니다' }),
   price: z.number().min(0, { message: '가격은 0 이상이어야 합니다' }),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
@@ -102,4 +104,4 @@ export interface MembershipTypeOption {
   name: string;
   price: number;
   durationMonths: number;
-} 
+}

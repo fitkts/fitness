@@ -34,7 +34,7 @@ export async function getAllPayments(): Promise<Payment[]> {
       ORDER BY p.payment_date DESC
     `;
     const rows = db.prepare(query).all();
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       memberId: row.member_id,
       memberName: row.member_name || '',
@@ -75,7 +75,9 @@ export async function getPaymentById(id: number): Promise<Payment | null> {
 
 // 새 결제 추가
 // Omit<Payment, 'id'> 타입을 사용하나, memberName은 받지 않음
-export async function addPayment(paymentData: Omit<Payment, 'id' | 'memberName'>): Promise<number> {
+export async function addPayment(
+  paymentData: Omit<Payment, 'id' | 'memberName'>,
+): Promise<number> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
@@ -85,20 +87,22 @@ export async function addPayment(paymentData: Omit<Payment, 'id' | 'memberName'>
         start_date, end_date, receipt_number, notes, status, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const result = db.prepare(query).run(
-      paymentData.memberId,
-      paymentData.amount,
-      paymentData.paymentDate,
-      paymentData.paymentMethod,
-      paymentData.membershipType,
-      paymentData.startDate,
-      paymentData.endDate,
-      paymentData.receiptNumber || null,
-      paymentData.notes || null,
-      paymentData.status,
-      now,
-      now
-    );
+    const result = db
+      .prepare(query)
+      .run(
+        paymentData.memberId,
+        paymentData.amount,
+        paymentData.paymentDate,
+        paymentData.paymentMethod,
+        paymentData.membershipType,
+        paymentData.startDate,
+        paymentData.endDate,
+        paymentData.receiptNumber || null,
+        paymentData.notes || null,
+        paymentData.status,
+        now,
+        now,
+      );
     return result.lastInsertRowid as number;
   } catch (error) {
     electronLog.error('결제 추가 오류:', error);
@@ -108,7 +112,10 @@ export async function addPayment(paymentData: Omit<Payment, 'id' | 'memberName'>
 
 // 결제 정보 업데이트
 // Partial<Omit<Payment, 'id' | 'memberName'>> 사용
-export async function updatePayment(id: number, paymentData: Partial<Omit<Payment, 'id' | 'memberName'>>): Promise<boolean> {
+export async function updatePayment(
+  id: number,
+  paymentData: Partial<Omit<Payment, 'id' | 'memberName'>>,
+): Promise<boolean> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
@@ -116,16 +123,46 @@ export async function updatePayment(id: number, paymentData: Partial<Omit<Paymen
     const values: any[] = [];
 
     // 업데이트할 필드 동적 생성 (snake_case 사용)
-    if ('memberId' in paymentData) { updates.push('member_id = ?'); values.push(paymentData.memberId); }
-    if ('amount' in paymentData) { updates.push('amount = ?'); values.push(paymentData.amount); }
-    if ('paymentDate' in paymentData) { updates.push('payment_date = ?'); values.push(paymentData.paymentDate); }
-    if ('paymentMethod' in paymentData) { updates.push('payment_method = ?'); values.push(paymentData.paymentMethod); }
-    if ('membershipType' in paymentData) { updates.push('membership_type = ?'); values.push(paymentData.membershipType); }
-    if ('startDate' in paymentData) { updates.push('start_date = ?'); values.push(paymentData.startDate); }
-    if ('endDate' in paymentData) { updates.push('end_date = ?'); values.push(paymentData.endDate); }
-    if ('receiptNumber' in paymentData) { updates.push('receipt_number = ?'); values.push(paymentData.receiptNumber || null); }
-    if ('notes' in paymentData) { updates.push('notes = ?'); values.push(paymentData.notes || null); }
-    if ('status' in paymentData) { updates.push('status = ?'); values.push(paymentData.status); }
+    if ('memberId' in paymentData) {
+      updates.push('member_id = ?');
+      values.push(paymentData.memberId);
+    }
+    if ('amount' in paymentData) {
+      updates.push('amount = ?');
+      values.push(paymentData.amount);
+    }
+    if ('paymentDate' in paymentData) {
+      updates.push('payment_date = ?');
+      values.push(paymentData.paymentDate);
+    }
+    if ('paymentMethod' in paymentData) {
+      updates.push('payment_method = ?');
+      values.push(paymentData.paymentMethod);
+    }
+    if ('membershipType' in paymentData) {
+      updates.push('membership_type = ?');
+      values.push(paymentData.membershipType);
+    }
+    if ('startDate' in paymentData) {
+      updates.push('start_date = ?');
+      values.push(paymentData.startDate);
+    }
+    if ('endDate' in paymentData) {
+      updates.push('end_date = ?');
+      values.push(paymentData.endDate);
+    }
+    if ('receiptNumber' in paymentData) {
+      updates.push('receipt_number = ?');
+      values.push(paymentData.receiptNumber || null);
+    }
+    if ('notes' in paymentData) {
+      updates.push('notes = ?');
+      values.push(paymentData.notes || null);
+    }
+    if ('status' in paymentData) {
+      updates.push('status = ?');
+      values.push(paymentData.status);
+    }
 
     if (updates.length === 0) {
       return false; // 변경할 내용 없음
@@ -156,4 +193,3 @@ export async function deletePayment(id: number): Promise<boolean> {
     throw error;
   }
 }
-

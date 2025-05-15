@@ -7,7 +7,7 @@ interface ToastState {
   message: string;
 }
 
-type ToastAction = 
+type ToastAction =
   | { type: 'SHOW_TOAST'; payload: { type: ToastType; message: string } }
   | { type: 'HIDE_TOAST' };
 
@@ -44,7 +44,9 @@ const toastReducer = (state: ToastState, action: ToastAction): ToastState => {
 
 export type { ToastType };
 
-export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ToastProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [state, dispatch] = useReducer(toastReducer, initialState);
 
   const showToast = (type: ToastType, message: string) => {
@@ -59,11 +61,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     <ToastContext.Provider value={{ showToast, hideToast }}>
       {children}
       {state.isVisible && (
-        <Toast
-          type={state.type}
-          message={state.message}
-          onClose={hideToast}
-        />
+        <Toast type={state.type} message={state.message} onClose={hideToast} />
       )}
     </ToastContext.Provider>
   );
@@ -75,4 +73,4 @@ export const useToast = (): ToastContextType => {
     throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
-}; 
+};

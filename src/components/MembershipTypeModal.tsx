@@ -38,19 +38,32 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
   onSave,
   membershipType,
   isViewMode = false,
-  availableFacilities = ['헬스장', '요가실', '필라테스', '샤워실', '사우나', '락커룸', '주차장'],
+  availableFacilities = [
+    '헬스장',
+    '요가실',
+    '필라테스',
+    '샤워실',
+    '사우나',
+    '락커룸',
+    '주차장',
+  ],
 }) => {
-  const [formData, setFormData] = useState<MembershipType>(defaultMembershipType);
+  const [formData, setFormData] = useState<MembershipType>(
+    defaultMembershipType,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   let showToast: (type: string, message: string) => void;
   try {
     const toastContext = useToast();
     showToast = toastContext.showToast;
   } catch (error) {
-    console.error("MembershipTypeModal: Toast 컨텍스트를 사용할 수 없습니다:", error);
+    console.error(
+      'MembershipTypeModal: Toast 컨텍스트를 사용할 수 없습니다:',
+      error,
+    );
     showToast = (type, message) => console.log(`Toast (${type}): ${message}`);
   }
 
@@ -75,7 +88,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
         onClose();
       }
     };
-  
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
@@ -88,38 +101,43 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
   // 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       // 유효성 검사
       const newErrors: Record<string, string> = {};
-      
+
       if (!formData.name) {
         newErrors.name = '이용권 이름은 필수입니다';
       }
-      
+
       if (!formData.durationMonths || formData.durationMonths <= 0) {
         newErrors.durationMonths = '유효한 기간을 입력하세요';
       }
-      
+
       if (!formData.price && formData.price !== 0) {
         newErrors.price = '가격을 입력하세요';
       }
-      
+
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         return;
       }
-      
+
       // 저장 상태로 변경
       setIsSubmitting(true);
-      
+
       // 저장 요청
       const success = await onSave(formData);
-      
+
       // 결과에 따라 토스트 알림 표시
       if (success) {
         if (showToast) {
-          showToast('success', isEditMode ? '이용권 정보가 수정되었습니다.' : '새 이용권이 등록되었습니다.');
+          showToast(
+            'success',
+            isEditMode
+              ? '이용권 정보가 수정되었습니다.'
+              : '새 이용권이 등록되었습니다.',
+          );
         }
         onClose();
       } else {
@@ -138,25 +156,29 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
   };
 
   // 입력 핸들러
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value, type } = e.target;
-    
+
     if (name === 'price') {
       // 숫자만 허용
       const numericValue = value.replace(/[^\d]/g, '');
-      setFormData(prev => ({ ...prev, [name]: parseInt(numericValue) || 0 }));
+      setFormData((prev) => ({ ...prev, [name]: parseInt(numericValue) || 0 }));
     } else if (type === 'checkbox') {
       const isChecked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: isChecked }));
+      setFormData((prev) => ({ ...prev, [name]: isChecked }));
     } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: parseInt(value) || 0 }));
+      setFormData((prev) => ({ ...prev, [name]: parseInt(value) || 0 }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
-    
+
     // 오류 메시지 지우기
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -166,17 +188,17 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
 
   // 시설 선택 변경 핸들러
   const handleFacilityChange = (facility: string) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const currentFacilities = prev.availableFacilities || [];
       if (currentFacilities.includes(facility)) {
         return {
           ...prev,
-          availableFacilities: currentFacilities.filter(f => f !== facility)
+          availableFacilities: currentFacilities.filter((f) => f !== facility),
         };
       } else {
         return {
           ...prev,
-          availableFacilities: [...currentFacilities, facility]
+          availableFacilities: [...currentFacilities, facility],
         };
       }
     });
@@ -189,12 +211,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={getModalTitle()}
-      size="xl"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title={getModalTitle()} size="xl">
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 기본 정보 섹션 */}
@@ -217,7 +234,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
                 <p className="text-red-500 text-xs mt-1">{errors.name}</p>
               )}
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 이용 기간 (개월) <span className="text-red-500">*</span>
@@ -234,10 +251,12 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
                 required
               />
               {errors.durationMonths && (
-                <p className="text-red-500 text-xs mt-1">{errors.durationMonths}</p>
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.durationMonths}
+                </p>
               )}
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 가격 <span className="text-red-500">*</span>
@@ -253,13 +272,15 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
                   disabled={isViewMode}
                   required
                 />
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₩</span>
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  ₩
+                </span>
               </div>
               {errors.price && (
                 <p className="text-red-500 text-xs mt-1">{errors.price}</p>
               )}
             </div>
-            
+
             <div>
               <label className="flex items-center">
                 <input
@@ -276,7 +297,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
                 비활성화된 이용권은 신규 결제에 표시되지 않습니다
               </p>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 이용 횟수 (선택 사항)
@@ -296,7 +317,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
               </p>
             </div>
           </div>
-          
+
           {/* 상세 정보 섹션 */}
           <div className="space-y-4">
             <div>
@@ -313,7 +334,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
                 disabled={isViewMode}
               ></textarea>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 이용 가능 시설/서비스
@@ -324,12 +345,18 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
                     <input
                       type="checkbox"
                       id={`facility-${facility}`}
-                      checked={formData.availableFacilities?.includes(facility) || false}
+                      checked={
+                        formData.availableFacilities?.includes(facility) ||
+                        false
+                      }
                       onChange={() => handleFacilityChange(facility)}
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       disabled={isViewMode}
                     />
-                    <label htmlFor={`facility-${facility}`} className="ml-2 text-sm text-gray-700">
+                    <label
+                      htmlFor={`facility-${facility}`}
+                      className="ml-2 text-sm text-gray-700"
+                    >
                       {facility}
                     </label>
                   </div>
@@ -338,7 +365,7 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
             </div>
           </div>
         </div>
-        
+
         {/* 이용권 요약 (뷰 모드) */}
         {isViewMode && (
           <div className="bg-gray-50 p-4 rounded-lg mt-6">
@@ -346,53 +373,77 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-gray-500 text-sm">기본 가격</p>
-                <p className="text-lg font-bold text-indigo-600">₩ {formatCurrency(formData.price)}</p>
+                <p className="text-lg font-bold text-indigo-600">
+                  ₩ {formatCurrency(formData.price)}
+                </p>
               </div>
-              
+
               <div>
                 <p className="text-gray-500 text-sm">이용 기간</p>
-                <p className="text-lg font-bold">{formData.durationMonths}개월</p>
+                <p className="text-lg font-bold">
+                  {formData.durationMonths}개월
+                </p>
               </div>
-              
+
               <div>
                 <p className="text-gray-500 text-sm">상태</p>
-                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  formData.isActive 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                <span
+                  className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    formData.isActive
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
                   {formData.isActive ? '활성화' : '비활성화'}
                 </span>
               </div>
             </div>
           </div>
         )}
-        
+
         <div className="flex justify-end space-x-3 pt-4">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={onClose}
             className="btn btn-secondary"
             disabled={isSubmitting}
           >
             {isViewMode ? '닫기' : '취소'}
           </button>
-          
+
           {!isViewMode && (
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   저장 중...
                 </span>
-              ) : '저장'}
+              ) : (
+                '저장'
+              )}
             </button>
           )}
         </div>
@@ -401,4 +452,4 @@ const MembershipTypeModal: React.FC<MembershipTypeModalProps> = ({
   );
 };
 
-export default MembershipTypeModal; 
+export default MembershipTypeModal;

@@ -12,13 +12,13 @@ interface ModalProps {
   footer?: React.ReactNode;
 }
 
-const Modal: React.FC<ModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
+const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
   children,
   size = 'md',
-  footer
+  footer,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -58,11 +58,16 @@ const Modal: React.FC<ModalProps> = ({
   // 모달 너비 설정
   const getModalWidth = () => {
     switch (size) {
-      case 'sm': return 'max-w-sm';
-      case 'md': return 'max-w-md';
-      case 'lg': return 'max-w-lg';
-      case 'xl': return 'max-w-2xl md:max-w-3xl lg:max-w-4xl'; // 데스크탑에서 더 넓게, 모바일에서는 적당히
-      default: return 'max-w-md';
+      case 'sm':
+        return 'max-w-sm';
+      case 'md':
+        return 'max-w-md';
+      case 'lg':
+        return 'max-w-lg';
+      case 'xl':
+        return 'max-w-2xl md:max-w-3xl lg:max-w-4xl'; // 데스크탑에서 더 넓게, 모바일에서는 적당히
+      default:
+        return 'max-w-md';
     }
   };
 
@@ -80,7 +85,7 @@ const Modal: React.FC<ModalProps> = ({
   };
 
   return createPortal(
-    <div 
+    <div
       className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-8 ${
         isOpen ? 'animate-fadeIn' : 'animate-fadeOut'
       }`}
@@ -90,7 +95,7 @@ const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-y-auto px-2 sm:px-6 py-4 animate-slideIn`}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold">{title}</h3>
@@ -109,8 +114,8 @@ const Modal: React.FC<ModalProps> = ({
         )}
       </div>
     </div>,
-    modalRoot
+    modalRoot,
   );
 };
 
-export default Modal; 
+export default Modal;

@@ -1,12 +1,22 @@
-import { calculateEndDate, formatCurrency, validatePaymentForm, defaultPayment } from '../../../components/payment/PaymentUtils';
-import { Payment, PaymentMethod, PaymentStatus, MembershipTypeEnum } from '../../../types/payment';
+import {
+  calculateEndDate,
+  formatCurrency,
+  validatePaymentForm,
+  defaultPayment,
+} from '../../../components/payment/PaymentUtils';
+import {
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+  MembershipTypeEnum,
+} from '../../../types/payment';
 
 describe('PaymentUtils', () => {
   describe('calculateEndDate', () => {
     test('1개월권일 경우 1달 후 날짜를 반환해야 함', () => {
       const startDate = '2023-07-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.MONTH_1);
-      
+
       // 2023-07-15 + 1달 = 2023-08-15
       expect(result).toBe('2023-08-15');
     });
@@ -14,7 +24,7 @@ describe('PaymentUtils', () => {
     test('3개월권일 경우 3달 후 날짜를 반환해야 함', () => {
       const startDate = '2023-07-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.MONTH_3);
-      
+
       // 2023-07-15 + 3달 = 2023-10-15
       expect(result).toBe('2023-10-15');
     });
@@ -22,7 +32,7 @@ describe('PaymentUtils', () => {
     test('6개월권일 경우 6달 후 날짜를 반환해야 함', () => {
       const startDate = '2023-07-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.MONTH_6);
-      
+
       // 2023-07-15 + 6달 = 2024-01-15
       expect(result).toBe('2024-01-15');
     });
@@ -30,7 +40,7 @@ describe('PaymentUtils', () => {
     test('12개월권일 경우 12달 후 날짜를 반환해야 함', () => {
       const startDate = '2023-07-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.MONTH_12);
-      
+
       // 2023-07-15 + 12달 = 2024-07-15
       expect(result).toBe('2024-07-15');
     });
@@ -38,7 +48,7 @@ describe('PaymentUtils', () => {
     test('PT 10회권일 경우 3달 후 날짜를 반환해야 함', () => {
       const startDate = '2023-07-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.PT_10);
-      
+
       // 2023-07-15 + 3달 = 2023-10-15
       expect(result).toBe('2023-10-15');
     });
@@ -46,7 +56,7 @@ describe('PaymentUtils', () => {
     test('PT 20회권일 경우 3달 후 날짜를 반환해야 함', () => {
       const startDate = '2023-07-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.PT_20);
-      
+
       // 2023-07-15 + 3달 = 2023-10-15
       expect(result).toBe('2023-10-15');
     });
@@ -54,7 +64,7 @@ describe('PaymentUtils', () => {
     test('년도가 바뀌는 경우 정확한 날짜를 반환해야 함', () => {
       const startDate = '2023-12-15';
       const result = calculateEndDate(startDate, MembershipTypeEnum.MONTH_3);
-      
+
       // 2023-12-15 + 3달 = 2024-03-15
       expect(result).toBe('2024-03-15');
     });
@@ -62,7 +72,7 @@ describe('PaymentUtils', () => {
     test('2월의 날짜 범위가 넘어가면 알맞은 날짜를 반환해야 함', () => {
       const startDate = '2023-01-31';
       const result = calculateEndDate(startDate, MembershipTypeEnum.MONTH_1);
-      
+
       // JavaScript의 Date 객체는 날짜 범위가 넘어가면 자동으로 다음 달로 조정함
       // 정확한 결과는 구현에 따라 2023-02-28 또는 2023-03-03 등이 될 수 있음
       expect(result).toBeTruthy();
@@ -115,7 +125,7 @@ describe('PaymentUtils', () => {
         endDate: '2023-08-15',
         status: PaymentStatus.COMPLETED,
       };
-      
+
       const errors = validatePaymentForm(validPayment);
       expect(Object.keys(errors).length).toBe(0);
     });
@@ -126,7 +136,7 @@ describe('PaymentUtils', () => {
         memberId: 0,
         memberName: '',
       };
-      
+
       const errors = validatePaymentForm(invalidPayment);
       expect(errors.member).toBe('회원 정보는 필수입니다');
     });
@@ -138,7 +148,7 @@ describe('PaymentUtils', () => {
         memberName: '홍길동',
         amount: 0,
       };
-      
+
       const errors = validatePaymentForm(invalidPayment);
       expect(errors.amount).toBe('유효한 금액을 입력하세요');
     });
@@ -151,7 +161,7 @@ describe('PaymentUtils', () => {
         amount: 100000,
         paymentDate: '',
       };
-      
+
       const errors = validatePaymentForm(invalidPayment);
       expect(errors.paymentDate).toBe('결제일은 필수입니다');
     });
@@ -165,7 +175,7 @@ describe('PaymentUtils', () => {
         paymentDate: '2023-07-15',
         membershipType: '',
       };
-      
+
       const errors = validatePaymentForm(invalidPayment);
       expect(errors.membershipType).toBe('이용권 종류는 필수입니다');
     });
@@ -180,7 +190,7 @@ describe('PaymentUtils', () => {
         membershipType: MembershipTypeEnum.MONTH_1,
         startDate: '',
       };
-      
+
       const errors = validatePaymentForm(invalidPayment);
       expect(errors.startDate).toBe('시작일은 필수입니다');
     });
@@ -195,7 +205,7 @@ describe('PaymentUtils', () => {
         membershipType: '',
         startDate: '',
       };
-      
+
       const errors = validatePaymentForm(invalidPayment);
       expect(Object.keys(errors).length).toBe(5);
       expect(errors.member).toBeDefined();
@@ -212,12 +222,18 @@ describe('PaymentUtils', () => {
       expect(defaultPayment).toHaveProperty('memberName', '');
       expect(defaultPayment).toHaveProperty('amount', 0);
       expect(defaultPayment.paymentDate).toBeDefined();
-      expect(defaultPayment).toHaveProperty('paymentMethod', PaymentMethod.CARD);
-      expect(defaultPayment).toHaveProperty('membershipType', MembershipTypeEnum.MONTH_1);
+      expect(defaultPayment).toHaveProperty(
+        'paymentMethod',
+        PaymentMethod.CARD,
+      );
+      expect(defaultPayment).toHaveProperty(
+        'membershipType',
+        MembershipTypeEnum.MONTH_1,
+      );
       expect(defaultPayment.startDate).toBeDefined();
       expect(defaultPayment).toHaveProperty('endDate', '');
       expect(defaultPayment).toHaveProperty('notes', '');
       expect(defaultPayment).toHaveProperty('status', PaymentStatus.COMPLETED);
     });
   });
-}); 
+});

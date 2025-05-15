@@ -1,23 +1,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Edit, Trash2, Filter, Database, AlertTriangle, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download, Upload, X as CloseIcon } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Filter,
+  Database,
+  AlertTriangle,
+  Info,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Upload,
+  X as CloseIcon,
+} from 'lucide-react';
 import { Member, MemberFilter, Staff } from '../models/types';
 import MemberModal from '../components/MemberModal';
 import { useToast } from '../contexts/ToastContext';
 import { useMemberStore } from '../stores/memberStore';
-import { getMembersWithPagination, importMembersFromExcel, getAllStaff } from '../database/ipcService';
+import {
+  getMembersWithPagination,
+  importMembersFromExcel,
+  getAllStaff,
+} from '../database/ipcService';
 import * as XLSX from 'xlsx';
 
 const Members: React.FC = () => {
   // Zustand 스토어에서 상태와 함수 가져오기
-  const { 
-    members, 
+  const {
+    members,
     isLoading,
     error,
-    fetchMembers, 
-    addMember, 
-    updateMember, 
+    fetchMembers,
+    addMember,
+    updateMember,
     deleteMember,
-    deleteAllMembers
+    deleteAllMembers,
   } = useMemberStore();
 
   // 로컬 상태 (필터, 모달 관련 상태는 유지)
@@ -29,7 +49,7 @@ const Members: React.FC = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [isViewMode, setIsViewMode] = useState<boolean>(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  
+
   // 정렬 관련 상태 추가
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -42,19 +62,19 @@ const Members: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(30);
   const [showAll, setShowAll] = useState<boolean>(false);
   const [pagedMembers, setPagedMembers] = useState<Member[]>([]);
-  
+
   const [excelInfoOpen, setExcelInfoOpen] = useState(false);
-  
+
   const [staffList, setStaffList] = useState<Staff[]>([]);
-  
+
   // useToast를 try-catch로 감싸서 오류 방지
   let showToast;
   try {
     const toastContext = useToast();
     showToast = toastContext?.showToast;
   } catch (error) {
-    console.error("Toast 컨텍스트를 사용할 수 없습니다:", error);
-    showToast = () => console.log("Toast 메시지 표시 실패");
+    console.error('Toast 컨텍스트를 사용할 수 없습니다:', error);
+    showToast = () => console.log('Toast 메시지 표시 실패');
   }
 
   // 최상단에 테스트 메시지 추가
@@ -118,7 +138,7 @@ const Members: React.FC = () => {
     try {
       if (member.id) {
         // 스토어의 updateMember 함수 호출
-        await updateMember(member); 
+        await updateMember(member);
       } else {
         // 스토어의 addMember 함수 호출
         await addMember(member);
@@ -129,7 +149,10 @@ const Members: React.FC = () => {
     } catch (err) {
       console.error('회원 저장 오류 (스토어):', err);
       // 스토어의 error 상태를 사용할 수도 있고, 여기서 직접 Toast 표시도 가능
-      showToast?.('error', `회원 정보 저장 실패: ${err.message || '알 수 없는 오류'}`);
+      showToast?.(
+        'error',
+        `회원 정보 저장 실패: ${err.message || '알 수 없는 오류'}`,
+      );
       return false; // 실패
     }
   };
@@ -139,11 +162,14 @@ const Members: React.FC = () => {
     if (window.confirm('정말로 이 회원을 삭제하시겠습니까?')) {
       try {
         // 스토어의 deleteMember 함수 호출
-        await deleteMember(id); 
+        await deleteMember(id);
         showToast?.('info', '회원이 삭제되었습니다.');
       } catch (err) {
         console.error('회원 삭제 오류 (스토어):', err);
-        showToast?.('error', `회원 삭제 실패: ${err.message || '알 수 없는 오류'}`);
+        showToast?.(
+          'error',
+          `회원 삭제 실패: ${err.message || '알 수 없는 오류'}`,
+        );
       }
     }
   };
@@ -160,19 +186,24 @@ const Members: React.FC = () => {
     }
 
     // 회원권 타입 필터링
-    if (filter.membershipType && member.membershipType !== filter.membershipType) {
+    if (
+      filter.membershipType &&
+      member.membershipType !== filter.membershipType
+    ) {
       return false;
     }
 
     // 상태 필터링
     if (filter.status !== 'all') {
       const now = new Date();
-      const endDate = member.membershipEnd ? new Date(member.membershipEnd) : null;
-      
+      const endDate = member.membershipEnd
+        ? new Date(member.membershipEnd)
+        : null;
+
       if (filter.status === 'active' && (!endDate || endDate < now)) {
         return false;
       }
-      
+
       if (filter.status === 'expired' && endDate && endDate >= now) {
         return false;
       }
@@ -184,7 +215,7 @@ const Members: React.FC = () => {
   // 정렬 요청 처리 함수
   const requestSort = (key: string) => {
     let direction: 'ascending' | 'descending' | null = 'ascending';
-    
+
     if (sortConfig.key === key) {
       if (sortConfig.direction === 'ascending') {
         direction = 'descending';
@@ -192,126 +223,152 @@ const Members: React.FC = () => {
         direction = null;
       }
     }
-    
+
     setSortConfig({ key, direction });
   };
 
   // 정렬된 회원 목록 생성 (useMemo로 성능 최적화)
   const sortedMembers = useMemo(() => {
-    let sortableMembers = [...filteredMembers];
-    
+    const sortableMembers = [...filteredMembers];
+
     if (sortConfig.direction === null) {
       return sortableMembers;
     }
-    
+
     return sortableMembers.sort((a, b) => {
-      if (a[sortConfig.key as keyof Member] === undefined || b[sortConfig.key as keyof Member] === undefined) {
+      if (
+        a[sortConfig.key as keyof Member] === undefined ||
+        b[sortConfig.key as keyof Member] === undefined
+      ) {
         return 0;
       }
-      
+
       // 성별 정렬 로직 추가
       if (sortConfig.key === 'gender') {
-        const genderOrder = { '남': 1, '여': 2, '': 3 };
+        const genderOrder = { 남: 1, 여: 2, '': 3 };
         const aValue = (a[sortConfig.key] as string) || '';
         const bValue = (b[sortConfig.key] as string) || '';
-        
+
         if (sortConfig.direction === 'ascending') {
-          return (genderOrder[aValue as keyof typeof genderOrder] || 3) - (genderOrder[bValue as keyof typeof genderOrder] || 3);
+          return (
+            (genderOrder[aValue as keyof typeof genderOrder] || 3) -
+            (genderOrder[bValue as keyof typeof genderOrder] || 3)
+          );
         } else {
-          return (genderOrder[bValue as keyof typeof genderOrder] || 3) - (genderOrder[aValue as keyof typeof genderOrder] || 3);
+          return (
+            (genderOrder[bValue as keyof typeof genderOrder] || 3) -
+            (genderOrder[aValue as keyof typeof genderOrder] || 3)
+          );
         }
       }
-      
+
       // 문자열 비교
       if (typeof a[sortConfig.key as keyof Member] === 'string') {
         const aValue = (a[sortConfig.key as keyof Member] as string) || '';
         const bValue = (b[sortConfig.key as keyof Member] as string) || '';
-        
+
         if (sortConfig.direction === 'ascending') {
           return aValue.localeCompare(bValue);
         } else {
           return bValue.localeCompare(aValue);
         }
       }
-      
+
       // 날짜 비교 (membershipEnd, createdAt 필드)
-      if (sortConfig.key === 'membershipEnd' || sortConfig.key === 'createdAt') {
-        const aDate = a[sortConfig.key] ? new Date(a[sortConfig.key] as string).getTime() : 0;
-        const bDate = b[sortConfig.key] ? new Date(b[sortConfig.key] as string).getTime() : 0;
-        
+      if (
+        sortConfig.key === 'membershipEnd' ||
+        sortConfig.key === 'createdAt'
+      ) {
+        const aDate = a[sortConfig.key]
+          ? new Date(a[sortConfig.key] as string).getTime()
+          : 0;
+        const bDate = b[sortConfig.key]
+          ? new Date(b[sortConfig.key] as string).getTime()
+          : 0;
+
         if (sortConfig.direction === 'ascending') {
           return aDate - bDate;
         } else {
           return bDate - aDate;
         }
       }
-      
+
       // 숫자 비교
       if (typeof a[sortConfig.key as keyof Member] === 'number') {
         if (sortConfig.direction === 'ascending') {
-          return (a[sortConfig.key as keyof Member] as number) - (b[sortConfig.key as keyof Member] as number);
+          return (
+            (a[sortConfig.key as keyof Member] as number) -
+            (b[sortConfig.key as keyof Member] as number)
+          );
         } else {
-          return (b[sortConfig.key as keyof Member] as number) - (a[sortConfig.key as keyof Member] as number);
+          return (
+            (b[sortConfig.key as keyof Member] as number) -
+            (a[sortConfig.key as keyof Member] as number)
+          );
         }
       }
-      
+
       return 0;
     });
   }, [filteredMembers, sortConfig]);
 
   // 통계 데이터 계산 (useMemo로 성능 최적화)
   const statistics = useMemo(() => {
-    const activeMembers = members.filter(member => {
+    const activeMembers = members.filter((member) => {
       const now = new Date();
-      const endDate = member.membershipEnd ? new Date(member.membershipEnd) : null;
+      const endDate = member.membershipEnd
+        ? new Date(member.membershipEnd)
+        : null;
       return endDate && endDate >= now;
     });
-    
-    const expiringMembersIn30Days = activeMembers.filter(member => {
+
+    const expiringMembersIn30Days = activeMembers.filter((member) => {
       const now = new Date();
       const endDate = new Date(member.membershipEnd!);
-      const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.ceil(
+        (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
       return diffDays <= 30 && diffDays >= 0;
     });
-    
-    const membersByType: {[key: string]: number} = {};
-    members.forEach(member => {
+
+    const membersByType: { [key: string]: number } = {};
+    members.forEach((member) => {
       const type = member.membershipType || '미지정';
       membersByType[type] = (membersByType[type] || 0) + 1;
     });
-    
+
     const sortedMembershipTypes = Object.entries(membersByType)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 3);
-    
+
     return {
       total: members.length,
       active: activeMembers.length,
       expired: members.length - activeMembers.length,
       expiringIn30Days: expiringMembersIn30Days.length,
-      topMembershipTypes: sortedMembershipTypes
+      topMembershipTypes: sortedMembershipTypes,
     };
   }, [members]);
 
   // 회원 상태 확인 함수
   const getMembershipStatus = (endDate: string | undefined | null) => {
     if (!endDate) return 'expired';
-    
+
     const now = new Date();
     const expiryDate = new Date(endDate);
-    
+
     return expiryDate >= now ? 'active' : 'expired';
   };
 
   // 날짜 포맷팅 함수
   const formatDate = (dateString: string | undefined | null) => {
     if (!dateString) return 'N/A';
-    
+
     const date = new Date(dateString);
     return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -333,17 +390,17 @@ const Members: React.FC = () => {
   const loadMembers = async () => {
     try {
       const response = await getMembersWithPagination(
-        showAll ? 1 : currentPage, 
-        showAll ? members.length : pageSize, 
+        showAll ? 1 : currentPage,
+        showAll ? members.length : pageSize,
         {
           search: filter.search,
           status: filter.status,
           membershipType: filter.membershipType,
           sortKey: sortConfig.key,
-          sortDirection: sortConfig.direction
-        }
+          sortDirection: sortConfig.direction,
+        },
       );
-      
+
       if (response.success && response.data) {
         setPagedMembers(response.data.members);
         setTotalPages(showAll ? 1 : Math.ceil(response.data.total / pageSize));
@@ -356,35 +413,35 @@ const Members: React.FC = () => {
       showToast?.('error', '회원 목록을 불러오는데 실패했습니다.');
     }
   };
-  
+
   // 페이지 변경 시 데이터 다시 로드
   useEffect(() => {
     loadMembers();
   }, [currentPage, filter, sortConfig, pageSize, showAll]); // pageSize와 showAll 의존성 추가
-  
+
   // 페이지 변경 핸들러
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
     }
   };
-  
+
   // 페이지네이션 컴포넌트
   const renderPagination = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
-    
+
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       pageNumbers.push(i);
     }
-    
+
     return (
       <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
         <div className="flex justify-between flex-1 sm:hidden">
@@ -406,19 +463,23 @@ const Members: React.FC = () => {
         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              총 <span className="font-medium">{totalPages * pageSize}</span>명 중{' '}
+              총 <span className="font-medium">{totalPages * pageSize}</span>명
+              중{' '}
               <span className="font-medium">
                 {(currentPage - 1) * pageSize + 1}
               </span>
               {' - '}
               <span className="font-medium">
                 {Math.min(currentPage * pageSize, totalPages * pageSize)}
-              </span>
-              {' '}명 표시
+              </span>{' '}
+              명 표시
             </p>
           </div>
           <div>
-            <nav className="inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            <nav
+              className="inline-flex -space-x-px rounded-md shadow-sm"
+              aria-label="Pagination"
+            >
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -426,7 +487,7 @@ const Members: React.FC = () => {
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              
+
               {startPage > 1 && (
                 <>
                   <button
@@ -442,7 +503,7 @@ const Members: React.FC = () => {
                   )}
                 </>
               )}
-              
+
               {pageNumbers.map((number) => (
                 <button
                   key={number}
@@ -456,7 +517,7 @@ const Members: React.FC = () => {
                   {number}
                 </button>
               ))}
-              
+
               {endPage < totalPages && (
                 <>
                   {endPage < totalPages - 1 && (
@@ -472,7 +533,7 @@ const Members: React.FC = () => {
                   </button>
                 </>
               )}
-              
+
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -522,7 +583,7 @@ const Members: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col rounded mb-4">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">회원 관리</h1>
-        
+
         {/* 검색 및 필터 영역 */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="flex flex-wrap gap-4 items-center mb-4">
@@ -532,11 +593,16 @@ const Members: React.FC = () => {
                 placeholder="이름 또는 전화번호 검색"
                 className="border border-gray-300 p-3 rounded-md w-full pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={filter.search}
-                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                onChange={(e) =>
+                  setFilter({ ...filter, search: e.target.value })
+                }
               />
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
             </div>
-            
+
             <button
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-md flex items-center transition-colors"
               onClick={() => setShowFilterOptions(!showFilterOptions)}
@@ -544,8 +610,8 @@ const Members: React.FC = () => {
               <Filter size={18} className="mr-2" />
               필터 {showFilterOptions ? '숨기기' : '보기'}
             </button>
-            
-            <button 
+
+            <button
               className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-md flex items-center transition-colors ml-auto"
               onClick={handleAddMember}
             >
@@ -557,8 +623,16 @@ const Members: React.FC = () => {
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
               <button
                 title="엑셀 불러오기"
-                style={{ background: '#f3f4f6', border: 'none', borderRadius: 4, padding: 6, cursor: 'pointer' }}
-                onClick={() => document.getElementById('excel-import-input')?.click()}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: 6,
+                  cursor: 'pointer',
+                }}
+                onClick={() =>
+                  document.getElementById('excel-import-input')?.click()
+                }
               >
                 <Upload size={16} />
               </button>
@@ -571,40 +645,62 @@ const Members: React.FC = () => {
               />
               <button
                 title="엑셀 내보내기"
-                style={{ background: '#f3f4f6', border: 'none', borderRadius: 4, padding: 6, cursor: 'pointer' }}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: 6,
+                  cursor: 'pointer',
+                }}
                 onClick={handleExportExcel}
               >
                 <Download size={16} />
               </button>
               <button
                 title="엑셀 형식 안내"
-                style={{ background: 'transparent', border: 'none', padding: 0, marginLeft: 2, cursor: 'pointer' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  marginLeft: 2,
+                  cursor: 'pointer',
+                }}
                 onClick={() => setExcelInfoOpen(true)}
               >
                 <Info size={15} color="#888" />
               </button>
             </div>
           </div>
-          
+
           {showFilterOptions && (
             <div className="bg-gray-50 p-4 rounded-md flex flex-wrap gap-4 items-center animate-fadeIn">
               <div>
-                <label htmlFor="statusFilter" className="mr-2 font-medium text-gray-700">회원 상태:</label>
+                <label
+                  htmlFor="statusFilter"
+                  className="mr-2 font-medium text-gray-700"
+                >
+                  회원 상태:
+                </label>
                 <select
                   id="statusFilter"
                   className="border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={filter.status}
-                  onChange={(e) => setFilter({ ...filter, status: e.target.value as MemberFilter['status'] })}
+                  onChange={(e) =>
+                    setFilter({
+                      ...filter,
+                      status: e.target.value as MemberFilter['status'],
+                    })
+                  }
                 >
                   <option value="all">전체</option>
                   <option value="active">활성</option>
                   <option value="expired">만료</option>
                 </select>
               </div>
-              
+
               {/* 추가 필터 옵션을 여기에 넣을 수 있습니다 */}
-              
-              <button 
+
+              <button
                 className="text-sm text-blue-500 hover:text-blue-700 ml-auto"
                 onClick={() => setFilter({ search: '', status: 'all' })}
               >
@@ -624,7 +720,7 @@ const Members: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
           <div className="flex items-center">
@@ -640,28 +736,46 @@ const Members: React.FC = () => {
           <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-blue-600 font-medium">총 회원수</p>
-              <p className="text-2xl font-bold text-blue-800 mt-1">{statistics.total}명</p>
+              <p className="text-2xl font-bold text-blue-800 mt-1">
+                {statistics.total}명
+              </p>
             </div>
-            
+
             <div className="bg-green-50 p-4 rounded-lg">
               <p className="text-sm text-green-600 font-medium">활성 회원</p>
               <p className="text-2xl font-bold text-green-800 mt-1">
                 {statistics.active}명
-                <span className="text-sm font-normal ml-1">({((statistics.active / statistics.total) * 100 || 0).toFixed(1)}%)</span>
+                <span className="text-sm font-normal ml-1">
+                  (
+                  {((statistics.active / statistics.total) * 100 || 0).toFixed(
+                    1,
+                  )}
+                  %)
+                </span>
               </p>
             </div>
-            
+
             <div className="bg-red-50 p-4 rounded-lg">
               <p className="text-sm text-red-600 font-medium">만료 회원</p>
               <p className="text-2xl font-bold text-red-800 mt-1">
                 {statistics.expired}명
-                <span className="text-sm font-normal ml-1">({((statistics.expired / statistics.total) * 100 || 0).toFixed(1)}%)</span>
+                <span className="text-sm font-normal ml-1">
+                  (
+                  {((statistics.expired / statistics.total) * 100 || 0).toFixed(
+                    1,
+                  )}
+                  %)
+                </span>
               </p>
             </div>
-            
+
             <div className="bg-yellow-50 p-4 rounded-lg">
-              <p className="text-sm text-yellow-600 font-medium">30일 내 만료 예정</p>
-              <p className="text-2xl font-bold text-yellow-800 mt-1">{statistics.expiringIn30Days}명</p>
+              <p className="text-sm text-yellow-600 font-medium">
+                30일 내 만료 예정
+              </p>
+              <p className="text-2xl font-bold text-yellow-800 mt-1">
+                {statistics.expiringIn30Days}명
+              </p>
             </div>
           </div>
         </div>
@@ -688,8 +802,8 @@ const Members: React.FC = () => {
               <button
                 onClick={handleShowAllToggle}
                 className={`px-2 py-1.5 sm:px-3 text-sm rounded-md transition-colors ${
-                  showAll 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                  showAll
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -698,15 +812,22 @@ const Members: React.FC = () => {
             </div>
             <div className="text-sm text-gray-500">
               총 {members.length}명의 회원
-              {!showAll && ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, members.length)}번째 표시)`}
+              {!showAll &&
+                ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, members.length)}번째 표시)`}
             </div>
           </div>
           {/* 반응형 테이블: 가로 스크롤, 패딩 조정, 모바일에서 폰트/패딩 축소 */}
-          <div className="w-full overflow-x-auto" style={{ maxHeight: 'calc(100vh - 350px)', minWidth: 600 }}>
+          <div
+            className="w-full overflow-x-auto"
+            style={{ maxHeight: 'calc(100vh - 350px)', minWidth: 600 }}
+          >
             <table className="min-w-full divide-y divide-gray-200 text-sm sm:text-base">
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 <tr>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('name')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('name')}
+                  >
                     <div className="flex items-center">
                       이름
                       {sortConfig.key === 'name' && (
@@ -720,7 +841,10 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('gender')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('gender')}
+                  >
                     <div className="flex items-center">
                       성별
                       {sortConfig.key === 'gender' && (
@@ -734,7 +858,10 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('phone')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('phone')}
+                  >
                     <div className="flex items-center">
                       연락처
                       {sortConfig.key === 'phone' && (
@@ -748,7 +875,10 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('membershipType')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('membershipType')}
+                  >
                     <div className="flex items-center">
                       회원권 종류
                       {sortConfig.key === 'membershipType' && (
@@ -762,7 +892,10 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('membershipEnd')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('membershipEnd')}
+                  >
                     <div className="flex items-center">
                       만료일
                       {sortConfig.key === 'membershipEnd' && (
@@ -776,7 +909,10 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('createdAt')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('createdAt')}
+                  >
                     <div className="flex items-center">
                       최초 등록일
                       {sortConfig.key === 'createdAt' && (
@@ -790,7 +926,10 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('staffName')}>
+                  <th
+                    className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => requestSort('staffName')}
+                  >
                     <div className="flex items-center">
                       담당자
                       {sortConfig.key === 'staffName' && (
@@ -804,8 +943,12 @@ const Members: React.FC = () => {
                       )}
                     </div>
                   </th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                    상태
+                  </th>
+                  <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -816,50 +959,73 @@ const Members: React.FC = () => {
                       className="hover:bg-blue-50 transition-colors duration-150 cursor-pointer group"
                       onClick={() => handleViewMember(member)}
                     >
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap font-medium text-gray-900 group-hover:text-blue-600">{member.name}</td>
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.gender || '-'}</td>
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.phone || '-'}</td>
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.membershipType || '-'}</td>
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{formatDate(member.membershipEnd)}</td>
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{formatDate(member.createdAt)}</td>
-                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{member.staffName || '-'}</td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap font-medium text-gray-900 group-hover:text-blue-600">
+                        {member.name}
+                      </td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                        {member.gender || '-'}
+                      </td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                        {member.phone || '-'}
+                      </td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                        {member.membershipType || '-'}
+                      </td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                        {formatDate(member.membershipEnd)}
+                      </td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                        {formatDate(member.createdAt)}
+                      </td>
+                      <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                        {member.staffName || '-'}
+                      </td>
                       <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          getMembershipStatus(member.membershipEnd) === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {getMembershipStatus(member.membershipEnd) === 'active' ? '활성' : '만료'}
+                        <span
+                          className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            getMembershipStatus(member.membershipEnd) ===
+                            'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {getMembershipStatus(member.membershipEnd) ===
+                          'active'
+                            ? '활성'
+                            : '만료'}
                         </span>
                       </td>
                       <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-center">
-                        <div className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                          <button 
+                        <div
+                          className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleViewMember(member);
-                            }} 
-                            className="text-blue-500 hover:text-blue-700 transition-colors p-1" 
+                            }}
+                            className="text-blue-500 hover:text-blue-700 transition-colors p-1"
                             title="상세보기"
                           >
                             <Info size={16} />
                           </button>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEditMember(member);
-                            }} 
-                            className="text-yellow-500 hover:text-yellow-700 transition-colors p-1" 
+                            }}
+                            className="text-yellow-500 hover:text-yellow-700 transition-colors p-1"
                             title="수정"
                           >
                             <Edit size={16} />
                           </button>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(member.id!);
-                            }} 
-                            className="text-red-500 hover:text-red-700 transition-colors p-1" 
+                            }}
+                            className="text-red-500 hover:text-red-700 transition-colors p-1"
                             title="삭제"
                           >
                             <Trash2 size={16} />
@@ -870,11 +1036,16 @@ const Members: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={9} className="py-8 px-4 text-center text-gray-500">
+                    <td
+                      colSpan={9}
+                      className="py-8 px-4 text-center text-gray-500"
+                    >
                       <div className="flex flex-col items-center justify-center">
                         <Database size={48} className="text-gray-300 mb-3" />
                         <p className="text-lg">회원 정보가 없습니다.</p>
-                        <p className="text-sm text-gray-400 mt-1">회원을 추가하려면 '회원 추가' 버튼을 클릭하세요.</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          회원을 추가하려면 '회원 추가' 버튼을 클릭하세요.
+                        </p>
                       </div>
                     </td>
                   </tr>
@@ -882,7 +1053,7 @@ const Members: React.FC = () => {
               </tbody>
             </table>
           </div>
-          
+
           {/* 페이지네이션은 전체 보기 모드일 때는 숨김 */}
           {!showAll && renderPagination()}
         </div>
@@ -904,59 +1075,165 @@ const Members: React.FC = () => {
         <div
           onClick={handleOverlayClick}
           style={{
-            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-            background: 'rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.2)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           <div
             style={{
-              background: '#fff', borderRadius: 8, padding: 24, minWidth: 340, boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
-              position: 'relative', maxWidth: 420
+              background: '#fff',
+              borderRadius: 8,
+              padding: 24,
+              minWidth: 340,
+              boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
+              position: 'relative',
+              maxWidth: 420,
             }}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setExcelInfoOpen(false)}
               style={{
-                position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer'
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
               }}
               aria-label="닫기"
             >
               <CloseIcon size={18} color="#888" />
             </button>
-            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16 }}>엑셀 데이터 형식 안내</h3>
+            <h3 style={{ fontWeight: 600, fontSize: 18, marginBottom: 16 }}>
+              엑셀 데이터 형식 안내
+            </h3>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{
-                borderCollapse: 'collapse', width: '100%', fontSize: 14, background: '#fafbfc'
-              }}>
+              <table
+                style={{
+                  borderCollapse: 'collapse',
+                  width: '100%',
+                  fontSize: 14,
+                  background: '#fafbfc',
+                }}
+              >
                 <thead>
                   <tr>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>이름</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>전화번호</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>이메일</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>생년월일</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>회원권종류</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>시작일</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>종료일</th>
-                    <th style={{ border: '1px solid #d1d5db', padding: 8, background: '#f3f4f6' }}>비고</th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      이름
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      전화번호
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      이메일
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      생년월일
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      회원권종류
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      시작일
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      종료일
+                    </th>
+                    <th
+                      style={{
+                        border: '1px solid #d1d5db',
+                        padding: 8,
+                        background: '#f3f4f6',
+                      }}
+                    >
+                      비고
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>홍길동</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>010-1234-5678</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>hong@example.com</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>1990-01-01</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>3개월</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>2024-06-01</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>2024-08-31</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>특이사항</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      홍길동
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      010-1234-5678
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      hong@example.com
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      1990-01-01
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      3개월
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      2024-06-01
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      2024-08-31
+                    </td>
+                    <td style={{ border: '1px solid #d1d5db', padding: 8 }}>
+                      특이사항
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div style={{ marginTop: 12, color: '#666', fontSize: 13 }}>
-              ※ 엑셀 파일의 첫 행은 반드시 <b>컬럼명</b>이어야 하며, 위 예시와 같은 형식으로 데이터를 입력해주세요.
+              ※ 엑셀 파일의 첫 행은 반드시 <b>컬럼명</b>이어야 하며, 위 예시와
+              같은 형식으로 데이터를 입력해주세요.
             </div>
           </div>
         </div>
@@ -965,4 +1242,4 @@ const Members: React.FC = () => {
   );
 };
 
-export default Members; 
+export default Members;

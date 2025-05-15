@@ -2,8 +2,22 @@ import { getDatabase } from './setup';
 import { Locker } from '../models/types';
 import * as electronLog from 'electron-log';
 
+// DB에서 조회된 락커 행의 타입 정의
+interface LockerRow {
+  id: number;
+  number: string; // 또는 number, 실제 DB 스키마 확인 필요
+  status: Locker['status'];
+  member_id?: number | null; // DB에서 NULL일 수 있으므로 null 추가
+  member_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // DB 컬럼 이름과 인터페이스 필드 이름 매핑
-function mapLockerToModel(row: any): Locker {
+function mapLockerToModel(row: LockerRow): Locker {
   return {
     id: row.id,
     number: row.number,
@@ -61,7 +75,9 @@ export async function getLockerById(id: number): Promise<Locker | null> {
 }
 
 // 새 락커 추가
-export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
+export async function addLocker(
+  locker: Omit<Locker, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<number> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
@@ -71,16 +87,18 @@ export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updat
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const result = db.prepare(query).run(
-      locker.number,
-      locker.status,
-      locker.memberId || null,
-      locker.startDate || null,
-      locker.endDate || null,
-      locker.notes || null,
-      now,
-      now
-    );
+    const result = db
+      .prepare(query)
+      .run(
+        locker.number,
+        locker.status,
+        locker.memberId || null,
+        locker.startDate || null,
+        locker.endDate || null,
+        locker.notes || null,
+        now,
+        now,
+      );
     return result.lastInsertRowid as number;
   } catch (error) {
     electronLog.error('락커 추가 오류:', error);
@@ -89,19 +107,40 @@ export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updat
 }
 
 // 락커 정보 업데이트
-export async function updateLocker(id: number, locker: Partial<Locker>): Promise<boolean> {
+export async function updateLocker(
+  id: number,
+  locker: Partial<Locker>,
+): Promise<boolean> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | null)[] = [];
 
-    if ('number' in locker) { updates.push('number = ?'); values.push(locker.number); }
-    if ('status' in locker) { updates.push('status = ?'); values.push(locker.status); }
-    if ('memberId' in locker) { updates.push('member_id = ?'); values.push(locker.memberId || null); }
-    if ('startDate' in locker) { updates.push('start_date = ?'); values.push(locker.startDate || null); }
-    if ('endDate' in locker) { updates.push('end_date = ?'); values.push(locker.endDate || null); }
-    if ('notes' in locker) { updates.push('notes = ?'); values.push(locker.notes || null); }
+    if ('number' in locker) {
+      updates.push('number = ?');
+      values.push(locker.number);
+    }
+    if ('status' in locker) {
+      updates.push('status = ?');
+      values.push(locker.status);
+    }
+    if ('memberId' in locker) {
+      updates.push('member_id = ?');
+      values.push(locker.memberId || null);
+    }
+    if ('startDate' in locker) {
+      updates.push('start_date = ?');
+      values.push(locker.startDate || null);
+    }
+    if ('endDate' in locker) {
+      updates.push('end_date = ?');
+      values.push(locker.endDate || null);
+    }
+    if ('notes' in locker) {
+      updates.push('notes = ?');
+      values.push(locker.notes || null);
+    }
 
     if (updates.length === 0) {
       return false;
@@ -131,4 +170,4 @@ export async function deleteLocker(id: number): Promise<boolean> {
     electronLog.error('락커 삭제 오류:', error);
     throw error;
   }
-} 
+}

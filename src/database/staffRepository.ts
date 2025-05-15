@@ -12,17 +12,19 @@ function mapStaffToModel(row: any): Staff {
     email: row.email || null,
     hireDate: row.hire_date,
     status: row.status,
-    permissions: row.permissions ? JSON.parse(row.permissions) : {
-      dashboard: true,
-      members: false,
-      attendance: false,
-      payment: false,
-      lockers: false,
-      staff: false,
-      excel: false,
-      backup: false,
-      settings: false,
-    },
+    permissions: row.permissions
+      ? JSON.parse(row.permissions)
+      : {
+          dashboard: true,
+          members: false,
+          attendance: false,
+          payment: false,
+          lockers: false,
+          staff: false,
+          excel: false,
+          backup: false,
+          settings: false,
+        },
     notes: row.notes || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -68,7 +70,9 @@ export async function getStaffById(id: number): Promise<Staff | null> {
 }
 
 // 새 스태프 추가
-export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
+export async function addStaff(
+  staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<number> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
@@ -78,18 +82,20 @@ export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedA
         status, permissions, notes, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const result = db.prepare(query).run(
-      staff.name,
-      staff.position,
-      staff.phone || null,
-      staff.email || null,
-      staff.hireDate,
-      staff.status,
-      JSON.stringify(staff.permissions),
-      staff.notes || null,
-      now,
-      now
-    );
+    const result = db
+      .prepare(query)
+      .run(
+        staff.name,
+        staff.position,
+        staff.phone || null,
+        staff.email || null,
+        staff.hireDate,
+        staff.status,
+        JSON.stringify(staff.permissions),
+        staff.notes || null,
+        now,
+        now,
+      );
     return result.lastInsertRowid as number;
   } catch (error) {
     electronLog.error('스태프 추가 오류:', error);
@@ -98,21 +104,48 @@ export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedA
 }
 
 // 스태프 정보 업데이트
-export async function updateStaff(id: number, staff: Partial<Staff>): Promise<boolean> {
+export async function updateStaff(
+  id: number,
+  staff: Partial<Staff>,
+): Promise<boolean> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
     const updates: string[] = [];
     const values: any[] = [];
 
-    if ('name' in staff) { updates.push('name = ?'); values.push(staff.name); }
-    if ('position' in staff) { updates.push('position = ?'); values.push(staff.position); }
-    if ('phone' in staff) { updates.push('phone = ?'); values.push(staff.phone || null); }
-    if ('email' in staff) { updates.push('email = ?'); values.push(staff.email || null); }
-    if ('hireDate' in staff) { updates.push('hire_date = ?'); values.push(staff.hireDate); }
-    if ('status' in staff) { updates.push('status = ?'); values.push(staff.status); }
-    if ('permissions' in staff) { updates.push('permissions = ?'); values.push(JSON.stringify(staff.permissions)); }
-    if ('notes' in staff) { updates.push('notes = ?'); values.push(staff.notes || null); }
+    if ('name' in staff) {
+      updates.push('name = ?');
+      values.push(staff.name);
+    }
+    if ('position' in staff) {
+      updates.push('position = ?');
+      values.push(staff.position);
+    }
+    if ('phone' in staff) {
+      updates.push('phone = ?');
+      values.push(staff.phone || null);
+    }
+    if ('email' in staff) {
+      updates.push('email = ?');
+      values.push(staff.email || null);
+    }
+    if ('hireDate' in staff) {
+      updates.push('hire_date = ?');
+      values.push(staff.hireDate);
+    }
+    if ('status' in staff) {
+      updates.push('status = ?');
+      values.push(staff.status);
+    }
+    if ('permissions' in staff) {
+      updates.push('permissions = ?');
+      values.push(JSON.stringify(staff.permissions));
+    }
+    if ('notes' in staff) {
+      updates.push('notes = ?');
+      values.push(staff.notes || null);
+    }
 
     if (updates.length === 0) {
       return false;
@@ -142,4 +175,4 @@ export async function deleteStaff(id: number): Promise<boolean> {
     electronLog.error('스태프 삭제 오류:', error);
     throw error;
   }
-} 
+}

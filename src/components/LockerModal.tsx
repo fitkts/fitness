@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './common/Modal';
-import { Locker, Member } from '../models/types';
+import { Locker, Member } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { Search, X } from 'lucide-react';
 
@@ -20,12 +20,12 @@ const defaultLocker: Locker = {
   notes: '',
 };
 
-const LockerModal: React.FC<LockerModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  locker, 
-  isViewMode = false 
+const LockerModal: React.FC<LockerModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  locker,
+  isViewMode = false,
 }) => {
   const [formData, setFormData] = useState<Locker>(defaultLocker);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,19 +58,32 @@ const LockerModal: React.FC<LockerModalProps> = ({
   // 회원 검색 핸들러
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
-    if (term.length < 2) {
+    if (term.length < 1) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
     try {
       setIsSearching(true);
-      // TODO: 실제 회원 검색 API 호출
-      // const response = await searchMembers(term);
-      // setSearchResults(response.data || []);
+      if (window.api && window.api.searchMembers) {
+        const response = await window.api.searchMembers(term);
+        if (response.success && response.data) {
+          setSearchResults(response.data);
+        } else {
+          setSearchResults([]);
+          if (response.error) {
+            showToast('error', `회원 검색 실패: ${response.error}`);
+          }
+        }
+      } else {
+        showToast('error', '회원 검색 API를 사용할 수 없습니다.');
+        setSearchResults([]);
+      }
     } catch (error) {
       console.error('회원 검색 오류:', error);
       showToast('error', '회원 검색 중 오류가 발생했습니다.');
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -79,10 +92,10 @@ const LockerModal: React.FC<LockerModalProps> = ({
   // 회원 선택 핸들러
   const handleSelectMember = (member: Member) => {
     setSelectedMember(member);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       memberId: member.id,
-      memberName: member.name
+      memberName: member.name,
     }));
     setSearchResults([]);
     setSearchTerm('');
@@ -91,24 +104,24 @@ const LockerModal: React.FC<LockerModalProps> = ({
   // 회원 선택 해제 핸들러
   const handleClearMember = () => {
     setSelectedMember(null);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       memberId: undefined,
-      memberName: undefined
+      memberName: undefined,
     }));
   };
 
   // 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // 유효성 검사
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.number) {
       newErrors.number = '락커 번호는 필수입니다';
     }
-    
+
     if (formData.status === 'occupied') {
       if (!formData.memberId) {
         newErrors.memberId = '사용 중인 락커는 회원을 선택해야 합니다';
@@ -119,7 +132,11 @@ const LockerModal: React.FC<LockerModalProps> = ({
       if (!formData.endDate) {
         newErrors.endDate = '종료일은 필수입니다';
       }
-      if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
+      if (
+        formData.startDate &&
+        formData.endDate &&
+        formData.startDate > formData.endDate
+      ) {
         newErrors.endDate = '종료일은 시작일보다 이후여야 합니다';
       }
     }
@@ -128,13 +145,18 @@ const LockerModal: React.FC<LockerModalProps> = ({
       setErrors(newErrors);
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       const success = await onSave(formData);
-      
+
       if (success) {
-        showToast('success', formData.id ? '락커 정보가 수정되었습니다.' : '락커가 배정되었습니다.');
+        showToast(
+          'success',
+          formData.id
+            ? '락커 정보가 수정되었습니다.'
+            : '락커가 배정되었습니다.',
+        );
         onClose();
       }
     } catch (error) {
@@ -146,12 +168,16 @@ const LockerModal: React.FC<LockerModalProps> = ({
   };
 
   // 입력 핸들러
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -163,7 +189,13 @@ const LockerModal: React.FC<LockerModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={currentIsViewMode ? '락커 상세 정보' : (formData.id ? '락커 정보 수정' : '신규 락커 등록')}
+      title={
+        currentIsViewMode
+          ? '락커 상세 정보'
+          : formData.id
+            ? '락커 정보 수정'
+            : '신규 락커 등록'
+      }
       size="md"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -219,9 +251,12 @@ const LockerModal: React.FC<LockerModalProps> = ({
                   placeholder="회원명 또는 전화번호로 검색..."
                   className="input w-full pl-10"
                 />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={18}
+                />
               </div>
-              
+
               {/* 검색 결과 */}
               {searchResults.length > 0 && (
                 <div className="mt-2 border rounded-md shadow-sm max-h-48 overflow-y-auto">
@@ -243,7 +278,9 @@ const LockerModal: React.FC<LockerModalProps> = ({
                 <div className="mt-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
                   <div>
                     <p className="font-medium">{selectedMember.name}</p>
-                    <p className="text-sm text-gray-500">{selectedMember.phone}</p>
+                    <p className="text-sm text-gray-500">
+                      {selectedMember.phone}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -274,7 +311,9 @@ const LockerModal: React.FC<LockerModalProps> = ({
                   required
                 />
                 {errors.startDate && (
-                  <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.startDate}
+                  </p>
                 )}
               </div>
               <div>
@@ -338,4 +377,4 @@ const LockerModal: React.FC<LockerModalProps> = ({
   );
 };
 
-export default LockerModal; 
+export default LockerModal;

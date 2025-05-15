@@ -8,7 +8,12 @@ interface AppLayoutProps {
   pages: string[];
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children, currentPage, onPageChange, pages }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({
+  children,
+  currentPage,
+  onPageChange,
+  pages,
+}) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -44,4 +49,4 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, currentPage, onPageChan
   );
 };
 
-export default AppLayout; 
+export default AppLayout;

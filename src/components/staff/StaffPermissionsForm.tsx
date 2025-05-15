@@ -70,20 +70,24 @@ const StaffPermissionsForm: React.FC<StaffPermissionsFormProps> = ({
           </div>
         )}
       </div>
-      
+
       <div className="grid grid-cols-2 gap-3 p-3 border rounded">
-        {permissionItems.map(item => (
+        {permissionItems.map((item) => (
           <div className="flex items-center" key={item.id}>
             <input
               type="checkbox"
               id={item.id}
               name={item.id}
-              checked={permissions?.[item.id as keyof StaffPermissions] || false} // permissions가 undefined일 경우 대비
+              checked={
+                permissions?.[item.id as keyof StaffPermissions] || false
+              } // permissions가 undefined일 경우 대비
               onChange={handlePermissionChange}
               className="w-4 h-4 text-blue-600 mr-2"
               disabled={isViewMode || isSubmitting}
             />
-            <label htmlFor={item.id} className="text-sm">{item.label}</label>
+            <label htmlFor={item.id} className="text-sm">
+              {item.label}
+            </label>
           </div>
         ))}
       </div>
@@ -91,4 +95,4 @@ const StaffPermissionsForm: React.FC<StaffPermissionsFormProps> = ({
   );
 };
 
-export default StaffPermissionsForm; 
+export default StaffPermissionsForm;

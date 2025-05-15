@@ -1,49 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Settings as SettingsIcon, Moon, Sun, Bell, Database, Archive, HelpCircle, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Save,
+  Settings as SettingsIcon,
+  Moon,
+  Sun,
+  Bell,
+  Database,
+  Archive,
+  HelpCircle,
+  CheckCircle,
+  AlertCircle,
+} from 'lucide-react';
 import { useToast, ToastType } from '../contexts/ToastContext';
+import { SettingsData } from '../types'; // SettingsData 임포트
 
 // SaveStatus 타입 정의
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
 
-interface SettingsData {
-  theme: 'light' | 'dark' | 'system';
-  backupSchedule: 'daily' | 'weekly' | 'monthly';
-  backupCount: number;
-  notificationsEnabled: boolean;
-  notificationsBeforeMembershipEnd: number;
-  autoDeleteBackup: boolean;
-  developerMode: boolean;
-}
+// SettingsData 인터페이스는 ../types에서 임포트하므로 여기서는 제거
+// declare global 블록은 src/types/electron.d.ts에서 관리하므로 여기서는 제거
 
 const Settings: React.FC = () => {
-  const [settings, setSettings] = useState<SettingsData>({
-    theme: 'system',
-    backupSchedule: 'daily',
-    backupCount: 30,
-    notificationsEnabled: true,
-    notificationsBeforeMembershipEnd: 7,
-    autoDeleteBackup: true,
-    developerMode: false,
+  const [settings, setSettings] = useState<SettingsData>(() => {
+    return {
+      theme: 'system',
+      backupSchedule: 'daily',
+      backupCount: 30,
+      notificationsEnabled: true,
+      notificationsBeforeMembershipEnd: 7,
+      autoDeleteBackup: true,
+      developerMode: false,
+    };
   });
-
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [activeSection, setActiveSection] = useState<string>('appearance');
   const { showToast } = useToast();
 
-  // 설정 로드 (실제로는 데이터베이스나 설정 파일에서 로드)
+  // 설정 로드
   useEffect(() => {
     const loadAppSettings = async () => {
       setIsLoading(true);
       try {
-        // TODO: 실제 구현에서는 Electron의 저장 API를 사용하여 설정 불러오기
-        // const loadedSettings = await window.api.loadSettings();
-        // setSettings(loadedSettings);
-        // showToast('info', '설정을 불러왔습니다.');
-        
-        // 가상 로딩 시간
-        await new Promise(resolve => setTimeout(resolve, 600));
-        // showToast('info', '가상 설정을 로드했습니다.'); // 실제 구현 시 제거
+        if (window.api && window.api.loadSettings) {
+          const loadedSettings = await window.api.loadSettings();
+          if (
+            loadedSettings &&
+            typeof loadedSettings === 'object' &&
+            Object.keys(loadedSettings).length > 0
+          ) {
+            setSettings((prevSettings) => ({
+              ...prevSettings,
+              ...loadedSettings,
+            }));
+            showToast('success', '설정을 불러왔습니다.');
+          } else {
+            showToast(
+              'info',
+              '저장된 설정이 없거나 유효하지 않습니다. 기본 설정을 사용합니다.',
+            );
+          }
+        } else {
+          console.warn('Electron API (loadSettings) is not available.');
+          showToast('warning', '설정 API를 사용할 수 없습니다.');
+        }
       } catch (error) {
         console.error('설정 로드 오류:', error);
         showToast('error', '설정을 불러오는데 실패했습니다.');
@@ -52,50 +72,51 @@ const Settings: React.FC = () => {
       }
     };
     loadAppSettings();
-  }, [showToast]); // showToast 의존성 배열 추가
+  }, [showToast]);
 
   // 설정 변경 핸들러
   const handleSettingChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value, type } = e.target;
-    
-    // 체크박스인 경우 checked 값 사용
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
-      setSettings(prev => ({ ...prev, [name]: checked }));
-    } 
-    // 숫자 입력인 경우 숫자로 변환
-    else if (type === 'number') {
-      setSettings(prev => ({ ...prev, [name]: parseInt(value) }));
-    }
-    // 그 외 경우 문자열 값 사용
-    else {
-      setSettings(prev => ({ ...prev, [name]: value }));
+      setSettings((prev) => ({ ...prev, [name]: checked }));
+    } else if (type === 'number') {
+      setSettings((prev) => ({ ...prev, [name]: parseInt(value) }));
+    } else {
+      setSettings((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   // 설정 저장 핸들러
   const handleSaveSettings = async () => {
     setSaveStatus('saving');
-    setIsLoading(true); // 추가: 저장 중 로딩 상태
+    setIsLoading(true);
     try {
-      // TODO: 실제 구현에서는 Electron의 저장 API를 사용
-      // await window.api.saveSettings(settings);
-      
-      // 가상 저장 시간
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      setSaveStatus('success');
-      showToast('success', '설정이 성공적으로 저장되었습니다.');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      if (window.api && window.api.saveSettings) {
+        const result = await window.api.saveSettings(settings);
+        if (result.success) {
+          setSaveStatus('success');
+          showToast('success', '설정이 성공적으로 저장되었습니다.');
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        } else {
+          const errorMessage =
+            result.error || '알 수 없는 오류로 설정 저장에 실패했습니다.';
+          console.error('API로부터 설정 저장 실패 응답:', errorMessage);
+          throw new Error(errorMessage);
+        }
+      } else {
+        console.warn('Electron API (saveSettings) is not available.');
+        throw new Error('설정 저장 API를 사용할 수 없습니다.');
+      }
     } catch (error) {
       console.error('설정 저장 오류:', error);
       setSaveStatus('error');
-      showToast('error', '설정 저장 중 오류가 발생했습니다.');
+      showToast('error', `설정 저장 중 오류: ${(error as Error).message}`);
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
-      setIsLoading(false); // 추가: 로딩 상태 해제
+      setIsLoading(false);
     }
   };
 
@@ -148,7 +169,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
         );
-        
+
       case 'backup':
         return (
           <div>
@@ -169,7 +190,7 @@ const Settings: React.FC = () => {
                   <option value="monthly">매월</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   보관할 백업 수
@@ -184,10 +205,11 @@ const Settings: React.FC = () => {
                   onChange={handleSettingChange}
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  설정한 개수 이상의 백업이 있을 경우 오래된 백업부터 자동 삭제됩니다.
+                  설정한 개수 이상의 백업이 있을 경우 오래된 백업부터 자동
+                  삭제됩니다.
                 </p>
               </div>
-              
+
               <div>
                 <label className="flex items-center">
                   <input
@@ -206,7 +228,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
         );
-        
+
       case 'notifications':
         return (
           <div>
@@ -224,7 +246,7 @@ const Settings: React.FC = () => {
                   <span className="ml-2">알림 사용</span>
                 </label>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   회원권 만료 알림 기간 (일)
@@ -246,7 +268,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
         );
-        
+
       case 'database':
         return (
           <div>
@@ -259,12 +281,13 @@ const Settings: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-blue-700">
-                      데이터베이스 설정을 변경하면 애플리케이션이 재시작될 수 있습니다.
+                      데이터베이스 설정을 변경하면 애플리케이션이 재시작될 수
+                      있습니다.
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <button
                   type="button"
@@ -279,13 +302,17 @@ const Settings: React.FC = () => {
                   데이터베이스를 압축하여 크기를 줄이고 성능을 향상시킵니다.
                 </p>
               </div>
-              
+
               <div className="pt-4 border-t">
                 <button
                   type="button"
                   className="btn bg-red-600 hover:bg-red-700 text-white"
                   onClick={() => {
-                    if (confirm('정말로 모든 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                    if (
+                      confirm(
+                        '정말로 모든 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+                      )
+                    ) {
                       alert('모든 데이터가 삭제되었습니다.');
                     }
                   }}
@@ -293,13 +320,14 @@ const Settings: React.FC = () => {
                   모든 데이터 초기화
                 </button>
                 <p className="text-sm text-red-500 mt-1">
-                  모든 회원, 출석, 결제 데이터를 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+                  모든 회원, 출석, 결제 데이터를 삭제합니다. 이 작업은 되돌릴 수
+                  없습니다.
                 </p>
               </div>
             </div>
           </div>
         );
-        
+
       case 'advanced':
         return (
           <div>
@@ -320,7 +348,7 @@ const Settings: React.FC = () => {
                   개발자 모드를 활성화하면 고급 기능과 로그를 볼 수 있습니다.
                 </p>
               </div>
-              
+
               <div className="pt-4 border-t">
                 <h3 className="text-md font-medium mb-2">프로그램 정보</h3>
                 <div className="bg-gray-50 p-4 rounded-md">
@@ -347,7 +375,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
         );
-        
+
       default:
         return <div>설정을 선택하세요</div>;
     }
@@ -368,9 +396,11 @@ const Settings: React.FC = () => {
         <h1 className="text-2xl font-bold">설정</h1>
         <button
           className={`btn flex items-center ${
-            saveStatus === 'error' ? 'bg-red-500 text-white' :
-            saveStatus === 'success' ? 'bg-green-500 text-white' :
-            'btn-primary'
+            saveStatus === 'error'
+              ? 'bg-red-500 text-white'
+              : saveStatus === 'success'
+                ? 'bg-green-500 text-white'
+                : 'btn-primary'
           }`}
           onClick={handleSaveSettings}
           disabled={saveStatus === 'saving'}
@@ -403,7 +433,13 @@ const Settings: React.FC = () => {
         {/* 설정 메뉴 사이드바 */}
         <div className="md:w-64 bg-white rounded-lg shadow p-4">
           <nav className="space-y-1">
-            {['appearance', 'backup', 'notifications', 'database', 'advanced'].map((section) => (
+            {[
+              'appearance',
+              'backup',
+              'notifications',
+              'database',
+              'advanced',
+            ].map((section) => (
               <button
                 key={section}
                 className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
@@ -415,11 +451,17 @@ const Settings: React.FC = () => {
               >
                 <span className="mr-3">{getSectionIcon(section)}</span>
                 <span className="capitalize">
-                  {section === 'appearance' ? '화면 설정' :
-                   section === 'backup' ? '백업 설정' :
-                   section === 'notifications' ? '알림 설정' :
-                   section === 'database' ? '데이터베이스' :
-                   section === 'advanced' ? '고급 설정' : section}
+                  {section === 'appearance'
+                    ? '화면 설정'
+                    : section === 'backup'
+                      ? '백업 설정'
+                      : section === 'notifications'
+                        ? '알림 설정'
+                        : section === 'database'
+                          ? '데이터베이스'
+                          : section === 'advanced'
+                            ? '고급 설정'
+                            : section}
                 </span>
               </button>
             ))}
@@ -435,4 +477,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings; 
+export default Settings;

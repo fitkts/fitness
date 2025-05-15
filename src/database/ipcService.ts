@@ -1,17 +1,26 @@
 // 안전하게 ipcRenderer를 가져오는 코드 (브라우저 환경에서도 에러 안나게)
-let safeIpcRenderer: typeof import('electron').ipcRenderer | undefined = undefined;
+let safeIpcRenderer: typeof import('electron').ipcRenderer | undefined =
+  undefined;
 
 try {
   // electron 환경에서만 require 사용
   // @ts-ignore
-  safeIpcRenderer = window.require ? window.require('electron').ipcRenderer : undefined;
+  safeIpcRenderer = window.require
+    ? window.require('electron').ipcRenderer
+    : undefined;
 } catch (e) {
   safeIpcRenderer = undefined;
 }
 
 import { Member } from '../models/types';
 import * as electronLog from 'electron-log';
-import { Payment, MembershipType, Staff, Locker, MemberFilter } from '../models/types';
+import {
+  Payment,
+  MembershipType,
+  Staff,
+  Locker,
+  MemberFilter,
+} from '../models/types';
 
 // 렌더러 프로세스에서 사용할 IPC 서비스
 export class IpcMemberService {
@@ -24,17 +33,21 @@ export class IpcMemberService {
       if (response.success) {
         return response.data || [];
       } else {
-        const errorMessage = response.error || '회원 데이터를 불러오는데 실패했습니다.';
+        const errorMessage =
+          response.error || '회원 데이터를 불러오는데 실패했습니다.';
         console.error('회원 데이터 조회 실패:', errorMessage);
         throw new Error(errorMessage);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
       console.error('IPC 통신 오류:', errorMessage);
       throw new Error(`회원 목록 조회 중 오류 발생: ${errorMessage}`);
     }
   }
-  
+
   /**
    * 새 회원 추가
    */
@@ -53,12 +66,15 @@ export class IpcMemberService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
       console.error('회원 추가 IPC 오류:', errorMessage);
       throw new Error(`회원 추가 중 오류 발생: ${errorMessage}`);
     }
   }
-  
+
   /**
    * 회원 정보 업데이트
    */
@@ -75,17 +91,21 @@ export class IpcMemberService {
       if (response.success) {
         return response.updated as boolean;
       } else {
-        const errorMessage = response.error || '회원 정보 업데이트에 실패했습니다.';
+        const errorMessage =
+          response.error || '회원 정보 업데이트에 실패했습니다.';
         console.error('회원 업데이트 실패:', errorMessage);
         throw new Error(errorMessage);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
       console.error('회원 수정 IPC 오류:', errorMessage);
       throw new Error(`회원 정보 업데이트 중 오류 발생: ${errorMessage}`);
     }
   }
-  
+
   /**
    * 회원 삭제
    */
@@ -104,7 +124,10 @@ export class IpcMemberService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
       console.error('회원 삭제 IPC 오류:', errorMessage);
       throw new Error(`회원 삭제 중 오류 발생: ${errorMessage}`);
     }
@@ -125,7 +148,10 @@ export class IpcMemberService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
       console.error('모든 회원 삭제 IPC 오류:', errorMessage);
       throw new Error(`모든 회원 삭제 중 오류 발생: ${errorMessage}`);
     }
@@ -143,7 +169,11 @@ export async function selectExcelFile(): Promise<string | null> {
 }
 
 // 수동 백업 실행
-export async function createManualBackup(): Promise<{ success: boolean, path?: string, error?: string }> {
+export async function createManualBackup(): Promise<{
+  success: boolean;
+  path?: string;
+  error?: string;
+}> {
   try {
     return await safeIpcRenderer?.invoke('manual-backup');
   } catch (error) {
@@ -153,12 +183,17 @@ export async function createManualBackup(): Promise<{ success: boolean, path?: s
 }
 
 // 더미 회원 데이터 생성
-export async function generateDummyMembers(count: number = 50): Promise<{ success: boolean, error?: string }> {
+export async function generateDummyMembers(
+  count: number = 50,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('generate-dummy-members', count);
   } catch (error) {
     console.error('더미 회원 데이터 생성 IPC 오류:', error);
-    return { success: false, error: '더미 데이터 생성 중 오류가 발생했습니다.' };
+    return {
+      success: false,
+      error: '더미 데이터 생성 중 오류가 발생했습니다.',
+    };
   }
 }
 
@@ -190,8 +225,8 @@ export async function getDashboardStats(): Promise<{
         monthlyAttendance: [],
         recentActivities: {
           recentMembers: [],
-          recentAttendance: []
-        }
+          recentAttendance: [],
+        },
       };
     }
   } catch (error) {
@@ -205,15 +240,19 @@ export async function getDashboardStats(): Promise<{
       monthlyAttendance: [],
       recentActivities: {
         recentMembers: [],
-        recentAttendance: []
-      }
+        recentAttendance: [],
+      },
     };
   }
 }
 
 // --- 결제 관련 함수 ---
 
-export async function getAllPayments(): Promise<{ success: boolean, data?: Payment[], error?: string }> {
+export async function getAllPayments(): Promise<{
+  success: boolean;
+  data?: Payment[];
+  error?: string;
+}> {
   try {
     return await safeIpcRenderer?.invoke('get-all-payments');
   } catch (error) {
@@ -223,7 +262,9 @@ export async function getAllPayments(): Promise<{ success: boolean, data?: Payme
 }
 
 // Omit<Payment, 'id'> 대신 Omit<Payment, 'id' | 'memberName'> 전달
-export const addPayment = async (payment: Omit<Payment, 'id' | 'createdAt'>) => {
+export const addPayment = async (
+  payment: Omit<Payment, 'id' | 'createdAt'>,
+) => {
   try {
     const response = await safeIpcRenderer?.invoke('add-payment', payment);
     return response;
@@ -239,7 +280,11 @@ export const updatePayment = async (payment: Payment) => {
   try {
     // id와 createdAt을 제외한 나머지 필드만 업데이트
     const { id, createdAt, ...updateData } = payment;
-    const response = await safeIpcRenderer?.invoke('update-payment', id, updateData);
+    const response = await safeIpcRenderer?.invoke(
+      'update-payment',
+      id,
+      updateData,
+    );
     return response;
   } catch (error) {
     console.error('updatePayment 오류:', error);
@@ -247,7 +292,9 @@ export const updatePayment = async (payment: Payment) => {
   }
 };
 
-export async function deletePayment(id: number): Promise<{ success: boolean, error?: string }> {
+export async function deletePayment(
+  id: number,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('delete-payment', id);
   } catch (error) {
@@ -258,7 +305,11 @@ export async function deletePayment(id: number): Promise<{ success: boolean, err
 
 // --- 이용권 종류 관련 함수 ---
 
-export async function getAllMembershipTypes(): Promise<{ success: boolean, data?: MembershipType[], error?: string }> {
+export async function getAllMembershipTypes(): Promise<{
+  success: boolean;
+  data?: MembershipType[];
+  error?: string;
+}> {
   try {
     return await safeIpcRenderer?.invoke('get-all-membership-types');
   } catch (error) {
@@ -267,7 +318,9 @@ export async function getAllMembershipTypes(): Promise<{ success: boolean, data?
   }
 }
 
-export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): Promise<{ success: boolean, id?: number, error?: string }> {
+export async function addMembershipType(
+  typeData: Omit<MembershipType, 'id'>,
+): Promise<{ success: boolean; id?: number; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('add-membership-type', typeData);
   } catch (error) {
@@ -276,7 +329,9 @@ export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): P
   }
 }
 
-export async function updateMembershipType(typeData: MembershipType): Promise<{ success: boolean, error?: string }> {
+export async function updateMembershipType(
+  typeData: MembershipType,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('update-membership-type', typeData);
   } catch (error) {
@@ -285,7 +340,9 @@ export async function updateMembershipType(typeData: MembershipType): Promise<{ 
   }
 }
 
-export async function deleteMembershipType(id: number): Promise<{ success: boolean, error?: string }> {
+export async function deleteMembershipType(
+  id: number,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('delete-membership-type', id);
   } catch (error) {
@@ -316,7 +373,7 @@ export class IpcPaymentService {
       return [];
     }
   }
-  
+
   /**
    * 새 회원 추가
    */
@@ -333,7 +390,7 @@ export class IpcPaymentService {
       throw new Error('회원 추가 중 오류가 발생했습니다.');
     }
   }
-  
+
   /**
    * 회원 정보 업데이트
    */
@@ -350,7 +407,7 @@ export class IpcPaymentService {
       throw new Error('회원 정보 업데이트 중 오류가 발생했습니다.');
     }
   }
-  
+
   /**
    * 회원 삭제
    */
@@ -375,7 +432,7 @@ export class IpcPaymentService {
   static async deleteAll(): Promise<boolean> {
     try {
       // 메인 프로세스에 'delete-all-members' 라는 이름으로 요청을 보냅니다.
-      const response = await safeIpcRenderer?.invoke('delete-all-members'); 
+      const response = await safeIpcRenderer?.invoke('delete-all-members');
       if (response.success) {
         console.log('IPC: 모든 회원 삭제 완료');
         return true;
@@ -387,7 +444,7 @@ export class IpcPaymentService {
       throw new Error('모든 회원을 삭제하는 중 오류가 발생했습니다.');
     }
   }
-} 
+}
 
 // 다른 내보내기와 함께 이 함수도 추가
 export const getAllMembers = async () => {
@@ -398,11 +455,15 @@ export const getAllMembers = async () => {
     console.error('getAllMembers 오류:', error);
     return { success: false, error: error.message };
   }
-}; 
+};
 
 // --- 스태프 관련 함수 ---
 
-export async function getAllStaff(): Promise<{ success: boolean, data?: Staff[], error?: string }> {
+export async function getAllStaff(): Promise<{
+  success: boolean;
+  data?: Staff[];
+  error?: string;
+}> {
   try {
     return await safeIpcRenderer?.invoke('get-all-staff');
   } catch (error) {
@@ -411,7 +472,9 @@ export async function getAllStaff(): Promise<{ success: boolean, data?: Staff[],
   }
 }
 
-export async function getStaffById(id: number): Promise<{ success: boolean, data?: Staff, error?: string }> {
+export async function getStaffById(
+  id: number,
+): Promise<{ success: boolean; data?: Staff; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('get-staff-by-id', id);
   } catch (error) {
@@ -420,7 +483,9 @@ export async function getStaffById(id: number): Promise<{ success: boolean, data
   }
 }
 
-export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean, data?: number, error?: string }> {
+export async function addStaff(
+  staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<{ success: boolean; data?: number; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('add-staff', staff);
   } catch (error) {
@@ -429,7 +494,10 @@ export async function addStaff(staff: Omit<Staff, 'id' | 'createdAt' | 'updatedA
   }
 }
 
-export async function updateStaff(id: number, staff: Partial<Staff>): Promise<{ success: boolean, error?: string }> {
+export async function updateStaff(
+  id: number,
+  staff: Partial<Staff>,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('update-staff', id, staff);
   } catch (error) {
@@ -438,18 +506,24 @@ export async function updateStaff(id: number, staff: Partial<Staff>): Promise<{ 
   }
 }
 
-export async function deleteStaff(id: number): Promise<{ success: boolean, error?: string }> {
+export async function deleteStaff(
+  id: number,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('delete-staff', id);
   } catch (error) {
     console.error('스태프 삭제 IPC 오류:', error);
     return { success: false, error: '스태프 삭제 중 오류 발생' };
   }
-} 
+}
 
 // --- 락커 관련 함수 ---
 
-export async function getAllLockers(): Promise<{ success: boolean, data?: Locker[], error?: string }> {
+export async function getAllLockers(): Promise<{
+  success: boolean;
+  data?: Locker[];
+  error?: string;
+}> {
   try {
     return await safeIpcRenderer?.invoke('get-all-lockers');
   } catch (error) {
@@ -458,7 +532,9 @@ export async function getAllLockers(): Promise<{ success: boolean, data?: Locker
   }
 }
 
-export async function getLockerById(id: number): Promise<{ success: boolean, data?: Locker, error?: string }> {
+export async function getLockerById(
+  id: number,
+): Promise<{ success: boolean; data?: Locker; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('get-locker-by-id', id);
   } catch (error) {
@@ -467,7 +543,9 @@ export async function getLockerById(id: number): Promise<{ success: boolean, dat
   }
 }
 
-export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean, data?: number, error?: string }> {
+export async function addLocker(
+  locker: Omit<Locker, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<{ success: boolean; data?: number; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('add-locker', locker);
   } catch (error) {
@@ -476,7 +554,10 @@ export async function addLocker(locker: Omit<Locker, 'id' | 'createdAt' | 'updat
   }
 }
 
-export async function updateLocker(id: number, locker: Partial<Locker>): Promise<{ success: boolean, error?: string }> {
+export async function updateLocker(
+  id: number,
+  locker: Partial<Locker>,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('update-locker', id, locker);
   } catch (error) {
@@ -485,14 +566,16 @@ export async function updateLocker(id: number, locker: Partial<Locker>): Promise
   }
 }
 
-export async function deleteLocker(id: number): Promise<{ success: boolean, error?: string }> {
+export async function deleteLocker(
+  id: number,
+): Promise<{ success: boolean; error?: string }> {
   try {
     return await safeIpcRenderer?.invoke('delete-locker', id);
   } catch (error) {
     console.error('락커 삭제 IPC 오류:', error);
     return { success: false, error: '락커 삭제 중 오류 발생' };
   }
-} 
+}
 
 interface ApiResponse<T> {
   success: boolean;
@@ -500,26 +583,31 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-export const importMembersFromExcel = async (data: any[]): Promise<ApiResponse<{
-  successCount: number;
-  failedCount: number;
-  errors: string[];
-}>> => {
+export const importMembersFromExcel = async (
+  data: any[],
+): Promise<
+  ApiResponse<{
+    successCount: number;
+    failedCount: number;
+    errors: string[];
+  }>
+> => {
   try {
-    if (!safeIpcRenderer) throw new Error('이 기능은 Electron 환경에서만 동작합니다.');
+    if (!safeIpcRenderer)
+      throw new Error('이 기능은 Electron 환경에서만 동작합니다.');
     const result = await safeIpcRenderer.invoke('import-members-excel', data);
     return {
       success: true,
-      data: result
+      data: result,
     };
   } catch (error) {
     console.error('Excel 가져오기 오류:', error);
     return {
       success: false,
-      error: '회원 정보 가져오기 중 오류가 발생했습니다.'
+      error: '회원 정보 가져오기 중 오류가 발생했습니다.',
     };
   }
-}; 
+};
 
 export async function getMembersForAttendance() {
   try {
@@ -529,39 +617,51 @@ export async function getMembersForAttendance() {
   } catch (error) {
     return { success: false, error: '출석용 회원 목록 불러오기 실패' };
   }
-} 
+}
 
 // 특정 날짜의 출석 기록 조회
 export async function getAttendanceByDate(date: string) {
   try {
-    // 해당 날짜의 출석 기록을 불러오는 IPC 호출 
-    const response = await safeIpcRenderer?.invoke('get-attendance-by-date', date);
+    // 해당 날짜의 출석 기록을 불러오는 IPC 호출
+    const response = await safeIpcRenderer?.invoke(
+      'get-attendance-by-date',
+      date,
+    );
     return response;
   } catch (error) {
     console.error('출석 기록 조회 IPC 오류:', error);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: '출석 기록 불러오기 실패',
-      data: [] // 기본 빈 배열 반환
+      data: [], // 기본 빈 배열 반환
     };
   }
-} 
+}
 
 // 페이지네이션된 회원 목록 조회
 export async function getMembersWithPagination(
   page: number,
   pageSize: number,
-  options?: MemberFilter
-): Promise<{ success: boolean, data?: { members: Member[]; total: number }, error?: string }> {
+  options?: MemberFilter,
+): Promise<{
+  success: boolean;
+  data?: { members: Member[]; total: number };
+  error?: string;
+}> {
   try {
-    const response = await safeIpcRenderer?.invoke('get-members-pagination', page, pageSize, options);
+    const response = await safeIpcRenderer?.invoke(
+      'get-members-pagination',
+      page,
+      pageSize,
+      options,
+    );
     return response;
   } catch (error) {
     console.error('페이지네이션 회원 목록 조회 IPC 오류:', error);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: '회원 목록 페이지네이션 조회 중 오류 발생',
-      data: { members: [], total: 0 }
+      data: { members: [], total: 0 },
     };
   }
-} 
+}

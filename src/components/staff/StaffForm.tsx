@@ -1,5 +1,10 @@
 import React from 'react';
-import { Staff, StaffPosition, StaffStatus, StaffPermissions } from '../../models/types';
+import {
+  Staff,
+  StaffPosition,
+  StaffStatus,
+  StaffPermissions,
+} from '../../models/types';
 import StaffPermissionsForm from './StaffPermissionsForm';
 
 interface StaffFormProps {
@@ -7,7 +12,11 @@ interface StaffFormProps {
   errors: Record<string, string>;
   isViewMode: boolean;
   isSubmitting: boolean;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  handleChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => void;
   handlePermissionChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   setPermissionPreset: (preset: string) => void;
 }
@@ -26,14 +35,18 @@ const StaffForm: React.FC<StaffFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 직원 기본 정보 */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-700 border-b pb-2">기본 정보</h3>
-          
+          <h3 className="text-lg font-medium text-gray-700 border-b pb-2">
+            기본 정보
+          </h3>
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               이름 <span className="text-red-500">*</span>
             </label>
             {isViewMode ? (
-              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.name}</div>
+              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+                {formData.name}
+              </div>
             ) : (
               <input
                 type="text"
@@ -49,13 +62,15 @@ const StaffForm: React.FC<StaffFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.name}</p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               직책 <span className="text-red-500">*</span>
             </label>
             {isViewMode ? (
-              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.position}</div>
+              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+                {formData.position}
+              </div>
             ) : (
               <select
                 name="position"
@@ -76,11 +91,15 @@ const StaffForm: React.FC<StaffFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.position}</p>
             )}
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700">전화번호</label>
+            <label className="block text-sm font-medium text-gray-700">
+              전화번호
+            </label>
             {isViewMode ? (
-              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.phone || '-'}</div>
+              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+                {formData.phone || '-'}
+              </div>
             ) : (
               <input
                 type="tel"
@@ -96,11 +115,15 @@ const StaffForm: React.FC<StaffFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
             )}
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700">이메일</label>
+            <label className="block text-sm font-medium text-gray-700">
+              이메일
+            </label>
             {isViewMode ? (
-              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.email || '-'}</div>
+              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+                {formData.email || '-'}
+              </div>
             ) : (
               <input
                 type="email"
@@ -116,13 +139,15 @@ const StaffForm: React.FC<StaffFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               입사일 <span className="text-red-500">*</span>
             </label>
             {isViewMode ? (
-              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.hireDate}</div>
+              <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+                {formData.hireDate}
+              </div>
             ) : (
               <input
                 type="date"
@@ -138,7 +163,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.hireDate}</p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               상태 <span className="text-red-500">*</span>
@@ -161,9 +186,11 @@ const StaffForm: React.FC<StaffFormProps> = ({
               </select>
             )}
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700">메모</label>
+            <label className="block text-sm font-medium text-gray-700">
+              메모
+            </label>
             {isViewMode ? (
               <div className="p-2 border rounded bg-gray-50 min-h-[100px] whitespace-pre-wrap">
                 {formData.notes || '-'}
@@ -179,9 +206,9 @@ const StaffForm: React.FC<StaffFormProps> = ({
             )}
           </div>
         </div>
-        
+
         {/* 권한 설정은 StaffPermissionsForm 컴포넌트로 대체 */}
-        <StaffPermissionsForm 
+        <StaffPermissionsForm
           permissions={formData.permissions as StaffPermissions}
           isViewMode={isViewMode}
           isSubmitting={isSubmitting}
@@ -193,4 +220,4 @@ const StaffForm: React.FC<StaffFormProps> = ({
   );
 };
 
-export default StaffForm; 
+export default StaffForm;

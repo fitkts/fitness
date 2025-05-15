@@ -1,4 +1,8 @@
-import { validatePhoneNumber, validateName, validateMembershipType } from '../../utils/validation';
+import {
+  validatePhoneNumber,
+  validateName,
+  validateMembershipType,
+} from '../../utils/validation';
 
 describe('회원 정보 검증 테스트', () => {
   describe('전화번호 검증', () => {
@@ -41,4 +45,4 @@ describe('회원 정보 검증 테스트', () => {
       expect(validateMembershipType('일개월')).toBe(false);
     });
   });
-}); 
+});

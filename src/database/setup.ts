@@ -26,7 +26,7 @@ function getDbPath(): string {
     } else {
       // 개발 환경에서는 임시 경로 사용
       let tempPath = '';
-      
+
       if (process.env.NODE_ENV === 'development') {
         tempPath = path.join(__dirname, '../../temp', 'fitness.db');
       } else {
@@ -36,8 +36,11 @@ function getDbPath(): string {
         const basePath = appData || home || __dirname;
         tempPath = path.join(basePath, 'fitness.db');
       }
-      
-      electronLog.warn('Electron app 객체가 준비되지 않음. 임시 경로 사용:', tempPath);
+
+      electronLog.warn(
+        'Electron app 객체가 준비되지 않음. 임시 경로 사용:',
+        tempPath,
+      );
       return tempPath;
     }
   } catch (error) {
@@ -59,22 +62,22 @@ export async function setupDatabase(): Promise<void> {
 
     const dbPath = getDbPath();
     electronLog.info('데이터베이스 경로:', dbPath);
-    
+
     // 데이터베이스 디렉토리 확인
     const dbDir = path.dirname(dbPath);
     await fs.ensureDir(dbDir);
-    
+
     // 데이터베이스 파일 생성 및 연결
     try {
       // 옵션 객체를 먼저 정의
       const dbOptions: any = {
-        fileMustExist: false
+        fileMustExist: false,
       };
       // 개발 모드일 때만 verbose 옵션 추가
       if (process.env.NODE_ENV === 'development') {
         dbOptions.verbose = console.log;
       }
-      
+
       try {
         // 수정된 옵션 객체로 데이터베이스 생성
         if (Database) {
@@ -84,7 +87,10 @@ export async function setupDatabase(): Promise<void> {
           throw new Error('데이터베이스 모듈이 로드되지 않았습니다.');
         }
       } catch (connError) {
-        electronLog.error('데이터베이스 연결 실패. 경로 또는 모듈 문제:', connError);
+        electronLog.error(
+          '데이터베이스 연결 실패. 경로 또는 모듈 문제:',
+          connError,
+        );
         throw connError;
       }
     } catch (dbError) {
@@ -246,13 +252,17 @@ export async function setupDatabase(): Promise<void> {
           hasCorrectMembershipTypesSchema = true;
           electronLog.info('membership_types 테이블의 스키마가 정상입니다.');
         } catch (error) {
-          electronLog.info('membership_types 테이블의 스키마를 수정해야 합니다.');
+          electronLog.info(
+            'membership_types 테이블의 스키마를 수정해야 합니다.',
+          );
         }
 
         // 멤버십 타입 테이블이 정상이 아니면 삭제하고 다시 생성
         if (!hasCorrectMembershipTypesSchema) {
           try {
-            electronLog.info('membership_types 테이블을 삭제하고 다시 생성합니다.');
+            electronLog.info(
+              'membership_types 테이블을 삭제하고 다시 생성합니다.',
+            );
             db.exec(`DROP TABLE IF EXISTS membership_types;`);
           } catch (error) {
             electronLog.error('membership_types 테이블 삭제 실패:', error);
@@ -338,11 +348,11 @@ export function getDatabase(): any {
         prepare: () => ({
           run: () => ({ changes: 0, lastInsertRowid: 0 }),
           get: () => null,
-          all: () => []
+          all: () => [],
         }),
         exec: () => {},
         transaction: (fn: any) => fn,
-        close: () => {}
+        close: () => {},
       };
     } else {
       throw new Error('데이터베이스가 초기화되지 않았습니다.');
@@ -361,4 +371,4 @@ export function closeDatabase(): void {
       electronLog.error('데이터베이스 연결 종료 오류:', error);
     }
   }
-} 
+}

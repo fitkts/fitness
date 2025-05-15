@@ -36,7 +36,7 @@ const commonConfig = {
           loader: 'ts-loader',
           options: {
             transpileOnly: true,
-          }
+          },
         },
       },
       {
@@ -58,7 +58,7 @@ const mainConfig = {
   target: 'electron-main',
   externalsPresets: { node: true },
   externals: {
-    'better-sqlite3': 'commonjs2 better-sqlite3'
+    'better-sqlite3': 'commonjs2 better-sqlite3',
   },
   output: {
     path: path.resolve(__dirname, 'dist/main'),
@@ -81,6 +81,7 @@ const rendererConfig = {
     path: path.resolve(__dirname, 'dist/renderer'),
     filename: 'renderer.js',
     publicPath: './',
+    globalObject: 'this',
   },
   devServer: {
     static: {
@@ -99,7 +100,7 @@ const rendererConfig = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './src/renderer/index.html',
-      filename: 'index.html'
+      filename: 'index.html',
     }),
   ],
   ignoreWarnings: [
@@ -110,4 +111,15 @@ const rendererConfig = {
   ],
 };
 
-module.exports = [mainConfig, rendererConfig]; 
+// Preload 스크립트 설정
+const preloadConfig = {
+  ...commonConfig,
+  entry: './src/main/preload.ts', // preload.ts 파일 경로
+  target: 'electron-preload',
+  output: {
+    path: path.resolve(__dirname, 'dist/main'), // main.js와 같은 디렉토리에 preload.js로 저장
+    filename: 'preload.js',
+  },
+};
+
+module.exports = [mainConfig, rendererConfig, preloadConfig];

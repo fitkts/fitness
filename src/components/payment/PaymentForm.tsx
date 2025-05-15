@@ -1,5 +1,10 @@
 import React from 'react';
-import { Payment, MembershipTypeOption, PaymentMethod, PaymentStatus } from '../../types/payment';
+import {
+  Payment,
+  MembershipTypeOption,
+  PaymentMethod,
+  PaymentStatus,
+} from '../../types/payment';
 import { PaymentOption } from '../../types/payment';
 import { formatCurrency } from './PaymentUtils';
 import MemberSearchInput from './MemberSearchInput';
@@ -17,7 +22,11 @@ interface PaymentFormProps {
   isSubmitting: boolean;
   onMemberSearchChange: (value: string) => void;
   onSelectMember: (id: number, name: string) => void;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  handleChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => void;
   onOpenMembershipTypeModal?: () => void;
 }
 
@@ -36,7 +45,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 }) => {
   return (
     <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-      <MemberSearchInput 
+      <MemberSearchInput
         memberSearch={memberSearch}
         filteredMembers={filteredMembers}
         isViewMode={isViewMode}
@@ -53,16 +62,28 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         isViewMode={isViewMode}
         isSubmitting={isSubmitting}
         error={errors.membershipType}
-        handleChange={(e) => handleChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>)}
+        handleChange={(e) =>
+          handleChange(
+            e as React.ChangeEvent<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >,
+          )
+        }
         onOpenMembershipTypeModal={onOpenMembershipTypeModal}
       />
 
-      <AmountInput 
+      <AmountInput
         amount={formData.amount}
         isViewMode={isViewMode}
         isSubmitting={isSubmitting}
         error={errors.amount}
-        handleChange={(e) => handleChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>)}
+        handleChange={(e) =>
+          handleChange(
+            e as React.ChangeEvent<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >,
+          )
+        }
       />
 
       <div className="space-y-2">
@@ -70,7 +91,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           결제 방법 <span className="text-red-500">*</span>
         </label>
         {isViewMode ? (
-          <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.paymentMethod}</div>
+          <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+            {formData.paymentMethod}
+          </div>
         ) : (
           <select
             name="paymentMethod"
@@ -80,8 +103,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             disabled={isSubmitting}
             required
           >
-            {Object.values(PaymentMethod).map(method => (
-              <option key={method} value={method}>{method}</option>
+            {Object.values(PaymentMethod).map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
             ))}
           </select>
         )}
@@ -98,7 +123,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         isSubmitting={isSubmitting}
         error={errors.paymentDate}
         required={true}
-        handleChange={(e) => handleChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>)}
+        handleChange={(e) =>
+          handleChange(
+            e as React.ChangeEvent<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >,
+          )
+        }
       />
 
       <PaymentDatePicker
@@ -109,14 +140,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         isSubmitting={isSubmitting}
         error={errors.startDate}
         required={true}
-        handleChange={(e) => handleChange(e as React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>)}
+        handleChange={(e) =>
+          handleChange(
+            e as React.ChangeEvent<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >,
+          )
+        }
       />
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           종료일
         </label>
-        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.endDate || '-'}</div>
+        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+          {formData.endDate || '-'}
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -124,7 +163,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           상태 <span className="text-red-500">*</span>
         </label>
         {isViewMode ? (
-          <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formData.status}</div>
+          <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+            {formData.status}
+          </div>
         ) : (
           <select
             name="status"
@@ -134,8 +175,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             disabled={isSubmitting}
             required
           >
-            {Object.values(PaymentStatus).map(status => (
-              <option key={status} value={status}>{status}</option>
+            {Object.values(PaymentStatus).map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
             ))}
           </select>
         )}
@@ -145,9 +188,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          메모
-        </label>
+        <label className="block text-sm font-medium text-gray-700">메모</label>
         {isViewMode ? (
           <div className="p-2 border rounded bg-gray-50 min-h-[60px] whitespace-pre-wrap">
             {formData.notes || '-'}
@@ -166,4 +207,4 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   );
 };
 
-export default PaymentForm; 
+export default PaymentForm;

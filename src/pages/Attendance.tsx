@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, CheckCircle, User, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from 'date-fns';
+import {
+  Calendar as CalendarIcon,
+  CheckCircle,
+  User,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+  addMonths,
+  subMonths,
+} from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast, ToastType } from '../contexts/ToastContext';
-import { getMembersForAttendance, getAttendanceByDate } from '../database/ipcService';
-
-interface AttendanceRecord {
-  id: number;
-  memberId: number;
-  memberName: string;
-  visitDate: string;
-}
+import {
+  getMembersForAttendance,
+  getAttendanceByDate,
+} from '../database/ipcService';
+import { AttendanceRecord } from '../types';
 
 interface Member {
   id: number;
@@ -21,7 +32,9 @@ const Attendance: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [members, setMembers] = useState<Member[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    AttendanceRecord[]
+  >([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const { showToast } = useToast();
@@ -31,8 +44,10 @@ const Attendance: React.FC = () => {
     const loadAttendanceData = async () => {
       try {
         const memberRes = await getMembersForAttendance();
-        const attendanceRes = await getAttendanceByDate(format(selectedDate, 'yyyy-MM-dd'));
-        
+        const attendanceRes = await getAttendanceByDate(
+          format(selectedDate, 'yyyy-MM-dd'),
+        );
+
         if (memberRes.success && attendanceRes.success) {
           setMembers(memberRes.data);
           setAttendanceRecords(attendanceRes.data);
@@ -54,9 +69,9 @@ const Attendance: React.FC = () => {
       setFilteredMembers(members);
     } else {
       setFilteredMembers(
-        members.filter(member => 
-          member.name.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+        members.filter((member) =>
+          member.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        ),
       );
     }
   }, [searchTerm, members]);
@@ -65,7 +80,7 @@ const Attendance: React.FC = () => {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  
+
   // 월 이동 핸들러
   const previousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -74,49 +89,75 @@ const Attendance: React.FC = () => {
   const hasAttendance = (date: Date, memberId: number) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     return attendanceRecords.some(
-      record => record.visitDate === dateStr && record.memberId === memberId
+      (record) => record.visitDate === dateStr && record.memberId === memberId,
     );
   };
 
   // 출석 체크 핸들러
-  const handleAttendanceCheck = async (memberId: number, memberName: string) => {
+  const handleAttendanceCheck = async (
+    memberId: number,
+    memberName: string,
+  ) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const existingRecord = attendanceRecords.find(
-      record => record.visitDate === dateStr && record.memberId === memberId
+      (record) => record.visitDate === dateStr && record.memberId === memberId,
     );
 
     try {
       if (existingRecord) {
-        // TODO: 실제 IPC 통신으로 출석 기록 삭제
-        // const response = await deleteAttendanceRecord(existingRecord.id);
-        // if (response.success) {
-        //   setAttendanceRecords(attendanceRecords.filter(record => record.id !== existingRecord.id));
-        //   showToast('info', `${memberName}님 출석이 취소되었습니다.`);
-        // } else {
-        //   showToast('error', '출석 취소 실패: ' + (response.error || '알 수 없는 오류'));
-        // }
-        // 임시 로직
-        setAttendanceRecords(attendanceRecords.filter(record => record.id !== existingRecord.id));
-        showToast('info', `${memberName}님 임시 출석이 취소되었습니다.`);
+        if (window.api && window.api.deleteAttendanceRecord) {
+          const response = await window.api.deleteAttendanceRecord(
+            existingRecord.id,
+          );
+          if (response.success) {
+            setAttendanceRecords((prevRecords) =>
+              prevRecords.filter((record) => record.id !== existingRecord.id),
+            );
+            showToast('info', `${memberName}님 출석이 취소되었습니다.`);
+          } else {
+            showToast(
+              'error',
+              '출석 취소 실패: ' + (response.error || '알 수 없는 오류'),
+            );
+          }
+        } else {
+          showToast('error', '출석 취소 API를 사용할 수 없습니다.');
+        }
       } else {
-        // TODO: 실제 IPC 통신으로 출석 기록 추가
-        // const newRecordData = { memberId, memberName, visitDate: dateStr };
-        // const response = await addAttendanceRecord(newRecordData);
-        // if (response.success && response.data) {
-        //   setAttendanceRecords([...attendanceRecords, response.data]);
-        //   showToast('success', `${memberName}님 출석 처리되었습니다.`);
-        // } else {
-        //   showToast('error', '출석 처리 실패: ' + (response.error || '알 수 없는 오류'));
-        // }
-        // 임시 로직
-        const newRecord: AttendanceRecord = {
-          id: Date.now(), // 임시 ID
-          memberId,
-          memberName,
-          visitDate: dateStr,
-        };
-        setAttendanceRecords([...attendanceRecords, newRecord]);
-        showToast('success', `${memberName}님 임시 출석 처리되었습니다.`);
+        if (window.api && window.api.addAttendanceRecord) {
+          const newRecordData = { memberId, visitDate: dateStr, memberName }; // memberName도 함께 전달
+          const response = await window.api.addAttendanceRecord(newRecordData);
+          if (response.success && response.data) {
+            setAttendanceRecords((prevRecords) => [
+              ...prevRecords,
+              response.data!,
+            ]);
+            showToast(
+              'success',
+              `${response.data.memberName || memberName}님 출석 처리되었습니다.`,
+            );
+          } else if (response.message) {
+            // 이미 출석 처리된 경우 (main.ts에서 message 반환 시)
+            showToast('info', response.message);
+            // 이미 존재하는 기록을 상태에 추가할 필요가 있다면 여기서 추가 (response.data가 있을 경우)
+            if (
+              response.data &&
+              !attendanceRecords.find((r) => r.id === response.data!.id)
+            ) {
+              setAttendanceRecords((prevRecords) => [
+                ...prevRecords,
+                response.data!,
+              ]);
+            }
+          } else {
+            showToast(
+              'error',
+              '출석 처리 실패: ' + (response.error || '알 수 없는 오류'),
+            );
+          }
+        } else {
+          showToast('error', '출석 처리 API를 사용할 수 없습니다.');
+        }
       }
     } catch (error) {
       console.error('출석 처리 오류:', error);
@@ -127,7 +168,8 @@ const Attendance: React.FC = () => {
   // 해당 날짜의 출석 회원 수 확인
   const getAttendanceCount = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return attendanceRecords.filter(record => record.visitDate === dateStr).length;
+    return attendanceRecords.filter((record) => record.visitDate === dateStr)
+      .length;
   };
 
   return (
@@ -142,13 +184,13 @@ const Attendance: React.FC = () => {
               {format(currentMonth, 'yyyy년 MM월', { locale: ko })}
             </h2>
             <div className="flex space-x-2">
-              <button 
+              <button
                 onClick={previousMonth}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
                 <ChevronLeft size={20} />
               </button>
-              <button 
+              <button
                 onClick={nextMonth}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
@@ -159,7 +201,7 @@ const Attendance: React.FC = () => {
 
           {/* 요일 헤더 */}
           <div className="grid grid-cols-7 text-center border-b mb-2">
-            {['일', '월', '화', '수', '목', '금', '토'].map(day => (
+            {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
               <div key={day} className="py-2 font-medium">
                 {day}
               </div>
@@ -170,26 +212,35 @@ const Attendance: React.FC = () => {
           <div className="grid grid-cols-7 gap-1">
             {/* 시작 요일에 맞게 빈 셀 추가 */}
             {Array.from({ length: getDay(monthStart) }).map((_, index) => (
-              <div key={`empty-${index}`} className="h-24 p-2 border rounded-md"></div>
+              <div
+                key={`empty-${index}`}
+                className="h-24 p-2 border rounded-md"
+              ></div>
             ))}
 
             {/* 달력 날짜 */}
-            {monthDays.map(day => {
+            {monthDays.map((day) => {
               const formattedDate = format(day, 'yyyy-MM-dd');
-              const isToday = format(new Date(), 'yyyy-MM-dd') === formattedDate;
-              const isSelected = format(selectedDate, 'yyyy-MM-dd') === formattedDate;
+              const isToday =
+                format(new Date(), 'yyyy-MM-dd') === formattedDate;
+              const isSelected =
+                format(selectedDate, 'yyyy-MM-dd') === formattedDate;
               const attendanceCount = getAttendanceCount(day);
 
               return (
-                <div 
+                <div
                   key={formattedDate}
                   onClick={() => setSelectedDate(day)}
                   className={`h-24 p-2 border rounded-md overflow-hidden hover:bg-gray-50 cursor-pointer ${
-                    isSelected ? 'ring-2 ring-primary-500 border-primary-300' : ''
+                    isSelected
+                      ? 'ring-2 ring-primary-500 border-primary-300'
+                      : ''
                   } ${isToday ? 'bg-blue-50' : ''}`}
                 >
                   <div className="flex justify-between items-start">
-                    <div className={`font-semibold ${getDay(day) === 0 ? 'text-red-500' : ''}`}>
+                    <div
+                      className={`font-semibold ${getDay(day) === 0 ? 'text-red-500' : ''}`}
+                    >
                       {format(day, 'd')}
                     </div>
                     {attendanceCount > 0 && (
@@ -208,7 +259,8 @@ const Attendance: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold mb-2">
-              출석 체크 - {format(selectedDate, 'yyyy년 MM월 dd일 (eee)', { locale: ko })}
+              출석 체크 -{' '}
+              {format(selectedDate, 'yyyy년 MM월 dd일 (eee)', { locale: ko })}
             </h2>
             <div className="relative">
               <input
@@ -216,7 +268,7 @@ const Attendance: React.FC = () => {
                 placeholder="회원 검색..."
                 className="input pl-10"
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User size={18} className="text-gray-400" />
@@ -226,16 +278,22 @@ const Attendance: React.FC = () => {
 
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {filteredMembers.length === 0 ? (
-              <div className="text-center text-gray-500 p-4">회원을 찾을 수 없습니다</div>
+              <div className="text-center text-gray-500 p-4">
+                회원을 찾을 수 없습니다
+              </div>
             ) : (
-              filteredMembers.map(member => {
+              filteredMembers.map((member) => {
                 const isChecked = hasAttendance(selectedDate, member.id);
                 return (
-                  <div 
+                  <div
                     key={member.id}
-                    onClick={() => handleAttendanceCheck(member.id, member.name)}
+                    onClick={() =>
+                      handleAttendanceCheck(member.id, member.name)
+                    }
                     className={`flex items-center justify-between p-3 rounded-md cursor-pointer hover:bg-gray-50 ${
-                      isChecked ? 'bg-green-50 border border-green-200' : 'border'
+                      isChecked
+                        ? 'bg-green-50 border border-green-200'
+                        : 'border'
                     }`}
                   >
                     <div className="flex items-center">
@@ -264,16 +322,24 @@ const Attendance: React.FC = () => {
         <h2 className="text-lg font-semibold mb-4">
           {format(selectedDate, 'yyyy년 MM월 dd일', { locale: ko })} 출석 기록
         </h2>
-        {attendanceRecords.filter(record => 
-          record.visitDate === format(selectedDate, 'yyyy-MM-dd')
+        {attendanceRecords.filter(
+          (record) => record.visitDate === format(selectedDate, 'yyyy-MM-dd'),
         ).length === 0 ? (
-          <div className="text-center text-gray-500 p-4">출석 기록이 없습니다</div>
+          <div className="text-center text-gray-500 p-4">
+            출석 기록이 없습니다
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {attendanceRecords
-              .filter(record => record.visitDate === format(selectedDate, 'yyyy-MM-dd'))
-              .map(record => (
-                <div key={record.id} className="flex items-center p-3 bg-gray-50 rounded-md">
+              .filter(
+                (record) =>
+                  record.visitDate === format(selectedDate, 'yyyy-MM-dd'),
+              )
+              .map((record) => (
+                <div
+                  key={record.id}
+                  className="flex items-center p-3 bg-gray-50 rounded-md"
+                >
                   <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3">
                     {record.memberName.charAt(0)}
                   </div>
@@ -281,12 +347,14 @@ const Attendance: React.FC = () => {
                     <div className="font-medium">{record.memberName}</div>
                     <div className="text-xs text-gray-500">
                       <CalendarIcon size={12} className="inline mr-1" />
-                      {format(new Date(record.visitDate), 'HH:mm', { locale: ko })} 출석
+                      {format(new Date(record.visitDate), 'HH:mm', {
+                        locale: ko,
+                      })}{' '}
+                      출석
                     </div>
                   </div>
                 </div>
-              ))
-            }
+              ))}
           </div>
         )}
       </div>
@@ -294,4 +362,4 @@ const Attendance: React.FC = () => {
   );
 };
 
-export default Attendance; 
+export default Attendance;

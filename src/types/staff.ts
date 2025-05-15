@@ -3,7 +3,7 @@ import { z } from 'zod';
 // 직원 상태 enum
 export enum StaffStatus {
   ACTIVE = 'active',
-  INACTIVE = 'inactive'
+  INACTIVE = 'inactive',
 }
 
 // 권한 타입
@@ -25,10 +25,14 @@ export const staffSchema = z.object({
   name: z.string().min(1, { message: '이름은 필수입니다' }),
   position: z.string().min(1, { message: '직책은 필수입니다' }),
   phone: z.string().optional(),
-  email: z.string().email({ message: '유효한 이메일을 입력하세요' }).optional().or(z.literal('')),
+  email: z
+    .string()
+    .email({ message: '유효한 이메일을 입력하세요' })
+    .optional()
+    .or(z.literal('')),
   hireDate: z.string().min(1, { message: '입사일은 필수입니다' }),
   status: z.nativeEnum(StaffStatus, {
-    errorMap: () => ({ message: '유효한 상태를 선택해주세요' })
+    errorMap: () => ({ message: '유효한 상태를 선택해주세요' }),
   }),
   permissions: z.object({
     dashboard: z.boolean(),
@@ -56,7 +60,7 @@ export enum StaffPosition {
   TRAINER = '트레이너',
   PART_TIME = '아르바이트',
   GENERAL = '일반 직원',
-  INTERN = '인턴'
+  INTERN = '인턴',
 }
 
 // 직원 옵션 타입 (UI에서 사용)
@@ -73,4 +77,4 @@ export interface StaffFilter {
   position?: string;
   sortKey?: keyof Staff;
   sortDirection?: 'ascending' | 'descending' | null;
-} 
+}

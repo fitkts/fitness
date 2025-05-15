@@ -12,7 +12,9 @@ function mapMembershipTypeToModel(row: any): MembershipType {
     isActive: !!row.is_active, // SQLite는 BOOLEAN을 0 또는 1로 저장
     description: row.description,
     maxUses: row.max_uses,
-    availableFacilities: row.available_facilities ? JSON.parse(row.available_facilities) : undefined, // JSON 문자열 파싱
+    availableFacilities: row.available_facilities
+      ? JSON.parse(row.available_facilities)
+      : undefined, // JSON 문자열 파싱
   };
 }
 
@@ -35,7 +37,9 @@ export async function getAllMembershipTypes(): Promise<MembershipType[]> {
 }
 
 // ID로 이용권 종류 조회
-export async function getMembershipTypeById(id: number): Promise<MembershipType | null> {
+export async function getMembershipTypeById(
+  id: number,
+): Promise<MembershipType | null> {
   try {
     const db = getDatabase();
     const query = `
@@ -53,7 +57,9 @@ export async function getMembershipTypeById(id: number): Promise<MembershipType 
 }
 
 // 새 이용권 종류 추가
-export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): Promise<number> {
+export async function addMembershipType(
+  typeData: Omit<MembershipType, 'id'>,
+): Promise<number> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
@@ -69,9 +75,11 @@ export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): P
       typeData.isActive ? 1 : 0, // Boolean을 1 또는 0으로 변환
       typeData.description || null,
       typeData.maxUses || null,
-      typeData.availableFacilities ? JSON.stringify(typeData.availableFacilities) : null, // 배열을 JSON 문자열로 변환
+      typeData.availableFacilities
+        ? JSON.stringify(typeData.availableFacilities)
+        : null, // 배열을 JSON 문자열로 변환
       now,
-      now
+      now,
     );
     return result.lastInsertRowid as number;
   } catch (error) {
@@ -81,21 +89,48 @@ export async function addMembershipType(typeData: Omit<MembershipType, 'id'>): P
 }
 
 // 이용권 종류 업데이트
-export async function updateMembershipType(id: number, typeData: Partial<Omit<MembershipType, 'id'>>): Promise<boolean> {
+export async function updateMembershipType(
+  id: number,
+  typeData: Partial<Omit<MembershipType, 'id'>>,
+): Promise<boolean> {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
     const updates: string[] = [];
     const values: any[] = [];
 
-    if ('name' in typeData) { updates.push('name = ?'); values.push(typeData.name); }
-    if ('durationMonths' in typeData) { updates.push('duration_months = ?'); values.push(typeData.durationMonths); }
-    if ('price' in typeData) { updates.push('price = ?'); values.push(typeData.price); }
-    if ('isActive' in typeData) { updates.push('is_active = ?'); values.push(typeData.isActive ? 1 : 0); }
-    if ('description' in typeData) { updates.push('description = ?'); values.push(typeData.description || null); }
-    if ('maxUses' in typeData) { updates.push('max_uses = ?'); values.push(typeData.maxUses || null); }
-    if ('availableFacilities' in typeData) { updates.push('available_facilities = ?'); values.push(typeData.availableFacilities ? JSON.stringify(typeData.availableFacilities) : null); }
-
+    if ('name' in typeData) {
+      updates.push('name = ?');
+      values.push(typeData.name);
+    }
+    if ('durationMonths' in typeData) {
+      updates.push('duration_months = ?');
+      values.push(typeData.durationMonths);
+    }
+    if ('price' in typeData) {
+      updates.push('price = ?');
+      values.push(typeData.price);
+    }
+    if ('isActive' in typeData) {
+      updates.push('is_active = ?');
+      values.push(typeData.isActive ? 1 : 0);
+    }
+    if ('description' in typeData) {
+      updates.push('description = ?');
+      values.push(typeData.description || null);
+    }
+    if ('maxUses' in typeData) {
+      updates.push('max_uses = ?');
+      values.push(typeData.maxUses || null);
+    }
+    if ('availableFacilities' in typeData) {
+      updates.push('available_facilities = ?');
+      values.push(
+        typeData.availableFacilities
+          ? JSON.stringify(typeData.availableFacilities)
+          : null,
+      );
+    }
 
     if (updates.length === 0) {
       return false; // 변경할 내용 없음
@@ -125,4 +160,4 @@ export async function deleteMembershipType(id: number): Promise<boolean> {
     electronLog.error('이용권 종류 삭제 오류:', error);
     throw error;
   }
-} 
+}

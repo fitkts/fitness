@@ -11,7 +11,13 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
-import { Users, Calendar, TrendingUp, CreditCard, AlertCircle } from 'lucide-react';
+import {
+  Users,
+  Calendar,
+  TrendingUp,
+  CreditCard,
+  AlertCircle,
+} from 'lucide-react';
 import { getDashboardStats } from '../database/ipcService';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -26,7 +32,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
 );
 
 // 차트 색상 팔레트
@@ -38,7 +44,7 @@ const colorPalette = [
   'rgba(45, 212, 191, 0.7)',
   'rgba(34, 197, 94, 0.7)',
   'rgba(168, 85, 247, 0.7)',
-  'rgba(236, 72, 153, 0.7)'
+  'rgba(236, 72, 153, 0.7)',
 ];
 
 const Dashboard: React.FC = () => {
@@ -54,18 +60,21 @@ const Dashboard: React.FC = () => {
     monthlyAttendance: [] as { month: string; count: number }[],
     recentActivities: {
       recentMembers: [] as { id: number; name: string; joinDate: string }[],
-      recentAttendance: [] as { id: number; name: string; visitDate: string }[]
-    }
+      recentAttendance: [] as { id: number; name: string; visitDate: string }[],
+    },
   });
 
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
-      
+
       try {
         const dashboardStats = await getDashboardStats();
-        if (dashboardStats && typeof dashboardStats.totalMembers !== 'undefined') {
+        if (
+          dashboardStats &&
+          typeof dashboardStats.totalMembers !== 'undefined'
+        ) {
           setStats(dashboardStats);
         } else {
           showToast('error', '대시보드 통계 데이터를 불러오는데 실패했습니다.');
@@ -77,17 +86,17 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchDashboardData();
   }, [showToast]);
 
   // 방문 차트 데이터
   const attendanceData = {
-    labels: stats.monthlyAttendance.map(item => item.month),
+    labels: stats.monthlyAttendance.map((item) => item.month),
     datasets: [
       {
         label: '월별 방문',
-        data: stats.monthlyAttendance.map(item => item.count),
+        data: stats.monthlyAttendance.map((item) => item.count),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.5)',
         tension: 0.3,
@@ -97,12 +106,15 @@ const Dashboard: React.FC = () => {
 
   // 회원권 차트 데이터
   const membershipData = {
-    labels: stats.membershipDistribution.map(item => item.type),
+    labels: stats.membershipDistribution.map((item) => item.type),
     datasets: [
       {
         label: '회원권 종류',
-        data: stats.membershipDistribution.map(item => item.count),
-        backgroundColor: colorPalette.slice(0, stats.membershipDistribution.length),
+        data: stats.membershipDistribution.map((item) => item.count),
+        backgroundColor: colorPalette.slice(
+          0,
+          stats.membershipDistribution.length,
+        ),
         borderWidth: 1,
       },
     ],
@@ -133,7 +145,7 @@ const Dashboard: React.FC = () => {
     title: string,
     value: number | string,
     icon: React.ReactNode,
-    colorClass: string
+    colorClass: string,
   ) => (
     <div className="bg-white rounded-lg shadow p-4 w-full min-w-0">
       <div className="flex items-center">
@@ -151,7 +163,7 @@ const Dashboard: React.FC = () => {
   // 최근 활동 항목 렌더링
   const renderRecentActivity = () => {
     const { recentMembers, recentAttendance } = stats.recentActivities;
-    
+
     if (recentMembers.length === 0 && recentAttendance.length === 0) {
       return (
         <div className="text-center p-6 text-gray-500">
@@ -160,33 +172,45 @@ const Dashboard: React.FC = () => {
         </div>
       );
     }
-    
+
     return (
       <div className="space-y-3">
         {recentMembers.map((member, index) => (
-          <div key={`member-${member.id}-${index}`} className="flex items-center p-3 border-b">
+          <div
+            key={`member-${member.id}-${index}`}
+            className="flex items-center p-3 border-b"
+          >
             <div className="bg-blue-100 text-blue-500 p-2 rounded-full mr-4">
               <Users size={16} />
             </div>
             <div>
               <p className="text-sm">
-                <span className="font-medium">{member.name}</span> 회원이 등록되었습니다.
+                <span className="font-medium">{member.name}</span> 회원이
+                등록되었습니다.
               </p>
-              <p className="text-xs text-gray-500">{formatTimeAgo(member.joinDate)}</p>
+              <p className="text-xs text-gray-500">
+                {formatTimeAgo(member.joinDate)}
+              </p>
             </div>
           </div>
         ))}
-        
+
         {recentAttendance.map((attendance, index) => (
-          <div key={`attendance-${attendance.id}-${index}`} className="flex items-center p-3 border-b">
+          <div
+            key={`attendance-${attendance.id}-${index}`}
+            className="flex items-center p-3 border-b"
+          >
             <div className="bg-green-100 text-green-500 p-2 rounded-full mr-4">
               <Calendar size={16} />
             </div>
             <div>
               <p className="text-sm">
-                <span className="font-medium">{attendance.name}</span> 회원이 체크인했습니다.
+                <span className="font-medium">{attendance.name}</span> 회원이
+                체크인했습니다.
               </p>
-              <p className="text-xs text-gray-500">{formatTimeAgo(attendance.visitDate)}</p>
+              <p className="text-xs text-gray-500">
+                {formatTimeAgo(attendance.visitDate)}
+              </p>
             </div>
           </div>
         ))}
@@ -210,36 +234,41 @@ const Dashboard: React.FC = () => {
             {renderStatCard(
               '총 회원 수',
               stats.totalMembers,
-              <Users size={20} />, 
-              'bg-blue-500'
+              <Users size={20} />,
+              'bg-blue-500',
             )}
             {renderStatCard(
               '오늘 출석',
               stats.attendanceToday,
-              <Calendar size={20} />, 
-              'bg-green-500'
+              <Calendar size={20} />,
+              'bg-green-500',
             )}
             {renderStatCard(
               '이번 달 신규 회원',
               stats.newMembersThisMonth,
-              <TrendingUp size={20} />, 
-              'bg-purple-500'
+              <TrendingUp size={20} />,
+              'bg-purple-500',
             )}
             {renderStatCard(
               '활성 회원',
               stats.activeMembers,
-              <Users size={20} />, 
-              'bg-yellow-500'
+              <Users size={20} />,
+              'bg-yellow-500',
             )}
           </div>
 
           {/* 차트 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6 w-full min-w-0 overflow-x-auto">
             <div className="bg-white rounded-lg shadow p-2 md:p-4 w-full min-w-0">
-              <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">월별 방문 현황</h2>
+              <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">
+                월별 방문 현황
+              </h2>
               {stats.monthlyAttendance.length > 0 ? (
                 <div className="aspect-[2/1] min-h-[180px] md:min-h-[250px]">
-                  <Line data={attendanceData} options={{ maintainAspectRatio: false }} />
+                  <Line
+                    data={attendanceData}
+                    options={{ maintainAspectRatio: false }}
+                  />
                 </div>
               ) : (
                 <div className="text-center p-6 text-gray-500">
@@ -248,10 +277,15 @@ const Dashboard: React.FC = () => {
               )}
             </div>
             <div className="bg-white rounded-lg shadow p-2 md:p-4 w-full min-w-0">
-              <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">회원권 분포</h2>
+              <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">
+                회원권 분포
+              </h2>
               {stats.membershipDistribution.length > 0 ? (
                 <div className="aspect-square min-h-[180px] md:min-h-[250px]">
-                  <Doughnut data={membershipData} options={{ maintainAspectRatio: false }} />
+                  <Doughnut
+                    data={membershipData}
+                    options={{ maintainAspectRatio: false }}
+                  />
                 </div>
               ) : (
                 <div className="text-center p-6 text-gray-500">
@@ -263,7 +297,9 @@ const Dashboard: React.FC = () => {
 
           {/* 최근 활동 */}
           <div className="bg-white rounded-lg shadow p-2 md:p-4 w-full min-w-0">
-            <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">최근 활동</h2>
+            <h2 className="text-base md:text-lg font-semibold mb-2 md:mb-4">
+              최근 활동
+            </h2>
             {renderRecentActivity()}
           </div>
         </>
@@ -272,4 +308,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

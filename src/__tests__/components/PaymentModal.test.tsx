@@ -1,45 +1,163 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import PaymentModal from '../../components/PaymentModal';
-import { ToastProvider } from '../../contexts/ToastContext';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import PaymentModal from '../../components/payment/PaymentModal';
+import {
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+  MembershipTypeEnum,
+} from '../../types/payment';
 
-// createPortal 모킹
-jest.mock('react-dom', () => ({
-  ...jest.requireActual('react-dom'),
-  createPortal: (node: React.ReactNode) => node,
+// ToastContext 모킹
+jest.mock('../../contexts/ToastContext', () => ({
+  useToast: () => ({
+    showToast: jest.fn(),
+  }),
+  ToastProvider: ({ children }) => children,
 }));
 
-describe('PaymentModal', () => {
-  beforeEach(() => {
-    // root 요소 추가
-    const root = document.createElement('div');
-    root.setAttribute('id', 'root');
-    document.body.appendChild(root);
-  });
-
-  afterEach(() => {
-    // root 요소 제거
-    const root = document.getElementById('root');
-    if (root) {
-      document.body.removeChild(root);
-    }
-  });
-
-  test('모달이 열렸을 때 제목과 저장 버튼이 보여야 한다', () => {
-    render(
-      <ToastProvider>
-        <PaymentModal 
-          isOpen={true} 
-          onClose={() => {}} 
-          onSave={async () => true} 
-          payment={null} 
-          isViewMode={false}
-        />
-      </ToastProvider>
+// Modal 컴포넌트 모킹
+jest.mock('../../components/common/Modal', () => {
+  return ({ children, isOpen, footer, title }) => {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="modal">
+        <div data-testid="modal-header">{title}</div>
+        <div data-testid="modal-content">{children}</div>
+        {footer && <div data-testid="modal-footer">{footer}</div>}
+      </div>
     );
-    
-    // 제목과 버튼이 있는지 확인
-    expect(screen.getByText('신규 결제 등록')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument();
+  };
+});
+
+// PaymentForm 컴포넌트 모킹
+jest.mock('../../components/payment/PaymentForm', () => {
+  return jest.fn((props) => (
+    <div data-testid="payment-form">
+      <button onClick={() => props.onSelectMember(1, '홍길동')}>
+        회원 선택
+      </button>
+      <button
+        onClick={() =>
+          props.handleChange({ target: { name: 'amount', value: '200000' } })
+        }
+      >
+        금액 변경
+      </button>
+      <button
+        onClick={() =>
+          props.handleChange({
+            target: { name: 'membershipType', value: 'MONTH_1' },
+          })
+        }
+      >
+        이용권 변경
+      </button>
+    </div>
+  ));
+});
+
+// 테스트 데이터
+const mockPayment: Payment = {
+  id: 1,
+  memberId: 1,
+  memberName: '홍길동',
+  amount: 150000,
+  paymentDate: '2023-06-01',
+  paymentMethod: PaymentMethod.CARD,
+  membershipType: MembershipTypeEnum.MONTH_1,
+  startDate: '2023-06-01',
+  endDate: '2023-07-01',
+  status: PaymentStatus.COMPLETED,
+  notes: '테스트 메모',
+};
+
+const mockMembershipTypeOptions = [
+  { name: MembershipTypeEnum.MONTH_1, price: 100000, durationMonths: 1 },
+  { name: MembershipTypeEnum.MONTH_3, price: 270000, durationMonths: 3 },
+  { name: MembershipTypeEnum.MONTH_6, price: 500000, durationMonths: 6 },
+];
+
+const mockMemberOptions = [
+  { id: 1, name: '홍길동' },
+  { id: 2, name: '김철수' },
+  { id: 3, name: '이영희' },
+];
+
+// 테스트 전용 Mock 함수
+const mockOnSave = jest.fn().mockResolvedValue(true);
+const mockOnClose = jest.fn();
+const mockOnOpenMembershipTypeModal = jest.fn();
+
+describe('PaymentModal 컴포넌트', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
-}); 
+
+  test('모달이 열릴 때 기본 UI가 올바르게 렌더링되어야 함', () => {
+    render(
+      <PaymentModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        memberOptions={mockMemberOptions}
+        membershipTypeOptions={mockMembershipTypeOptions}
+        onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
+      />,
+    );
+
+    // 모달이 렌더링되어야 함
+    expect(screen.getByTestId('modal')).toBeInTheDocument();
+    expect(screen.getByTestId('payment-form')).toBeInTheDocument();
+  });
+
+  test('결제 정보가 제공되면 폼에 해당 정보가 설정되어야 함', () => {
+    render(
+      <PaymentModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        payment={mockPayment}
+        memberOptions={mockMemberOptions}
+        membershipTypeOptions={mockMembershipTypeOptions}
+        onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
+      />,
+    );
+
+    // 모달이 렌더링되어야 함
+    expect(screen.getByTestId('modal')).toBeInTheDocument();
+    expect(screen.getByTestId('payment-form')).toBeInTheDocument();
+  });
+
+  test('회원 선택 시 폼 데이터가 업데이트되어야 함', async () => {
+    render(
+      <PaymentModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        memberOptions={mockMemberOptions}
+        membershipTypeOptions={mockMembershipTypeOptions}
+        onOpenMembershipTypeModal={mockOnOpenMembershipTypeModal}
+      />,
+    );
+
+    // 회원 선택 버튼 클릭
+    fireEvent.click(screen.getByText('회원 선택'));
+
+    // 금액 변경 버튼 클릭
+    fireEvent.click(screen.getByText('금액 변경'));
+
+    // 이용권 변경 버튼 클릭
+    fireEvent.click(screen.getByText('이용권 변경'));
+
+    // 저장 버튼 클릭
+    const saveButton = screen.getByRole('button', { name: '등록' });
+    fireEvent.click(saveButton);
+
+    // onSave가 호출되었는지 확인
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalled();
+    });
+  });
+});

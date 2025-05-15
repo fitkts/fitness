@@ -33,37 +33,47 @@ describe('<MemberViewDetails />', () => {
 
   test('기본 회원 정보가 올바르게 표시된다', () => {
     render(
-      <MemberViewDetails 
-        formData={defaultFormData} 
-        membershipStatus="active" 
-        daysLeft={90} 
-        formatDate={mockFormatDate} 
-      />
+      <MemberViewDetails
+        formData={defaultFormData}
+        membershipStatus="active"
+        daysLeft={90}
+        formatDate={mockFormatDate}
+      />,
     );
 
     expect(screen.getByText('김테스트')).toBeInTheDocument();
     expect(screen.getByText('여성')).toBeInTheDocument();
-    expect(screen.getByText(mockFormatDate(defaultFormData.birthDate))).toBeInTheDocument();
+    expect(
+      screen.getByText(mockFormatDate(defaultFormData.birthDate)),
+    ).toBeInTheDocument();
     expect(screen.getByText('010-5555-6666')).toBeInTheDocument();
     expect(screen.getByText('view@example.com')).toBeInTheDocument();
-    expect(screen.getByText(mockFormatDate(defaultFormData.joinDate))).toBeInTheDocument();
+    expect(
+      screen.getByText(mockFormatDate(defaultFormData.joinDate)),
+    ).toBeInTheDocument();
     expect(screen.getByText('이코치')).toBeInTheDocument();
   });
 
   test('활성 상태의 회원권 정보가 올바르게 표시된다', () => {
     render(
-      <MemberViewDetails 
-        formData={defaultFormData} 
-        membershipStatus="active" 
-        daysLeft={30} 
-        formatDate={mockFormatDate} 
-      />
+      <MemberViewDetails
+        formData={defaultFormData}
+        membershipStatus="active"
+        daysLeft={30}
+        formatDate={mockFormatDate}
+      />,
     );
     expect(screen.getByText('현재 이용권')).toBeInTheDocument();
     expect(screen.getByText('사용중')).toBeInTheDocument();
-    expect(screen.getByText(defaultFormData.membershipType!)).toBeInTheDocument();
-    expect(screen.getByText(mockFormatDate(defaultFormData.membershipStart))).toBeInTheDocument();
-    expect(screen.getByText(mockFormatDate(defaultFormData.membershipEnd))).toBeInTheDocument();
+    expect(
+      screen.getByText(defaultFormData.membershipType!),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(mockFormatDate(defaultFormData.membershipStart)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(mockFormatDate(defaultFormData.membershipEnd)),
+    ).toBeInTheDocument();
     expect(screen.getByText(/30일 남음/)).toBeInTheDocument(); // 남은 일수 표시 확인
     // Progress bar width check is harder and often considered an implementation detail for unit tests.
   });
@@ -71,74 +81,87 @@ describe('<MemberViewDetails />', () => {
   test('만료된 상태의 회원권 정보가 올바르게 표시된다', () => {
     const expiredFormData = { ...defaultFormData, membershipEnd: '2023-12-31' };
     render(
-      <MemberViewDetails 
-        formData={expiredFormData} 
-        membershipStatus="expired" 
-        daysLeft={0} 
-        formatDate={mockFormatDate} 
-      />
+      <MemberViewDetails
+        formData={expiredFormData}
+        membershipStatus="expired"
+        daysLeft={0}
+        formatDate={mockFormatDate}
+      />,
     );
     expect(screen.getByText('현재 이용권')).toBeInTheDocument();
     expect(screen.getByText('만료')).toBeInTheDocument();
-    expect(screen.getByText(mockFormatDate(expiredFormData.membershipEnd))).toBeInTheDocument();
+    expect(
+      screen.getByText(mockFormatDate(expiredFormData.membershipEnd)),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/일 남음/)).not.toBeInTheDocument(); // 만료 시 남은 일수 표시 없음 확인
   });
 
-  /* Linter 오류 확인을 위해 해당 테스트 케이스 전체 주석 처리 - 일부 해제 시작 */
   test(`날짜 정보가 없을 때 formatDate가 '-'를 반환하고 표시되는지 확인`, () => {
     const dataWithMissingDates = {
       ...defaultFormData,
       birthDate: undefined,
+      joinDate: undefined,
       membershipStart: undefined,
       membershipEnd: undefined,
     };
-    const extremelySimpleFormatDate = jest.fn((dateString: string | undefined): string => {
-      if (dateString) {
-        return 'VALID_DATE_MOCK';
-      }
-      return '-';
-    });
+    const extremelySimpleFormatDate = jest.fn(
+      (dateString: string | undefined): string => {
+        if (dateString) {
+          return 'VALID_DATE_MOCK';
+        }
+        return '-';
+      },
+    );
 
     render(
-      <MemberViewDetails 
-        formData={dataWithMissingDates} 
-        membershipStatus="expired" 
-        daysLeft={0} 
-        formatDate={extremelySimpleFormatDate} 
-      />
+      <MemberViewDetails
+        formData={dataWithMissingDates}
+        membershipStatus="expired"
+        daysLeft={0}
+        formatDate={extremelySimpleFormatDate}
+      />,
     );
-    
-    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(dataWithMissingDates.birthDate);
-    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(dataWithMissingDates.membershipStart);
-    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(dataWithMissingDates.membershipEnd);
+
+    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(
+      dataWithMissingDates.birthDate,
+    );
+    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(
+      dataWithMissingDates.joinDate,
+    );
+    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(
+      dataWithMissingDates.membershipStart,
+    );
+    expect(extremelySimpleFormatDate).toHaveBeenCalledWith(
+      dataWithMissingDates.membershipEnd,
+    );
 
     const placeholders = screen.getAllByText('-');
-    expect(placeholders.length).toBeGreaterThanOrEqual(3);
+    expect(placeholders.length).toBe(4);
   });
-  /* 일부 해제 끝 */
 
   test('이름 첫 글자로 아바타가 표시된다', () => {
     render(
-      <MemberViewDetails 
-        formData={defaultFormData} 
-        membershipStatus="active" 
-        daysLeft={90} 
-        formatDate={mockFormatDate} 
-      />
+      <MemberViewDetails
+        formData={defaultFormData}
+        membershipStatus="active"
+        daysLeft={90}
+        formatDate={mockFormatDate}
+      />,
     );
-    expect(screen.getByText(defaultFormData.name!.charAt(0))).toBeInTheDocument();
+    expect(
+      screen.getByText(defaultFormData.name!.charAt(0)),
+    ).toBeInTheDocument();
   });
 
   test('이름이 없을 때 아바타가 물음표로 표시된다', () => {
     render(
-      <MemberViewDetails 
-        formData={{ ...defaultFormData, name: undefined }} 
-        membershipStatus="active" 
-        daysLeft={90} 
-        formatDate={mockFormatDate} 
-      />
+      <MemberViewDetails
+        formData={{ ...defaultFormData, name: undefined }}
+        membershipStatus="active"
+        daysLeft={90}
+        formatDate={mockFormatDate}
+      />,
     );
     expect(screen.getByText('?')).toBeInTheDocument();
   });
-
-}); 
+});

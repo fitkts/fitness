@@ -39,7 +39,9 @@ const MembershipTypeSelect: React.FC<MembershipTypeSelectProps> = ({
         )}
       </div>
       {isViewMode ? (
-        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{membershipType}</div>
+        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+          {membershipType}
+        </div>
       ) : (
         <select
           name="membershipType"
@@ -57,11 +59,9 @@ const MembershipTypeSelect: React.FC<MembershipTypeSelectProps> = ({
           ))}
         </select>
       )}
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
 };
 
-export default MembershipTypeSelect; 
+export default MembershipTypeSelect;

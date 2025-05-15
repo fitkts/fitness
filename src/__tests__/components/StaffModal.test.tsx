@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import StaffModal from '../../components/StaffModal';
 import { ToastProvider } from '../../contexts/ToastContext';
 
@@ -28,18 +29,20 @@ describe('StaffModal', () => {
   test('모달이 열렸을 때 제목과 저장 버튼이 보여야 한다', () => {
     render(
       <ToastProvider>
-        <StaffModal 
-          isOpen={true} 
-          onClose={() => {}} 
-          onSave={async () => true} 
-          staff={null} 
+        <StaffModal
+          isOpen={true}
+          onClose={() => {}}
+          onSave={async () => true}
+          staff={null}
           isViewMode={false}
         />
-      </ToastProvider>
+      </ToastProvider>,
     );
-    
+
     // 제목과 버튼이 있는지 확인
-    expect(screen.getByText('신규 직원 등록')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument();
+    expect(screen.getByText('새 직원 등록')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '등록 완료' }),
+    ).toBeInTheDocument();
   });
-}); 
+});

@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { Member } from '../models/types'; // 회원 데이터 타입 정의 파일 경로 (추후 확인 필요)
 import { IpcMemberService } from '../database/ipcService'; // IpcMemberService 가져오기 (경로 확인 필요)
 
-
-
 interface MemberState {
   members: Member[]; // 회원 목록 배열
   isLoading: boolean; // 데이터 로딩 중 상태 표시
@@ -25,7 +23,7 @@ export const useMemberStore = create<MemberState>((set, get) => ({
   // 회원 목록 불러오기 (IpcMemberService.getAll 사용)
   fetchMembers: async () => {
     // 이미 로딩 중이면 중복 실행 방지 (선택 사항)
-    if (get().isLoading) return; 
+    if (get().isLoading) return;
 
     set({ isLoading: true, error: null });
     try {
@@ -34,17 +32,19 @@ export const useMemberStore = create<MemberState>((set, get) => ({
       console.log('IPC: 회원 목록 수신:', fetchedMembers?.length ?? 0, '명');
       set({ members: fetchedMembers || [], isLoading: false }); // 데이터가 없을 경우 빈 배열 설정
     } catch (err) {
-      console.error("IPC: 회원 목록 로딩 실패:", err);
-      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류 발생';
+      console.error('IPC: 회원 목록 로딩 실패:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : '알 수 없는 오류 발생';
       set({ error: `회원 목록 로딩 실패: ${errorMessage}`, isLoading: false });
       // 에러 발생 시 빈 배열로 설정할 수도 있음
-      // set({ members: [], error: `회원 목록 로딩 실패: ${errorMessage}`, isLoading: false }); 
+      // set({ members: [], error: `회원 목록 로딩 실패: ${errorMessage}`, isLoading: false });
     }
   },
 
   // 새 회원 추가 (IpcMemberService.add 사용 - ID 반환 방식에 맞게 수정)
-  addMember: async (newMemberData) => { // ID가 없는 데이터를 받음
-    if (get().isLoading) throw new Error("다른 작업이 진행 중입니다.");
+  addMember: async (newMemberData) => {
+    // ID가 없는 데이터를 받음
+    if (get().isLoading) throw new Error('다른 작업이 진행 중입니다.');
 
     set({ isLoading: true, error: null });
     try {
@@ -53,13 +53,13 @@ export const useMemberStore = create<MemberState>((set, get) => ({
       // 또는 IpcMemberService.add의 인자 타입을 Omit<Member, 'id'> 로 변경하는 것이 더 좋을 수 있습니다.
       // 여기서는 임시로 id: 0 을 넣어 호출한다고 가정합니다. (백엔드 로직 확인 필요)
       const memberToSend = { ...newMemberData, id: 0 }; // 임시 ID 추가
-      
+
       console.log('IPC: 회원 추가 요청 (임시 ID 포함):', memberToSend);
       const newId = await IpcMemberService.add(memberToSend as Member); // 반환값은 number (새 ID)
       console.log('IPC: 회원 추가 완료, 새 ID:', newId);
 
       if (typeof newId !== 'number') {
-        throw new Error("IPC 서비스에서 유효한 회원 ID를 반환하지 않았습니다.");
+        throw new Error('IPC 서비스에서 유효한 회원 ID를 반환하지 않았습니다.');
       }
 
       // 반환받은 실제 ID를 사용하여 상태에 추가할 최종 회원 객체 생성
@@ -71,17 +71,18 @@ export const useMemberStore = create<MemberState>((set, get) => ({
       }));
       return addedMember; // 실제 ID가 포함된 객체 반환
     } catch (err) {
-      console.error("IPC: 회원 추가 실패:", err);
-      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류 발생';
+      console.error('IPC: 회원 추가 실패:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : '알 수 없는 오류 발생';
       set({ error: `회원 추가 실패: ${errorMessage}`, isLoading: false });
-      throw new Error(`회원 추가 실패: ${errorMessage}`); 
+      throw new Error(`회원 추가 실패: ${errorMessage}`);
     }
   },
 
   // 회원 정보 수정 (IpcMemberService.update 사용)
   updateMember: async (updatedMember) => {
-    if (get().isLoading) throw new Error("다른 작업이 진행 중입니다.");
-    if (!updatedMember.id) throw new Error("수정할 회원의 ID가 없습니다.");
+    if (get().isLoading) throw new Error('다른 작업이 진행 중입니다.');
+    if (!updatedMember.id) throw new Error('수정할 회원의 ID가 없습니다.');
 
     set({ isLoading: true, error: null });
     try {
@@ -93,8 +94,9 @@ export const useMemberStore = create<MemberState>((set, get) => ({
       await get().fetchMembers();
       set({ isLoading: false });
     } catch (err) {
-      console.error("IPC: 회원 수정 실패:", err);
-      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류 발생';
+      console.error('IPC: 회원 수정 실패:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : '알 수 없는 오류 발생';
       set({ error: `회원 수정 실패: ${errorMessage}`, isLoading: false });
       throw new Error(`회원 수정 실패: ${errorMessage}`);
     }
@@ -102,7 +104,7 @@ export const useMemberStore = create<MemberState>((set, get) => ({
 
   // 회원 삭제 (IpcMemberService.delete 사용)
   deleteMember: async (memberId) => {
-    if (get().isLoading) throw new Error("다른 작업이 진행 중입니다.");
+    if (get().isLoading) throw new Error('다른 작업이 진행 중입니다.');
 
     set({ isLoading: true, error: null });
     try {
@@ -115,8 +117,9 @@ export const useMemberStore = create<MemberState>((set, get) => ({
         isLoading: false,
       }));
     } catch (err) {
-      console.error("IPC: 회원 삭제 실패:", err);
-      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류 발생';
+      console.error('IPC: 회원 삭제 실패:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : '알 수 없는 오류 발생';
       set({ error: `회원 삭제 실패: ${errorMessage}`, isLoading: false });
       throw new Error(`회원 삭제 실패: ${errorMessage}`);
     }
@@ -124,7 +127,7 @@ export const useMemberStore = create<MemberState>((set, get) => ({
 
   // 모든 회원 삭제 (IpcMemberService.deleteAll 사용)
   deleteAllMembers: async () => {
-    if (get().isLoading) throw new Error("다른 작업이 진행 중입니다.");
+    if (get().isLoading) throw new Error('다른 작업이 진행 중입니다.');
 
     set({ isLoading: true, error: null });
     try {
@@ -134,10 +137,11 @@ export const useMemberStore = create<MemberState>((set, get) => ({
 
       set({ members: [], isLoading: false }); // 스토어 상태 비우기
     } catch (err) {
-      console.error("Store: 모든 회원 삭제 실패:", err);
-      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류 발생';
+      console.error('Store: 모든 회원 삭제 실패:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : '알 수 없는 오류 발생';
       set({ error: `모든 회원 삭제 실패: ${errorMessage}`, isLoading: false });
       throw new Error(`모든 회원 삭제 실패: ${errorMessage}`);
     }
   },
-})); 
+}));

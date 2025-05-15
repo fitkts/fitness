@@ -1,20 +1,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Edit, Trash2, Filter, User, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Filter,
+  User,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+} from 'lucide-react';
 import StaffModal from '../components/StaffModal';
 import { Staff } from '../models/types';
-import { getAllStaff, addStaff, updateStaff, deleteStaff } from '../database/ipcService';
+import {
+  getAllStaff,
+  addStaff,
+  updateStaff,
+  deleteStaff,
+} from '../database/ipcService';
 import { useToast } from '../contexts/ToastContext';
 
 const Staff: React.FC = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [filter, setFilter] = useState<{ search: string; status: 'all' | 'active' | 'inactive' }>({ search: '', status: 'all' });
+  const [filter, setFilter] = useState<{
+    search: string;
+    status: 'all' | 'active' | 'inactive';
+  }>({ search: '', status: 'all' });
   const [showFilterOptions, setShowFilterOptions] = useState<boolean>(false);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [isViewMode, setIsViewMode] = useState<boolean>(false);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: '', direction: null });
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'ascending' | 'descending' | null;
+  }>({ key: '', direction: null });
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
   const [showAll, setShowAll] = useState<boolean>(false);
@@ -32,7 +55,9 @@ const Staff: React.FC = () => {
       if (response.success && response.data) {
         // 데이터를 날짜 기준으로 정렬하여 저장
         const sortedData = response.data.sort((a, b) => {
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+          return (
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
         });
         setStaffList(sortedData);
       } else {
@@ -52,7 +77,8 @@ const Staff: React.FC = () => {
         staff.name.toLowerCase().includes(filter.search.toLowerCase()) ||
         staff.email?.toLowerCase().includes(filter.search.toLowerCase()) ||
         staff.phone?.includes(filter.search);
-      const matchesStatus = filter.status === 'all' || staff.status === filter.status;
+      const matchesStatus =
+        filter.status === 'all' || staff.status === filter.status;
       return matchesSearch && matchesStatus;
     });
     // 정렬
@@ -235,9 +261,14 @@ const Staff: React.FC = () => {
                 placeholder="이름, 이메일, 전화번호 검색"
                 className="border border-gray-300 p-3 rounded-md w-full pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={filter.search}
-                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                onChange={(e) =>
+                  setFilter({ ...filter, search: e.target.value })
+                }
               />
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
             </div>
             <button
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-md flex items-center transition-colors"
@@ -257,12 +288,22 @@ const Staff: React.FC = () => {
           {showFilterOptions && (
             <div className="bg-gray-50 p-4 rounded-md flex flex-wrap gap-4 items-center animate-fadeIn">
               <div>
-                <label htmlFor="statusFilter" className="mr-2 font-medium text-gray-700">직원 상태:</label>
+                <label
+                  htmlFor="statusFilter"
+                  className="mr-2 font-medium text-gray-700"
+                >
+                  직원 상태:
+                </label>
                 <select
                   id="statusFilter"
                   className="border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={filter.status}
-                  onChange={(e) => setFilter({ ...filter, status: e.target.value as 'all' | 'active' | 'inactive' })}
+                  onChange={(e) =>
+                    setFilter({
+                      ...filter,
+                      status: e.target.value as 'all' | 'active' | 'inactive',
+                    })
+                  }
                 >
                   <option value="all">전체</option>
                   <option value="active">활성</option>
@@ -284,15 +325,21 @@ const Staff: React.FC = () => {
         <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-sm text-blue-600 font-medium">총 직원수</p>
-            <p className="text-2xl font-bold text-blue-800 mt-1">{statistics.total}명</p>
+            <p className="text-2xl font-bold text-blue-800 mt-1">
+              {statistics.total}명
+            </p>
           </div>
           <div className="bg-green-50 p-4 rounded-lg">
             <p className="text-sm text-green-600 font-medium">활성 직원</p>
-            <p className="text-2xl font-bold text-green-800 mt-1">{statistics.active}명</p>
+            <p className="text-2xl font-bold text-green-800 mt-1">
+              {statistics.active}명
+            </p>
           </div>
           <div className="bg-red-50 p-4 rounded-lg">
             <p className="text-sm text-red-600 font-medium">비활성 직원</p>
-            <p className="text-2xl font-bold text-red-800 mt-1">{statistics.inactive}명</p>
+            <p className="text-2xl font-bold text-red-800 mt-1">
+              {statistics.inactive}명
+            </p>
           </div>
         </div>
       </div>
@@ -320,14 +367,21 @@ const Staff: React.FC = () => {
           </div>
           <div className="text-sm text-gray-500">
             총 {staffList.length}명의 직원
-            {!showAll && ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, staffList.length)}번째 표시)`}
+            {!showAll &&
+              ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, staffList.length)}번째 표시)`}
           </div>
         </div>
-        <div className="w-full overflow-x-auto" style={{ maxHeight: 'calc(100vh - 350px)', minWidth: 600 }}>
+        <div
+          className="w-full overflow-x-auto"
+          style={{ maxHeight: 'calc(100vh - 350px)', minWidth: 600 }}
+        >
           <table className="min-w-full divide-y divide-gray-200 text-sm sm:text-base">
             <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
               <tr>
-                <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('name')}>
+                <th
+                  className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => requestSort('name')}
+                >
                   <div className="flex items-center">
                     이름
                     {sortConfig.key === 'name' && (
@@ -341,7 +395,10 @@ const Staff: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('position')}>
+                <th
+                  className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => requestSort('position')}
+                >
                   <div className="flex items-center">
                     직책
                     {sortConfig.key === 'position' && (
@@ -355,7 +412,10 @@ const Staff: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('phone')}>
+                <th
+                  className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => requestSort('phone')}
+                >
                   <div className="flex items-center">
                     연락처
                     {sortConfig.key === 'phone' && (
@@ -369,7 +429,10 @@ const Staff: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => requestSort('status')}>
+                <th
+                  className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => requestSort('status')}
+                >
                   <div className="flex items-center">
                     상태
                     {sortConfig.key === 'status' && (
@@ -383,7 +446,9 @@ const Staff: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  관리
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -402,38 +467,83 @@ const Staff: React.FC = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{staff.name}</div>
-                          <div className="text-sm text-gray-500">{staff.email}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {staff.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {staff.email}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{staff.position}</td>
-                    <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">{staff.phone}</td>
+                    <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                      {staff.position}
+                    </td>
+                    <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                      {staff.phone}
+                    </td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
-                      <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        staff.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          staff.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {staff.status === 'active' ? '재직 중' : '퇴사'}
                       </span>
                     </td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-center">
-                      <div className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={(e) => { e.stopPropagation(); handleViewStaff(staff); }} className="text-blue-500 hover:text-blue-700 transition-colors p-1" title="상세보기"><Edit size={16} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleEditStaff(staff); }} className="text-yellow-500 hover:text-yellow-700 transition-colors p-1" title="수정"><Edit size={16} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteStaff(staff.id); }} className="text-red-500 hover:text-red-700 transition-colors p-1" title="삭제"><Trash2 size={16} /></button>
+                      <div
+                        className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewStaff(staff);
+                          }}
+                          className="text-blue-500 hover:text-blue-700 transition-colors p-1"
+                          title="상세보기"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditStaff(staff);
+                          }}
+                          className="text-yellow-500 hover:text-yellow-700 transition-colors p-1"
+                          title="수정"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteStaff(staff.id);
+                          }}
+                          className="text-red-500 hover:text-red-700 transition-colors p-1"
+                          title="삭제"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-8 px-4 text-center text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="py-8 px-4 text-center text-gray-500"
+                  >
                     <div className="flex flex-col items-center justify-center">
                       <User size={48} className="text-gray-300 mb-3" />
                       <p className="text-lg">직원 정보가 없습니다.</p>
-                      <p className="text-sm text-gray-400 mt-1">직원을 추가하려면 '직원 추가' 버튼을 클릭하세요.</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        직원을 추가하려면 '직원 추가' 버튼을 클릭하세요.
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -445,27 +555,67 @@ const Staff: React.FC = () => {
         {!showAll && (
           <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
             <div className="flex justify-between flex-1 sm:hidden">
-              <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">이전</button>
-              <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">다음</button>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                이전
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                다음
+              </button>
             </div>
             <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  총 <span className="font-medium">{staffList.length}</span>명 중{' '}
-                  <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span>
+                  총 <span className="font-medium">{staffList.length}</span>명
+                  중{' '}
+                  <span className="font-medium">
+                    {(currentPage - 1) * pageSize + 1}
+                  </span>
                   {' - '}
-                  <span className="font-medium">{Math.min(currentPage * pageSize, staffList.length)}</span>
-                  {' '}명 표시
+                  <span className="font-medium">
+                    {Math.min(currentPage * pageSize, staffList.length)}
+                  </span>{' '}
+                  명 표시
                 </p>
               </div>
               <div>
-                <nav className="inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronLeft className="h-5 w-5" /></button>
+                <nav
+                  className="inline-flex -space-x-px rounded-md shadow-sm"
+                  aria-label="Pagination"
+                >
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
                   {/* 페이지 번호 */}
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                    <button key={number} onClick={() => handlePageChange(number)} className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === number ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>{number}</button>
-                  ))}
-                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronRight className="h-5 w-5" /></button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (number) => (
+                      <button
+                        key={number}
+                        onClick={() => handlePageChange(number)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === number ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        {number}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
                 </nav>
               </div>
             </div>
@@ -484,4 +634,4 @@ const Staff: React.FC = () => {
   );
 };
 
-export default Staff; 
+export default Staff;

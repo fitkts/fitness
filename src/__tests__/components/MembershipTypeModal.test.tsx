@@ -28,18 +28,18 @@ describe('MembershipTypeModal', () => {
   test('모달이 열렸을 때 제목과 저장 버튼이 보여야 한다', () => {
     render(
       <ToastProvider>
-        <MembershipTypeModal 
-          isOpen={true} 
-          onClose={() => {}} 
-          onSave={async () => true} 
-          membershipType={null} 
+        <MembershipTypeModal
+          isOpen={true}
+          onClose={() => {}}
+          onSave={async () => true}
+          membershipType={null}
           isViewMode={false}
         />
-      </ToastProvider>
+      </ToastProvider>,
     );
-    
+
     // 제목과 버튼이 있는지 확인
     expect(screen.getByText('신규 이용권 등록')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument();
   });
-}); 
+});

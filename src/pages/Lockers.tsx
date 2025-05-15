@@ -2,15 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Key, AlertCircle } from 'lucide-react';
 import LockerModal from '../components/LockerModal';
 import { Locker } from '../models/types';
-import { getAllLockers, addLocker, updateLocker, deleteLocker } from '../database/ipcService';
+import {
+  getAllLockers,
+  addLocker,
+  updateLocker,
+  deleteLocker,
+} from '../database/ipcService';
 import { useToast } from '../contexts/ToastContext';
 
 const Lockers: React.FC = () => {
   const [lockers, setLockers] = useState<Locker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'available' | 'occupied' | 'maintenance'>('all');
-  
+  const [filter, setFilter] = useState<
+    'all' | 'available' | 'occupied' | 'maintenance'
+  >('all');
+
   // 모달 상태 관리
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selectedLocker, setSelectedLocker] = useState<Locker | null>(null);
@@ -73,7 +80,7 @@ const Lockers: React.FC = () => {
   const handleSaveLocker = async (locker: Locker): Promise<boolean> => {
     try {
       let success = false;
-      
+
       if (locker.id) {
         // 기존 락커 수정
         const response = await updateLocker(locker.id, locker);
@@ -98,7 +105,7 @@ const Lockers: React.FC = () => {
         // 목록 새로고침
         await loadLockers();
       }
-      
+
       return success;
     } catch (error) {
       console.error('락커 저장 오류:', error);
@@ -128,14 +135,13 @@ const Lockers: React.FC = () => {
   // 검색 및 필터링된 락커 목록
   const filteredLockers = lockers.filter((locker) => {
     // 검색어 필터링
-    const matchesSearch = 
+    const matchesSearch =
       locker.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (locker.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+      locker.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false;
 
     // 상태 필터링
-    const matchesStatus = 
-      filter === 'all' || 
-      locker.status === filter;
+    const matchesStatus = filter === 'all' || locker.status === filter;
 
     return matchesSearch && matchesStatus;
   });
@@ -152,7 +158,7 @@ const Lockers: React.FC = () => {
   return (
     <div className="container mx-auto">
       <h1 className="text-2xl font-bold mb-6">락커 관리</h1>
-      
+
       {/* 검색 및 필터링 */}
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="flex-1 min-w-[300px]">
@@ -164,14 +170,25 @@ const Lockers: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input w-full pl-10"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={18}
+            />
           </div>
         </div>
-        
+
         <div>
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as 'all' | 'available' | 'occupied' | 'maintenance')}
+            onChange={(e) =>
+              setFilter(
+                e.target.value as
+                  | 'all'
+                  | 'available'
+                  | 'occupied'
+                  | 'maintenance',
+              )
+            }
             className="select"
           >
             <option value="all">전체</option>
@@ -199,25 +216,27 @@ const Lockers: React.FC = () => {
               locker.status === 'available'
                 ? 'bg-green-50 border border-green-200'
                 : locker.status === 'occupied'
-                ? 'bg-blue-50 border border-blue-200'
-                : 'bg-yellow-50 border border-yellow-200'
+                  ? 'bg-blue-50 border border-blue-200'
+                  : 'bg-yellow-50 border border-yellow-200'
             }`}
           >
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold">락커 {locker.number}</h3>
-                <p className={`text-sm font-medium ${
-                  locker.status === 'available'
-                    ? 'text-green-600'
-                    : locker.status === 'occupied'
-                    ? 'text-blue-600'
-                    : 'text-yellow-600'
-                }`}>
+                <p
+                  className={`text-sm font-medium ${
+                    locker.status === 'available'
+                      ? 'text-green-600'
+                      : locker.status === 'occupied'
+                        ? 'text-blue-600'
+                        : 'text-yellow-600'
+                  }`}
+                >
                   {locker.status === 'available'
                     ? '사용 가능'
                     : locker.status === 'occupied'
-                    ? '사용 중'
-                    : '점검 중'}
+                      ? '사용 중'
+                      : '점검 중'}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -276,4 +295,4 @@ const Lockers: React.FC = () => {
   );
 };
 
-export default Lockers; 
+export default Lockers;

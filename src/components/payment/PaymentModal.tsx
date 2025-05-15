@@ -2,9 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import { CreditCard } from 'lucide-react';
 import { useToast, ToastType } from '../../contexts/ToastContext';
-import { Payment, MembershipTypeOption, PaymentOption } from '../../types/payment';
+import {
+  Payment,
+  MembershipTypeOption,
+  PaymentOption,
+} from '../../types/payment';
 import PaymentForm from './PaymentForm';
-import { defaultPayment, validatePaymentForm, calculateEndDate } from './PaymentUtils';
+import {
+  defaultPayment,
+  validatePaymentForm,
+  calculateEndDate,
+} from './PaymentUtils';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -33,15 +41,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [filteredMembers, setFilteredMembers] = useState(memberOptions);
-  
+
   // Toast 컨텍스트 사용
   let showToast: (type: ToastType, message: string) => void;
   try {
     const toastContext = useToast();
-    showToast = toastContext?.showToast || ((type, message) => console.log(`Fallback Toast (${type}): ${message}`));
+    showToast =
+      toastContext?.showToast ||
+      ((type, message) => console.log(`Fallback Toast (${type}): ${message}`));
   } catch (error) {
-    console.error("PaymentModal: Toast 컨텍스트를 사용할 수 없습니다:", error);
-    showToast = (type, message) => console.log(`Error Toast (${type}): ${message}`);
+    console.error('PaymentModal: Toast 컨텍스트를 사용할 수 없습니다:', error);
+    showToast = (type, message) =>
+      console.log(`Error Toast (${type}): ${message}`);
   }
 
   // 폼 데이터 초기화
@@ -66,7 +77,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setFilteredMembers(memberOptions);
     } else {
       setFilteredMembers(
-        memberOptions.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase()))
+        memberOptions.filter((m) =>
+          m.name.toLowerCase().includes(memberSearch.toLowerCase()),
+        ),
       );
     }
   }, [memberSearch, memberOptions]);
@@ -78,69 +91,78 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // 회원 선택 핸들러
   const handleSelectMember = (id: number, name: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       memberId: id,
-      memberName: name
+      memberName: name,
     }));
     setMemberSearch('');
   };
 
   // 입력 핸들러
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value } = e.target;
-    
+
     if (name === 'amount') {
       // 숫자만 허용
       const numericValue = value.replace(/[^\d]/g, '');
-      setFormData(prev => ({ ...prev, [name]: parseInt(numericValue) || 0 }));
+      setFormData((prev) => ({ ...prev, [name]: parseInt(numericValue) || 0 }));
     } else if (name === 'membershipType') {
       // 이용권 종류 변경 시 금액 자동 입력
-      const selectedType = membershipTypeOptions.find(t => t.name === value);
-      setFormData(prev => ({
+      const selectedType = membershipTypeOptions.find((t) => t.name === value);
+      setFormData((prev) => ({
         ...prev,
         membershipType: value,
-        amount: selectedType ? selectedType.price : prev.amount
+        amount: selectedType ? selectedType.price : prev.amount,
       }));
       // 종료일 자동 계산
       if (formData.startDate && value) {
         const endDate = calculateEndDate(formData.startDate, value);
-        setFormData(prev => ({ ...prev, endDate }));
+        setFormData((prev) => ({ ...prev, endDate }));
       }
     } else if (name === 'startDate') {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
       // 종료일 자동 계산
       if (formData.membershipType && value) {
         const endDate = calculateEndDate(value, formData.membershipType);
-        setFormData(prev => ({ ...prev, endDate }));
+        setFormData((prev) => ({ ...prev, endDate }));
       }
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   // 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       // 유효성 검사
       const newErrors = validatePaymentForm(formData);
-      
+
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         return;
       }
-      
+
       // 저장 상태로 변경
       setIsSubmitting(true);
-      
+
       // 저장 요청
       const success = await onSave(formData);
-      
+
       // 결과에 따라 토스트 알림 표시
       if (success) {
-        showToast('success', currentIsViewMode ? '결제 정보가 수정되었습니다.' : '새 결제가 등록되었습니다.');
+        showToast(
+          'success',
+          currentIsViewMode
+            ? '결제 정보가 수정되었습니다.'
+            : '새 결제가 등록되었습니다.',
+        );
         onClose();
       } else {
         showToast('error', '저장 중 오류가 발생했습니다.');
@@ -158,7 +180,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     return (
       <div className="flex items-center">
         <CreditCard className="mr-2 h-5 w-5 text-gray-500" />
-        <h2>{payment ? (currentIsViewMode ? '결제 정보' : '결제 수정') : '새 결제'}</h2>
+        <h2>
+          {payment
+            ? currentIsViewMode
+              ? '결제 정보'
+              : '결제 수정'
+            : '새 결제'}
+        </h2>
       </div>
     );
   };
@@ -182,7 +210,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isSubmitting}
           >
-            {isSubmitting ? '저장 중...' : (payment ? '수정' : '등록')}
+            {isSubmitting ? '저장 중...' : payment ? '수정' : '등록'}
           </button>
         )}
         {currentIsViewMode && payment && (
@@ -223,4 +251,4 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   );
 };
 
-export default PaymentModal; 
+export default PaymentModal;

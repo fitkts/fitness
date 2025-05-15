@@ -12,4 +12,4 @@ export const validateName = (name: string): boolean => {
 export const validateMembershipType = (type: string): boolean => {
   const validTypes = ['1개월', '3개월', '6개월', '12개월'];
   return validTypes.includes(type);
-}; 
+};

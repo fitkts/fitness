@@ -10,11 +10,11 @@ interface ToastProps {
   onClose: () => void;
 }
 
-const Toast: React.FC<ToastProps> = ({ 
-  type, 
-  message, 
-  duration = 3000, 
-  onClose 
+const Toast: React.FC<ToastProps> = ({
+  type,
+  message,
+  duration = 3000,
+  onClose,
 }) => {
   // 일정 시간 후 자동으로 닫기
   useEffect(() => {
@@ -63,10 +63,10 @@ const Toast: React.FC<ToastProps> = ({
   const { icon, bgColor, borderColor, textColor } = getToastConfig();
 
   return (
-    <div className={`fixed right-4 top-4 flex items-center ${bgColor} border ${borderColor} ${textColor} px-4 py-3 rounded shadow-lg z-[100] min-w-[300px] max-w-md animate-slideIn`}>
-      <div className="mr-3">
-        {icon}
-      </div>
+    <div
+      className={`fixed right-4 top-4 flex items-center ${bgColor} border ${borderColor} ${textColor} px-4 py-3 rounded shadow-lg z-[100] min-w-[300px] max-w-md animate-slideIn`}
+    >
+      <div className="mr-3">{icon}</div>
       <div className="flex-1">{message}</div>
       <button
         onClick={onClose}
@@ -79,4 +79,4 @@ const Toast: React.FC<ToastProps> = ({
   );
 };
 
-export default Toast; 
+export default Toast;

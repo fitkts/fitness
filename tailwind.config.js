@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  content: ['./src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
       keyframes: {
@@ -19,7 +19,7 @@ module.exports = {
         pulse: {
           '0%, 100%': { opacity: 1 },
           '50%': { opacity: 0.5 },
-        }
+        },
       },
       animation: {
         slideIn: 'slideIn 0.3s ease-in-out forwards',
@@ -40,9 +40,9 @@ module.exports = {
           800: '#3730a3',
           900: '#312e81',
           950: '#1e1b4b',
-        }
-      }
+        },
+      },
     },
   },
   plugins: [],
-}; 
+};

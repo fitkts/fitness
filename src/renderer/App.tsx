@@ -19,7 +19,7 @@ enum Page {
   Lockers = '락카 관리',
   Staff = '직원 관리',
   Backup = '백업 관리',
-  Settings = '설정'
+  Settings = '설정',
 }
 
 const App: React.FC = () => {
@@ -28,7 +28,7 @@ const App: React.FC = () => {
   // 페이지 전환 핸들러
   const handlePageChange = (page: string) => {
     // 문자열을 Page 타입으로 변환
-    const pageValue = Object.values(Page).find(value => value === page);
+    const pageValue = Object.values(Page).find((value) => value === page);
     if (pageValue) {
       setCurrentPage(pageValue as Page);
     }
@@ -65,12 +65,10 @@ const App: React.FC = () => {
       pages={Object.values(Page)}
     >
       <main className="p-6">
-        <PageTransition>
-          {renderPage()}
-        </PageTransition>
+        <PageTransition>{renderPage()}</PageTransition>
       </main>
     </AppLayout>
   );
 };
 
-export default App; 
+export default App;

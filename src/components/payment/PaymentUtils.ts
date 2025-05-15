@@ -1,12 +1,17 @@
-import { Payment, PaymentMethod, PaymentStatus, MembershipTypeEnum } from '../../types/payment';
+import {
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+  MembershipTypeEnum,
+} from '../../types/payment';
 
 // 날짜 계산 헬퍼 함수
 export const calculateEndDate = (startDate: string, type: string): string => {
   if (!startDate) return '';
-  
+
   const date = new Date(startDate);
   let months = 0;
-  
+
   switch (type) {
     case MembershipTypeEnum.MONTH_1:
       months = 1;
@@ -27,7 +32,7 @@ export const calculateEndDate = (startDate: string, type: string): string => {
     default:
       return '';
   }
-  
+
   date.setMonth(date.getMonth() + months);
   return date.toISOString().split('T')[0];
 };
@@ -38,29 +43,31 @@ export const formatCurrency = (value: number): string => {
 };
 
 // 결제 폼 유효성 검사
-export const validatePaymentForm = (formData: Payment): Record<string, string> => {
+export const validatePaymentForm = (
+  formData: Payment,
+): Record<string, string> => {
   const errors: Record<string, string> = {};
-  
+
   if (!formData.memberId || !formData.memberName) {
     errors.member = '회원 정보는 필수입니다';
   }
-  
+
   if (!formData.amount || formData.amount <= 0) {
     errors.amount = '유효한 금액을 입력하세요';
   }
-  
+
   if (!formData.paymentDate) {
     errors.paymentDate = '결제일은 필수입니다';
   }
-  
+
   if (!formData.membershipType) {
     errors.membershipType = '이용권 종류는 필수입니다';
   }
-  
+
   if (!formData.startDate) {
     errors.startDate = '시작일은 필수입니다';
   }
-  
+
   return errors;
 };
 
@@ -76,4 +83,4 @@ export const defaultPayment: Payment = {
   endDate: '',
   notes: '',
   status: PaymentStatus.COMPLETED,
-}; 
+};

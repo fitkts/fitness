@@ -29,7 +29,7 @@ const MemberSearchInput: React.FC<MemberSearchInputProps> = ({
       </label>
       {isViewMode ? (
         <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
-          {selectedMemberName || '회원 정보 없음'} 
+          {selectedMemberName || '회원 정보 없음'}
         </div>
       ) : (
         <div>
@@ -43,7 +43,7 @@ const MemberSearchInput: React.FC<MemberSearchInputProps> = ({
           />
           {memberSearch && filteredMembers.length > 0 && (
             <div className="mt-1 max-h-40 overflow-y-auto border rounded bg-white shadow-lg z-10 absolute w-full">
-              {filteredMembers.map(member => (
+              {filteredMembers.map((member) => (
                 <div
                   key={member.id}
                   className="p-2 hover:bg-gray-100 cursor-pointer"
@@ -54,13 +54,11 @@ const MemberSearchInput: React.FC<MemberSearchInputProps> = ({
               ))}
             </div>
           )}
-          {error && (
-            <p className="mt-1 text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
         </div>
       )}
     </div>
   );
 };
 
-export default MemberSearchInput; 
+export default MemberSearchInput;

@@ -5,6 +5,7 @@
 ## 개발 현황
 
 ### 완료된 기능
+
 - **기본 구조 설정**: Electron, React, TypeScript 기반 프로젝트 구조 설정 완료
 - **데이터베이스 연동**: SQLite 기반 데이터베이스 설정 및 모든 Repository(회원, 출석, 결제, 회원권, 스태프, 락커)의 CRUD 기능 구현 완료
 - **UI 구현**: Tailwind CSS를 활용한 반응형 UI 구현
@@ -18,6 +19,7 @@
 - **Excel 가져오기**: 기존 엑셀 데이터 가져오기 기능 구현
 
 ### 프로젝트 구조
+
 ```
 fitness-manager/
 ├── src/
@@ -37,42 +39,51 @@ fitness-manager/
 ```
 
 ### 주요 구현 사항
+
 1. **대시보드 페이지**:
+
    - 회원 현황, 출석 통계, 결제 요약 정보 표시
    - Chart.js를 활용한 데이터 시각화
 
 2. **회원 관리 페이지**:
+
    - 회원 목록 조회 및 상세 정보 확인
    - 신규 회원 등록 폼
    - 회원 정보 필터링 (회원권 종류, 만료 상태 등)
 
 3. **출석 관리 페이지**:
+
    - 캘린더 방식의 출석 체크 인터페이스
    - 날짜별 출석 회원 목록 확인
    - 회원 검색 및 출석 체크 기능
 
 4. **결제 관리 페이지**:
+
    - 결제 내역 등록 및 조회
    - 결제 방법별 통계 (현금, 카드, 계좌이체)
    - 기간별 결제 내역 필터링
 
 5. **백업 관리 페이지**:
+
    - 수동 백업 생성
    - 백업 파일 조회 및 복원
    - 오래된 백업 삭제 기능
 
 6. **설정 페이지**:
+
    - 테마 설정 (밝은/어두운/시스템)
    - 백업 설정 (주기, 보관 개수)
    - 알림 설정
    - 데이터베이스 관리 옵션
 
 7. **스태프 관리 페이지**:
+
    - 스태프 정보 등록 및 관리
    - 권한 설정 및 관리
    - 스태프별 담당 회원 관리
 
 8. **락커 관리 페이지**:
+
    - 락커 할당 및 해제
    - 락커 상태 관리
    - 락커 이용 현황 조회
@@ -103,22 +114,26 @@ fitness-manager/
 ### 설치
 
 1. 저장소를 클론합니다:
+
 ```
 git clone https://github.com/yourusername/fitness-manager.git
 cd fitness-manager
 ```
 
 2. 의존성을 설치합니다:
+
 ```
 npm install
 ```
 
 3. 개발 모드로 실행합니다:
+
 ```
 npm run dev
 ```
 
 4. 프로덕션 빌드를 생성합니다:
+
 ```
 npm run build
 ```
@@ -139,6 +154,7 @@ npm run build
 - **Node-cron**: 자동 백업 스케줄링
 
 ## 향후 개발 계획
+
 - **회원 통계 기능 강화**: 회원 활동 분석 및 보고서 기능
 - **알림 시스템 개선**: 회원권 만료 및 중요 이벤트 알림
 - **다국어 지원**: 다양한 언어 지원 추가
@@ -146,13 +162,14 @@ npm run build
 
 ## 라이센스
 
-이 프로젝트는 MIT 라이센스에 따라 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요. 
+이 프로젝트는 MIT 라이센스에 따라 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
 ## 개선 사항
 
 현재 프로젝트의 개선이 필요한 사항들입니다:
 
 1. **더미 데이터 제거** ✅
+
    - 회원 관리 페이지에서 실제 데이터베이스 연동 완료
    - 출석 관리 페이지의 더미 데이터 제거 및 실제 데이터베이스 연동
    - Excel 가져오기 기능의 임시 결과 데이터 제거 및 실제 파일 처리 로직 구현
@@ -163,6 +180,7 @@ npm run build
      - 더미 데이터를 실제 데이터베이스로 완전히 교체 완료
 
 2. **예외 처리 강화** ✅
+
    - IPC 서비스의 예외 처리 개선 및 에러 메시지 구체화
    - 데이터베이스 연결 상태 검증 추가
    - 필수 입력값 검증 강화
@@ -176,12 +194,14 @@ npm run build
 7. **알림 시스템 구현**: 회원권 만료 임박, 결제 알림 등 중요 이벤트 알림 기능
 8. **통계 기능 확장**: 회원 활동, 매출 등에 대한 상세 분석 및 리포트 기능
 9. **UI/UX 개선**: 좀 더 직관적인 사용자 인터페이스 및 피드백 메시지 추가
-10. **성능 최적화**: 대량의 회원 데이터 처리 시 성능 개선 
+10. **성능 최적화**: 대량의 회원 데이터 처리 시 성능 개선
 
 ## 알려진 문제점 및 오류
 
 ### 데이터베이스 관련 오류 (✅ 완료)
-1. **"데이터베이스 연결 실패: TypeError: Cannot read properties of undefined (reading 'indexOf')"** 
+
+1. **"데이터베이스 연결 실패: TypeError: Cannot read properties of undefined (reading 'indexOf')"**
+
    - 원인: 데이터베이스 초기화 과정에서 undefined 객체에 접근하는 문제
    - 해결 방법: main.ts 파일에서 useDatabase 설정을 true로 변경하고, 데이터베이스 초기화 코드의 오류 처리 개선
    - 상태: ✅ 완료
@@ -192,7 +212,9 @@ npm run build
    - 상태: ✅ 완료
 
 ### 기타 오류 (✅ 완료)
+
 1. **포트 충돌 오류: "Error: listen EADDRINUSE: address already in use :::3001"**
+
    - 원인: 웹팩 개발 서버와 다른 프로세스가 같은 포트(3001)를 사용하려고 할 때 발생
    - 해결 방법: webpack.config.js 파일에서 개발 서버 포트를 5000으로 변경하고 main.ts에서도 URL 경로 수정
    - 상태: ✅ 완료
@@ -205,16 +227,22 @@ npm run build
 ### 2024-05-02 수정된 오류 (✅ 완료)
 
 1. **앱 실행 후 메인 화면이 표시되지 않는 문제**
+
    - 원인: Content Security Policy(CSP) 설정이 React 개발 모드에서 필요한 'eval' 기능을 차단
    - 해결: index.html 파일의 CSP 설정을 수정하여 'unsafe-eval', 'unsafe-inline', localhost 연결을 허용
+
    ```html
-   <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:*; connect-src 'self' http://localhost:*">
+   <meta
+     http-equiv="Content-Security-Policy"
+     content="script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:*; connect-src 'self' http://localhost:*"
+   />
    ```
+
    - 상태: ✅ 완료
 
 2. **빌드 및 실행 문제 (Cannot find module '...\dist\main\main.js')**
    - 원인: dist 폴더가 없거나 빌드 과정이 완료되지 않아 main.js 파일이 생성되지 않음
-   - 해결: 
+   - 해결:
      1. dist 폴더 삭제 후 webpack을 사용하여 전체 프로젝트 재빌드
      ```
      Remove-Item -Recurse -Force dist
@@ -226,21 +254,25 @@ npm run build
 ### 2024-05-05 주요 타입 및 설정 오류 (✅ 완료)
 
 1. **MembershipType 타입/스키마 누락 오류**
+
    - 현상: 'MembershipType' 타입이 없어서 import 시 에러 발생
    - 해결: src/models/types.ts에 MembershipType zod 스키마와 타입을 새로 추가
    - 상태: ✅ 완료
 
 2. **Payment 타입 필드 부족 오류**
+
    - 현상: Payment 타입에 memberName, membershipType, status 등 실제 사용하는 필드가 없어 타입 오류 발생
    - 해결: src/models/types.ts의 paymentSchema와 Payment 타입에 필요한 모든 필드 추가
    - 상태: ✅ 완료
 
 3. **MembershipType의 availableFacilities 필드 불일치**
+
    - 현상: DB/컴포넌트에서 availableFacilities를 사용하는데 타입에 없음
    - 해결: src/models/types.ts의 MembershipType에 availableFacilities?: string[] 추가
    - 상태: ✅ 완료
 
 4. **Payment 타입에 notes 필드 누락**
+
    - 현상: PaymentModal에서 notes(메모) 필드를 사용하는데 타입에 없음
    - 해결: src/models/types.ts의 paymentSchema와 Payment 타입에 notes?: string 추가
    - 상태: ✅ 완료
@@ -253,30 +285,39 @@ npm run build
 ### 현재 남아있는 주요 문제점 (❌ 미해결)
 
 1. **더미 데이터 제거**
+
    - 현재 회원 관리 페이지에서 실제 데이터베이스 연동이 완전히 이루어지지 않음
 
 2. **예외 처리 강화**
+
    - 네트워크 오류, 데이터베이스 오류 등 다양한 예외 상황 처리가 부족
 
 3. **테스트 코드**
+
    - 단위 테스트 및 통합 테스트가 구현되지 않음
 
 4. **백업 기능**
+
    - 클라우드 저장소 연동 등 원격 백업 옵션이 없음
 
 5. **보안 강화**
+
    - 민감한 회원 정보 암호화 및 접근 제어가 구현되지 않음
 
 6. **사용자 인증**
+
    - 로그인 및 권한 관리 시스템이 없음
 
 7. **알림 시스템**
+
    - 회원권 만료, 결제 알림 등 중요 이벤트 알림 기능이 없음
 
 8. **통계 기능**
+
    - 회원 활동, 매출 등에 대한 상세 분석 및 리포트 기능이 부족
 
 9. **UI/UX 개선**
+
    - 사용자 인터페이스 및 피드백 메시지 개선 필요
 
 10. **성능 최적화**
@@ -284,4 +325,4 @@ npm run build
 
 ---
 
-위 내역은 2024년 5월 채팅 기반 코드 점검 및 오류 수정 결과입니다. 
+위 내역은 2024년 5월 채팅 기반 코드 점검 및 오류 수정 결과입니다.

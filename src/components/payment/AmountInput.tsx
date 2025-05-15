@@ -22,7 +22,9 @@ const AmountInput: React.FC<AmountInputProps> = ({
         금액 <span className="text-red-500">*</span>
       </label>
       {isViewMode ? (
-        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{formatCurrency(amount)}원</div>
+        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+          {formatCurrency(amount)}원
+        </div>
       ) : (
         <div className="relative">
           <input
@@ -39,11 +41,9 @@ const AmountInput: React.FC<AmountInputProps> = ({
           </div>
         </div>
       )}
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
 };
 
-export default AmountInput; 
+export default AmountInput;

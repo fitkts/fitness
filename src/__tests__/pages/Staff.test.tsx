@@ -16,10 +16,12 @@ jest.mock('../../database/ipcService', () => ({
 }));
 
 jest.mock('../../contexts/ToastContext', () => ({
-  useToast: () => ({ showToast: jest.fn() })
+  useToast: () => ({ showToast: jest.fn() }),
 }));
 
-jest.mock('../../components/StaffModal', () => () => <div data-testid="staff-modal">StaffModal</div>);
+jest.mock('../../components/StaffModal', () => () => (
+  <div data-testid="staff-modal">StaffModal</div>
+));
 
 describe('직원 관리 페이지', () => {
   test('제목과 직원 추가 버튼이 화면에 보여야 한다', async () => {
@@ -29,6 +31,8 @@ describe('직원 관리 페이지', () => {
     // 직원 추가 버튼
     expect(screen.getByText('직원 추가')).toBeInTheDocument();
     // 직원 목록 안내 문구
-    expect(await screen.findByText('직원 정보가 없습니다.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('직원 정보가 없습니다.'),
+    ).toBeInTheDocument();
   });
-}); 
+});

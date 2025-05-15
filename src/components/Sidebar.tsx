@@ -18,7 +18,11 @@ interface SidebarProps {
   pages: string[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, pages }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  currentPage,
+  onPageChange,
+  pages,
+}) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -59,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, pages }) =
   };
 
   return (
-    <div 
+    <div
       className={`fixed top-0 left-0 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out
         ${isCollapsed ? 'min-w-[4rem] max-w-[4rem]' : 'min-w-[12rem] max-w-[20rem]'} 
         ${isMobile ? 'z-50' : 'z-30'}
@@ -74,8 +78,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, pages }) =
       </button>
 
       {/* 앱 로고 및 제목 */}
-      <div className={`flex items-center h-16 px-4 border-b border-gray-200 ${isCollapsed ? 'justify-center' : 'justify-start'}`}>
-        {!isCollapsed && <h1 className="text-xl font-bold text-primary-600 whitespace-nowrap">피트니스 매니저</h1>}
+      <div
+        className={`flex items-center h-16 px-4 border-b border-gray-200 ${isCollapsed ? 'justify-center' : 'justify-start'}`}
+      >
+        {!isCollapsed && (
+          <h1 className="text-xl font-bold text-primary-600 whitespace-nowrap">
+            피트니스 매니저
+          </h1>
+        )}
       </div>
 
       {/* 메뉴 항목 */}
@@ -86,14 +96,20 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, pages }) =
               key={page}
               onClick={() => onPageChange(page)}
               className={`sidebar-item w-full flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                ${currentPage === page 
-                  ? 'bg-primary-50 text-primary-600' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                ${
+                  currentPage === page
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }
                 ${isCollapsed ? 'justify-center' : 'justify-start'}`}
               title={isCollapsed ? page : ''}
             >
-              <span className={`${isCollapsed ? '' : 'mr-3'}`}>{getIcon(page)}</span>
-              {!isCollapsed && <span className="whitespace-nowrap">{page}</span>}
+              <span className={`${isCollapsed ? '' : 'mr-3'}`}>
+                {getIcon(page)}
+              </span>
+              {!isCollapsed && (
+                <span className="whitespace-nowrap">{page}</span>
+              )}
             </button>
           ))}
         </div>
@@ -102,11 +118,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange, pages }) =
       {/* 버전 정보 */}
       {!isCollapsed && (
         <div className="px-4 py-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 whitespace-nowrap">피트니스 매니저 v1.0.0</p>
+          <p className="text-xs text-gray-500 whitespace-nowrap">
+            피트니스 매니저 v1.0.0
+          </p>
         </div>
       )}
     </div>
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

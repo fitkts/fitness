@@ -51,7 +51,9 @@ export const paymentSchema = z.object({
 export const membershipTypeSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, { message: '이용권 이름은 필수입니다' }),
-  durationMonths: z.number().min(1, { message: '기간(개월)은 1 이상이어야 합니다' }),
+  durationMonths: z
+    .number()
+    .min(1, { message: '기간(개월)은 1 이상이어야 합니다' }),
   price: z.number().min(0, { message: '가격은 0 이상이어야 합니다' }),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
@@ -72,7 +74,7 @@ export enum StaffPosition {
   TRAINER = '트레이너',
   PART_TIME = '아르바이트',
   GENERAL = '일반 직원',
-  INTERN = '인턴'
+  INTERN = '인턴',
 }
 
 // StaffPermissions 타입 정의 추가
@@ -94,7 +96,11 @@ export const staffSchema = z.object({
   name: z.string().min(1, { message: '이름은 필수입니다' }),
   position: z.string().min(1, { message: '직책은 필수입니다' }),
   phone: z.string().optional(),
-  email: z.string().email({ message: '유효한 이메일을 입력하세요' }).optional().or(z.literal('')),
+  email: z
+    .string()
+    .email({ message: '유효한 이메일을 입력하세요' })
+    .optional()
+    .or(z.literal('')),
   hireDate: z.string().min(1, { message: '입사일은 필수입니다' }),
   status: z.nativeEnum(StaffStatus, {
     errorMap: () => ({ message: '유효한 상태를 선택해주세요' }),
@@ -166,4 +172,4 @@ export interface ImportOptions {
   mapping: {
     [key: string]: keyof Member;
   };
-} 
+}

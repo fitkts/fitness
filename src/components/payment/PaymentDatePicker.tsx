@@ -27,7 +27,9 @@ const PaymentDatePicker: React.FC<PaymentDatePickerProps> = ({
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {isViewMode ? (
-        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">{value}</div>
+        <div className="p-2 border rounded bg-gray-50 min-h-[40px] flex items-center">
+          {value}
+        </div>
       ) : (
         <input
           type="date"
@@ -39,11 +41,9 @@ const PaymentDatePicker: React.FC<PaymentDatePickerProps> = ({
           required={required}
         />
       )}
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
 };
 
-export default PaymentDatePicker; 
+export default PaymentDatePicker;

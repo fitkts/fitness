@@ -3,15 +3,15 @@ import Modal from './common/Modal';
 import { Staff, StaffStatus } from '../models/types';
 import { useToast } from '../contexts/ToastContext';
 import StaffForm from './staff/StaffForm';
-import { 
-  defaultStaff, 
-  defaultPermissions, 
-  formatPhoneNumber, 
+import {
+  defaultStaff,
+  defaultPermissions,
+  formatPhoneNumber,
   validateStaffForm,
   adminPermissions,
   frontDeskPermissions,
   trainerPermissions,
-  partTimePermissions
+  partTimePermissions,
 } from './staff/StaffUtils';
 
 interface StaffModalProps {
@@ -22,23 +22,29 @@ interface StaffModalProps {
   isViewMode?: boolean;
 }
 
-const StaffModal: React.FC<StaffModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  staff, 
-  isViewMode = false 
+const StaffModal: React.FC<StaffModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  staff,
+  isViewMode = false,
 }) => {
   const [formData, setFormData] = useState<Staff>(() => {
     const initialHireDate = new Date().toISOString().split('T')[0];
-    const baseStaff = staff 
-      ? { 
-          ...defaultStaff, 
-          ...staff, 
-          hireDate: staff.hireDate ? new Date(staff.hireDate).toISOString().split('T')[0] : initialHireDate,
-          permissions: staff.permissions ?? defaultPermissions, 
+    const baseStaff = staff
+      ? {
+          ...defaultStaff,
+          ...staff,
+          hireDate: staff.hireDate
+            ? new Date(staff.hireDate).toISOString().split('T')[0]
+            : initialHireDate,
+          permissions: staff.permissions ?? defaultPermissions,
           notes: staff.notes || '',
-          status: staff.status ? (Object.values(StaffStatus).includes(staff.status as StaffStatus) ? staff.status : StaffStatus.ACTIVE) : defaultStaff.status, 
+          status: staff.status
+            ? Object.values(StaffStatus).includes(staff.status as StaffStatus)
+              ? staff.status
+              : StaffStatus.ACTIVE
+            : defaultStaff.status,
         }
       : { ...defaultStaff, hireDate: initialHireDate };
     return baseStaff as Staff;
@@ -55,10 +61,16 @@ const StaffModal: React.FC<StaffModalProps> = ({
         setFormData({
           ...defaultStaff,
           ...staff,
-          hireDate: staff.hireDate ? new Date(staff.hireDate).toISOString().split('T')[0] : initialHireDate,
+          hireDate: staff.hireDate
+            ? new Date(staff.hireDate).toISOString().split('T')[0]
+            : initialHireDate,
           permissions: staff.permissions ?? defaultPermissions,
           notes: staff.notes || '',
-          status: staff.status ? (Object.values(StaffStatus).includes(staff.status as StaffStatus) ? staff.status : StaffStatus.ACTIVE) : defaultStaff.status,
+          status: staff.status
+            ? Object.values(StaffStatus).includes(staff.status as StaffStatus)
+              ? staff.status
+              : StaffStatus.ACTIVE
+            : defaultStaff.status,
         } as Staff);
         setCurrentIsViewMode(!!isViewMode);
       } else {
@@ -82,14 +94,21 @@ const StaffModal: React.FC<StaffModalProps> = ({
     setIsSubmitting(true);
     try {
       const dataToSave = { ...formData };
-      if (!Object.values(StaffStatus).includes(dataToSave.status as StaffStatus)) {
+      if (
+        !Object.values(StaffStatus).includes(dataToSave.status as StaffStatus)
+      ) {
         dataToSave.status = StaffStatus.ACTIVE;
       }
 
-      const success = await onSave(dataToSave as Staff); 
-      
+      const success = await onSave(dataToSave as Staff);
+
       if (success) {
-        showToast('success', formData.id ? '직원 정보가 수정되었습니다.' : '새 직원이 등록되었습니다.');
+        showToast(
+          'success',
+          formData.id
+            ? '직원 정보가 수정되었습니다.'
+            : '새 직원이 등록되었습니다.',
+        );
         onClose();
       } else {
         showToast('error', '저장 중 오류가 발생했습니다.');
@@ -102,24 +121,28 @@ const StaffModal: React.FC<StaffModalProps> = ({
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value } = e.target;
-    
+
     if (currentIsViewMode) return;
-    
+
     let processedValue: string | StaffStatus = value;
     if (name === 'phone') {
       processedValue = formatPhoneNumber(value);
     } else if (name === 'status') {
-      processedValue = Object.values(StaffStatus).includes(value as StaffStatus) 
-        ? value as StaffStatus 
+      processedValue = Object.values(StaffStatus).includes(value as StaffStatus)
+        ? (value as StaffStatus)
         : StaffStatus.ACTIVE;
     }
-    
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
-    
+
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
+
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -129,35 +152,37 @@ const StaffModal: React.FC<StaffModalProps> = ({
 
   const handlePermissionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (currentIsViewMode) return;
-    
+
     const { name, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       permissions: {
         ...(prev.permissions ?? defaultPermissions),
-        [name]: checked
-      }
+        [name]: checked,
+      },
     }));
   };
 
   const setPermissionPreset = (presetName: string) => {
     if (currentIsViewMode) return;
-    
+
     let newPermissions = { ...defaultPermissions };
     if (presetName === 'admin') newPermissions = adminPermissions;
     else if (presetName === 'frontDesk') newPermissions = frontDeskPermissions;
     else if (presetName === 'trainer') newPermissions = trainerPermissions;
     else if (presetName === 'partTime') newPermissions = partTimePermissions;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      permissions: newPermissions
+      permissions: newPermissions,
     }));
   };
 
-  const modalTitle = currentIsViewMode 
-    ? '직원 정보 보기' 
-    : (formData.id ? '직원 정보 수정' : '새 직원 등록');
+  const modalTitle = currentIsViewMode
+    ? '직원 정보 보기'
+    : formData.id
+      ? '직원 정보 수정'
+      : '새 직원 등록';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
@@ -186,7 +211,11 @@ const StaffModal: React.FC<StaffModalProps> = ({
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
             disabled={isSubmitting}
           >
-            {isSubmitting ? '저장 중...' : (formData.id ? '수정 완료' : '등록 완료')}
+            {isSubmitting
+              ? '저장 중...'
+              : formData.id
+                ? '수정 완료'
+                : '등록 완료'}
           </button>
         )}
         {currentIsViewMode && (
@@ -205,4 +234,4 @@ const StaffModal: React.FC<StaffModalProps> = ({
   );
 };
 
-export default StaffModal; 
+export default StaffModal;

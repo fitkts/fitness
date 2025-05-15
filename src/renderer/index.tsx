@@ -8,7 +8,9 @@ import './index.css';
 document.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('root');
   if (!container) {
-    console.error('Root element #root not found in DOM! 렌더링 대상 요소를 찾을 수 없습니다.');
+    console.error(
+      'Root element #root not found in DOM! 렌더링 대상 요소를 찾을 수 없습니다.',
+    );
     return;
   }
 
@@ -19,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <ToastProvider>
           <App />
         </ToastProvider>
-      </React.StrictMode>
+      </React.StrictMode>,
     );
     console.log('React 앱이 성공적으로 렌더링되었습니다.');
   } catch (error) {
