@@ -1,0 +1,15 @@
+[백업 관리 페이지(Backup.tsx) 제거 요약]
+
+1. 문제 원인
+- Settings(설정) 페이지에 이미 백업 관리 기능이 포함되어 있음
+- Sidebar 및 App.tsx 등에서 Backup.tsx를 중복으로 참조하고 있었음
+- Backup.tsx 파일 삭제 후에도 App.tsx에서 import 및 라우팅 코드가 남아있어 오류 발생
+
+2. 해결 방법
+- Sidebar에서 백업 관리 메뉴 제거
+- Backup.tsx 파일 삭제
+- App.tsx에서 Backup import, enum, 라우팅 코드 모두 삭제
+
+3. 결과
+- 백업 관리 기능은 Settings(설정) 페이지에서만 접근 가능
+- 중복 기능 및 불필요한 코드 정리로 오류 해결 및 유지보수성 향상 

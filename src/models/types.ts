@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validateLockerNumber } from '../utils/validation';
 
 // 회원 스키마
 export const memberSchema = z.object({
@@ -44,6 +45,8 @@ export const paymentSchema = z.object({
   status: z.enum(['완료', '취소', '환불']),
   notes: z.string().optional(),
   description: z.string().optional(),
+  staffId: z.number().optional(),
+  staffName: z.string().optional(),
   createdAt: z.string().optional(),
 });
 
@@ -59,6 +62,8 @@ export const membershipTypeSchema = z.object({
   isActive: z.boolean().default(true),
   maxUses: z.number().optional(),
   availableFacilities: z.array(z.string()).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 // StaffStatus enum 정의 추가
@@ -121,16 +126,37 @@ export const staffSchema = z.object({
   updatedAt: z.string().optional(),
 });
 
+// 락커 크기 Enum (새로 추가)
+export enum LockerSize {
+  SMALL = 'small',
+  MEDIUM = 'medium',
+  LARGE = 'large',
+}
+
+// 락커 요금 옵션 스키마 (새로 추가)
+export const lockerFeeOptionSchema = z.object({
+  durationDays: z.number().positive({ message: '기간(일)은 양수여야 합니다.' }),
+  price: z.number().nonnegative({ message: '가격은 0 이상이어야 합니다.' }),
+  // id: z.string().optional(), // 필요시 각 요금 옵션 고유 ID
+});
+export type LockerFeeOption = z.infer<typeof lockerFeeOptionSchema>;
+
 // 락커 스키마
 export const lockerSchema = z.object({
   id: z.number().optional(),
-  number: z.string().min(1, { message: '락커 번호는 필수입니다' }),
-  status: z.enum(['available', 'occupied', 'maintenance']),
+  number: z.string().min(1, { message: '락커 번호는 필수입니다' })
+            .refine(validateLockerNumber, { message: '유효한 락커 번호를 입력해주세요. (형식: A-01, 101 등, 숫자 부분은 1-999)' }),
+  size: z.nativeEnum(LockerSize, { errorMap: () => ({ message: '유효한 락커 크기를 선택해주세요.' })}).optional(),
+  location: z.string().max(100, '위치는 100자 이내로 입력해주세요.').optional(),
+  status: z.enum(['available', 'occupied', 'maintenance'], { errorMap: () => ({ message: '유효한 락커 상태를 선택해주세요.' })}),
+  feeOptions: z.array(lockerFeeOptionSchema)
+              .min(1, { message: '유료 락커는 하나 이상의 요금 옵션이 필요합니다.'})
+              .optional(),
   memberId: z.number().optional(),
   memberName: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(500, '비고는 500자 이내로 입력해주세요.').optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

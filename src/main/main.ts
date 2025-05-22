@@ -9,9 +9,10 @@ import * as paymentRepository from '../database/paymentRepository';
 import * as membershipTypeRepository from '../database/membershipTypeRepository';
 import * as memberRepository from '../database/memberRepository';
 import * as staffRepository from '../database/staffRepository';
-import { Staff } from '../models/types';
 import * as lockerRepository from '../database/lockerRepository';
-import { Locker } from '../models/types';
+import * as attendanceRepository from '../database/attendanceRepository';
+import { Member, Staff, Locker } from '../models/types';
+import { format } from 'date-fns';
 
 // 개발 모드 설정
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -90,7 +91,7 @@ function createWindow() {
 
   const startUrl =
     isDevelopment || forceDevServer
-      ? 'http://localhost:5000'
+      ? 'http://localhost:3000'
       : `file://${path.join(__dirname, '../renderer/index.html')}`;
 
   electronLog.info('Loading URL:', startUrl);
@@ -327,328 +328,106 @@ ipcMain.on('relaunch-app', () => {
 // 회원 관리 API
 
 // 모든 회원 조회
-ipcMain.handle('get-all-members', () => {
+ipcMain.handle('get-all-members', async () => {
   try {
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-
-    const members = db
-      .prepare(
-        `
-      SELECT 
-        id, name, phone, email, gender, 
-        birth_date as birthDate, 
-        join_date as joinDate, 
-        membership_type as membershipType, 
-        membership_start as membershipStart, 
-        membership_end as membershipEnd, 
-        last_visit as lastVisit, 
-        notes,
-        staff_id as staffId,
-        staff_name as staffName,
-        created_at as createdAt, 
-        updated_at as updatedAt
-      FROM members
-      ORDER BY name
-    `,
-      )
-      .all();
-
+    const members = await memberRepository.getAllMembers();
     return { success: true, data: members };
   } catch (error) {
     const errorMessage =
       error instanceof Error
         ? error.message
         : '알 수 없는 오류가 발생했습니다.';
-    electronLog.error('회원 목록 조회 오류:', errorMessage);
+    electronLog.error('회원 목록 조회 오류 (IPC):', errorMessage);
     return { success: false, error: errorMessage };
   }
 });
 
 // 회원 추가
-ipcMain.handle('add-member', (_, member) => {
+ipcMain.handle('add-member', async (_, memberData: Omit<Member, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    if (!member.name) {
+    if (!memberData.name) {
       throw new Error('회원 이름은 필수 입력 항목입니다.');
     }
-
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-
-    const now = new Date().toISOString();
-
-    const result = db
-      .prepare(
-        `
-      INSERT INTO members (
-        name, phone, email, gender, birth_date, join_date, 
-        membership_type, membership_start, membership_end, 
-        notes, staff_id, staff_name, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-      )
-      .run(
-        member.name,
-        member.phone || null,
-        member.email || null,
-        member.gender || null,
-        member.birthDate || null,
-        member.joinDate,
-        member.membershipType || null,
-        member.membershipStart || null,
-        member.membershipEnd || null,
-        member.notes || null,
-        member.staffId || null,
-        member.staffName || null,
-        now,
-        now,
-      );
-
-    if (!result.changes) {
-      throw new Error('회원 추가에 실패했습니다.');
-    }
-
-    return {
-      success: true,
-      id: result.lastInsertRowid,
-    };
+    const newId = await memberRepository.addMember(memberData);
+    return { success: true, id: newId };
   } catch (error) {
     const errorMessage =
       error instanceof Error
         ? error.message
         : '알 수 없는 오류가 발생했습니다.';
-    electronLog.error('회원 추가 오류:', errorMessage);
+    electronLog.error('회원 추가 오류 (IPC):', errorMessage);
     return { success: false, error: errorMessage };
   }
 });
 
 // 회원 수정
-ipcMain.handle('update-member', (_, member) => {
+ipcMain.handle('update-member', async (_, memberData: Member) => {
   try {
-    if (!member.id) {
+    if (!memberData.id) {
       throw new Error('회원 ID가 필요합니다.');
     }
-    if (!member.name) {
+    if (!memberData.name) {
       throw new Error('회원 이름은 필수 입력 항목입니다.');
     }
-
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-
-    const now = new Date().toISOString();
-
-    const result = db
-      .prepare(
-        `
-      UPDATE members SET
-        name = ?,
-        phone = ?,
-        email = ?,
-        gender = ?,
-        birth_date = ?,
-        join_date = ?,
-        membership_type = ?,
-        membership_start = ?,
-        membership_end = ?,
-        notes = ?,
-        staff_id = ?,
-        staff_name = ?,
-        updated_at = ?
-      WHERE id = ?
-    `,
-      )
-      .run(
-        member.name,
-        member.phone || null,
-        member.email || null,
-        member.gender || null,
-        member.birthDate || null,
-        member.joinDate,
-        member.membershipType || null,
-        member.membershipStart || null,
-        member.membershipEnd || null,
-        member.notes || null,
-        member.staffId || null,
-        member.staffName || null,
-        now,
-        member.id,
-      );
-
-    if (!result.changes) {
-      throw new Error('회원 정보를 찾을 수 없거나 업데이트에 실패했습니다.');
-    }
-
-    return {
-      success: true,
-      updated: result.changes > 0,
-    };
+    const { id, createdAt, updatedAt, ...dataToUpdate } = memberData;
+    const success = await memberRepository.updateMember(id, dataToUpdate);
+    return { success: true, updated: success };
   } catch (error) {
     const errorMessage =
       error instanceof Error
         ? error.message
         : '알 수 없는 오류가 발생했습니다.';
-    electronLog.error('회원 수정 오류:', errorMessage);
+    electronLog.error('회원 수정 오류 (IPC):', errorMessage);
     return { success: false, error: errorMessage };
   }
 });
 
 // 회원 삭제
-ipcMain.handle('delete-member', (_, id) => {
+ipcMain.handle('delete-member', async (_, id: number) => {
   try {
     if (!id) {
       throw new Error('삭제할 회원 ID가 필요합니다.');
     }
-
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-
-    // 트랜잭션 시작
-    const deleteTransaction = db.transaction(() => {
-      try {
-        // 해당 회원의 출석 기록 삭제
-        db.prepare('DELETE FROM attendance WHERE member_id = ?').run(id);
-
-        // 해당 회원의 결제 기록 삭제
-        db.prepare('DELETE FROM payments WHERE member_id = ?').run(id);
-
-        // 회원 정보 삭제
-        const result = db.prepare('DELETE FROM members WHERE id = ?').run(id);
-
-        if (!result.changes) {
-          throw new Error('회원을 찾을 수 없습니다.');
-        }
-
-        return result.changes > 0;
-      } catch (error) {
-        throw new Error(
-          `회원 삭제 중 오류 발생: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
-        );
-      }
-    });
-
-    const deleted = deleteTransaction();
+    const deleted = await memberRepository.deleteMember(id);
     return { success: true, deleted };
   } catch (error) {
     const errorMessage =
       error instanceof Error
         ? error.message
         : '알 수 없는 오류가 발생했습니다.';
-    electronLog.error(`ID가 ${id}인 회원 삭제 오류:`, errorMessage);
+    electronLog.error(`ID가 ${id}인 회원 삭제 오류 (IPC):`, errorMessage);
     return { success: false, error: errorMessage };
   }
 });
 
 // 대시보드 통계 데이터 가져오기
-ipcMain.handle('get-dashboard-stats', () => {
+ipcMain.handle('get-dashboard-stats', async () => {
   try {
-    const db = getDatabase();
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .split('T')[0];
+    const todayISO = format(new Date(), 'yyyy-MM-dd');
+    const firstDayOfMonthISO = format(new Date(new Date().setDate(1)), 'yyyy-MM-dd');
+    const recentLimit = 3; // 최근 항목 조회 시 개수
+    const monthlyStatCount = 6; // 최근 N개월 통계
 
-    // 1. 총 회원 수
-    const totalMembers = db
-      .prepare('SELECT COUNT(*) as count FROM members')
-      .get().count;
-
-    // 2. 활성 회원 수 (회원권이 유효한 회원)
-    const activeMembers = db
-      .prepare(
-        `
-      SELECT COUNT(*) as count FROM members 
-      WHERE membership_end >= ? OR membership_end IS NULL
-    `,
-      )
-      .get(today).count;
-
-    // 3. 이번달 신규 회원 수
-    const newMembersThisMonth = db
-      .prepare(
-        `
-      SELECT COUNT(*) as count FROM members 
-      WHERE join_date >= ?
-    `,
-      )
-      .get(firstDayOfMonth).count;
-
-    // 4. 오늘 출석 회원 수
-    const attendanceToday = db
-      .prepare(
-        `
-      SELECT COUNT(*) as count FROM attendance 
-      WHERE visit_date = ?
-    `,
-      )
-      .get(today).count;
-
-    // 5. 회원권 종류별 분포
-    const membershipDistribution = db
-      .prepare(
-        `
-      SELECT membership_type as type, COUNT(*) as count 
-      FROM members 
-      WHERE membership_type IS NOT NULL
-      GROUP BY membership_type
-    `,
-      )
-      .all();
-
-    // 6. 최근 6개월 월별 방문 통계
-    const monthlyAttendance = [];
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthStart = month.toISOString().split('T')[0];
-      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0)
-        .toISOString()
-        .split('T')[0];
-
-      const count = db
-        .prepare(
-          `
-        SELECT COUNT(*) as count FROM attendance 
-        WHERE visit_date BETWEEN ? AND ?
-      `,
-        )
-        .get(monthStart, monthEnd).count;
-
-      const monthName = month.toLocaleDateString('ko-KR', { month: 'long' });
-      monthlyAttendance.push({
-        month: monthName,
-        count,
-      });
-    }
-
-    // 7. 최근 활동 (최근 가입한 회원 3명)
-    const recentMembers = db
-      .prepare(
-        `
-      SELECT id, name, join_date as joinDate FROM members 
-      ORDER BY join_date DESC LIMIT 3
-    `,
-      )
-      .all();
-
-    // 8. 최근 출석 회원 3명
-    const recentAttendance = db
-      .prepare(
-        `
-      SELECT m.id, m.name, a.visit_date as visitDate
-      FROM attendance a
-      JOIN members m ON a.member_id = m.id
-      ORDER BY a.visit_date DESC, a.id DESC LIMIT 3
-    `,
-      )
-      .all();
+    // 병렬로 데이터 가져오기
+    const [
+      totalMembers,
+      activeMembers,
+      newMembersThisMonth,
+      attendanceToday,
+      membershipDistribution,
+      monthlyAttendance,
+      recentMembers,
+      recentAttendance,
+    ] = await Promise.all([
+      memberRepository.getTotalMemberCount(),
+      memberRepository.getActiveMemberCount(todayISO),
+      memberRepository.getNewMemberCountSince(firstDayOfMonthISO),
+      attendanceRepository.getAttendanceCountByDate(todayISO),
+      memberRepository.getMembershipDistribution(),
+      attendanceRepository.getMonthlyAttendanceCounts(todayISO, monthlyStatCount),
+      memberRepository.getRecentMembers(recentLimit),
+      attendanceRepository.getRecentAttendanceWithMemberName(recentLimit),
+    ]);
 
     return {
       success: true,
@@ -658,15 +437,15 @@ ipcMain.handle('get-dashboard-stats', () => {
         newMembersThisMonth,
         attendanceToday,
         membershipDistribution,
-        monthlyAttendance,
+        monthlyAttendance, // Repository에서 이미 { month: string; count: number }[] 형태로 반환
         recentActivities: {
-          recentMembers,
-          recentAttendance,
+          recentMembers, // Repository에서 Member[] 반환, 필요시 여기서 가공 (이미 joinDate는 ISO 문자열)
+          recentAttendance, // Repository에서 이미 { id, memberId, memberName, visitDate, createdAt? }[] 형태로 반환
         },
       },
     };
   } catch (error) {
-    electronLog.error('대시보드 통계 조회 오류:', error);
+    electronLog.error('대시보드 통계 조회 오류 (IPC):', error);
     return { success: false, error: (error as Error).message };
   }
 });
@@ -707,16 +486,15 @@ ipcMain.handle('add-payment', async (_, paymentData) => {
   }
 });
 
-// 결제 업데이트
-ipcMain.handle('update-payment', async (_, paymentData) => {
-  // paymentData는 Payment 형태 (id 포함, memberName 불포함)
+// 결제 정보 수정
+ipcMain.handle('update-payment', async (_, id, paymentData) => {
   try {
-    const { id, memberName, ...dataToUpdate } = paymentData; // id 추출, memberName 제거
-    const success = await paymentRepository.updatePayment(id, dataToUpdate);
+    // electronLog.info('IPC update-payment received:', id, paymentData);
+    const success = await paymentRepository.updatePayment(id, paymentData);
     return { success };
-  } catch (error) {
-    electronLog.error('결제 업데이트 IPC 오류:', error);
-    return { success: false, error: (error as Error).message };
+  } catch (error: any) {
+    electronLog.error('결제 정보 수정 IPC 오류:', error);
+    return { success: false, error: error.message };
   }
 });
 
@@ -789,21 +567,16 @@ ipcMain.handle('delete-membership-type', async (_, id) => {
 // 모든 스태프 조회
 ipcMain.handle('get-all-staff', async () => {
   try {
-    const db = getDatabase();
-    const staff = db
-      .prepare(
-        `
-      SELECT id, name, phone, email, position, isActive, createdAt, updatedAt
-      FROM staff
-      WHERE isActive = 1
-      ORDER BY name ASC
-    `,
-      )
-      .all();
-    return { success: true, data: staff };
+    const staff = await staffRepository.getAllStaff();
+    const activeStaff = staff.filter(s => s.status === 'active');
+    return { success: true, data: activeStaff };
   } catch (error) {
-    console.error('직원 목록 가져오기 오류:', error);
-    return { success: false, error: '직원 목록을 가져오는데 실패했습니다.' };
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : '알 수 없는 오류가 발생했습니다.';
+    electronLog.error('직원 목록 가져오기 오류 (IPC):', errorMessage);
+    return { success: false, error: errorMessage };
   }
 });
 
@@ -918,34 +691,22 @@ ipcMain.handle('delete-locker', async (_, id: number) => {
 });
 
 // 추가해야 할 main.ts 코드 (참고용)
-ipcMain.handle('get-attendance-by-date', async (event, date) => {
+ipcMain.handle('get-attendance-by-date', async (event, date: string) => {
   try {
-    // 데이터베이스에서 해당 날짜의 출석 데이터 조회 로직
-    const db = getDatabase();
-
-    // 날짜 형식이 올바른지 확인
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return {
         success: false,
-        error: '올바른 날짜 형식이 아닙니다.',
+        error: '올바른 날짜 형식이 아닙니다 (YYYY-MM-DD).',
       };
     }
-
-    // SQL 쿼리 실행
-    const query = `
-      SELECT a.id, a.member_id as memberId, m.name as memberName, a.visit_date as visitDate
-      FROM attendance a
-      LEFT JOIN members m ON a.member_id = m.id
-      WHERE a.visit_date = ?
-    `;
-
-    const attendanceRecords = db.prepare(query).all(date);
-    return {
-      success: true,
-      data: attendanceRecords,
-    };
+    const attendanceRecords = await attendanceRepository.getAttendanceByDate(date);
+    const recordsWithMemberName = await Promise.all(attendanceRecords.map(async (record) => {
+        const member = await memberRepository.getMemberById(record.memberId);
+        return { ...record, memberName: member ? member.name : '알 수 없음' };
+    }));
+    return { success: true, data: recordsWithMemberName };
   } catch (error) {
-    electronLog.error('날짜별 출석 조회 오류:', error);
+    electronLog.error('날짜별 출석 조회 오류 (IPC):', error);
     return {
       success: false,
       error: '출석 데이터 조회 중 오류가 발생했습니다.',
@@ -984,106 +745,75 @@ ipcMain.handle('get-members-pagination', async (_, page, pageSize, options) => {
 });
 
 // 엑셀 회원 데이터 임포트
-ipcMain.handle('import-members-excel', async (_, data) => {
+ipcMain.handle('import-members-excel', async (_, data: any[]) => {
+  electronLog.info('[Main Process] Received import-members-excel request with data count:', data.length);
   try {
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-
-    const now = new Date().toISOString();
     let successCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
 
-    // 트랜잭션 시작
-    db.prepare('BEGIN TRANSACTION').run();
-
-    try {
-      for (const row of data) {
-        try {
-          // 필수 필드 검증
-          if (!row.name) {
-            throw new Error('이름은 필수 입력 항목입니다.');
-          }
-
-          // 데이터 정제
-          const member = {
-            name: row.name,
-            phone: row.phone || null,
-            email: row.email || null,
-            gender: row.gender || null,
-            birthDate: row.birthDate || null,
-            joinDate: row.joinDate || now,
-            membershipType: row.membershipType || null,
-            membershipStart: row.membershipStart || null,
-            membershipEnd: row.membershipEnd || null,
-            notes: row.notes || null,
-            staffId: row.staffId || null,
-            staffName: row.staffName || null,
-          };
-
-          // 회원 추가
-          const result = db
-            .prepare(
-              `
-            INSERT INTO members (
-              name, phone, email, gender, birth_date, join_date, 
-              membership_type, membership_start, membership_end, 
-              notes, staff_id, staff_name, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-            )
-            .run(
-              member.name,
-              member.phone,
-              member.email,
-              member.gender,
-              member.birthDate,
-              member.joinDate,
-              member.membershipType,
-              member.membershipStart,
-              member.membershipEnd,
-              member.notes,
-              member.staffId || null,
-              member.staffName || null,
-              now,
-              now,
-            );
-
-          if (result.changes > 0) {
-            successCount++;
-          } else {
-            throw new Error('회원 추가 실패');
-          }
-        } catch (error) {
+    for (const row of data) {
+      try {
+        // 필수 필드 검증
+        if (!row.name) {
+          errors.push(`필수 항목 누락: 이름 (행 데이터: ${JSON.stringify(row)})`);
           failedCount++;
-          errors.push(`${row.name || '알 수 없음'}: ${error.message}`);
+          continue;
         }
+        if (!row.joinDate) { // 가입일은 Member 타입에서 필수 문자열
+            errors.push(`필수 항목 누락: 가입일 (회원: ${row.name})`);
+            failedCount++;
+            continue;
+        }
+
+        // Zod 스키마와 Member 타입에 맞게 데이터 준비
+        // Omit<Member, 'id' | 'createdAt' | 'updatedAt'> 타입에 맞춤
+        const memberDataForRepo: Omit<Member, 'id' | 'createdAt' | 'updatedAt'> = {
+          name: String(row.name),
+          phone: row.phone ? String(row.phone) : undefined,
+          email: row.email ? String(row.email) : undefined,
+          gender: (rawGender => (rawGender === '남성' || rawGender === '여성' || rawGender === '기타') ? rawGender : undefined)(row.gender ? String(row.gender).trim() : undefined),
+          // 날짜 필드는 ISO 문자열 (YYYY-MM-DD) 또는 undefined로 전달. Repository에서 타임스탬프로 변환.
+          birthDate: row.birthDate ? format(new Date(row.birthDate), 'yyyy-MM-dd') : undefined,
+          joinDate: format(new Date(row.joinDate), 'yyyy-MM-dd'), // 필수
+          membershipType: row.membershipType ? String(row.membershipType) : undefined,
+          membershipStart: row.membershipStart ? format(new Date(row.membershipStart), 'yyyy-MM-dd') : undefined,
+          membershipEnd: row.membershipEnd ? format(new Date(row.membershipEnd), 'yyyy-MM-dd') : undefined,
+          notes: row.notes ? String(row.notes) : undefined,
+          // staffId, staffName은 Member 타입에 있지만, addMember Omit에 포함되지 않았으므로 Repository에서 처리 안 함.
+          // 만약 필요하다면 Member 타입 및 addMember 인자 수정 필요. 여기서는 일단 제외.
+        };
+        
+        // birthDate, membershipStart, membershipEnd가 빈 문자열일 경우 undefined로 처리 (엑셀에서 공백으로 올 수 있음)
+        if (memberDataForRepo.birthDate === '') memberDataForRepo.birthDate = undefined;
+        if (memberDataForRepo.membershipStart === '') memberDataForRepo.membershipStart = undefined;
+        if (memberDataForRepo.membershipEnd === '') memberDataForRepo.membershipEnd = undefined;
+
+        await memberRepository.addMember(memberDataForRepo);
+        successCount++;
+      } catch (error) {
+        failedCount++;
+        errors.push(`${row.name || '알 수 없는 행'}: ${(error as Error).message}`);
+        electronLog.error('엑셀 행 임포트 중 오류:', { row, error });
       }
-
-      // 트랜잭션 커밋
-      db.prepare('COMMIT').run();
-
-      return {
-        success: true,
-        data: {
-          successCount,
-          failedCount,
-          errors,
-        },
-      };
-    } catch (error) {
-      // 트랜잭션 롤백
-      db.prepare('ROLLBACK').run();
-      throw error;
     }
+
+    electronLog.info('[Main Process] Excel import finished:', { successCount, failedCount, errors });
+    return {
+      success: true,
+      data: {
+        successCount,
+        failedCount,
+        errors,
+      },
+    };
+
   } catch (error) {
     const errorMessage =
       error instanceof Error
         ? error.message
         : '알 수 없는 오류가 발생했습니다.';
-    electronLog.error('엑셀 회원 데이터 임포트 오류:', errorMessage);
+    electronLog.error('엑셀 회원 데이터 임포트 처리 중 오류 (IPC):', errorMessage);
     return {
       success: false,
       error: errorMessage,
@@ -1103,59 +833,61 @@ ipcMain.handle(
       recordData,
     );
     try {
-      const db = getDatabase();
-      if (!db) {
-        throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
+      // 날짜 형식 검증 (YYYY-MM-DD)
+      if (!recordData.visitDate || !/^\d{4}-\d{2}-\d{2}$/.test(recordData.visitDate)) {
+        return {
+          success: false,
+          error: '올바른 방문 날짜 형식이 아닙니다 (YYYY-MM-DD).',
+        };
       }
-      const existing = db
-        .prepare(
-          'SELECT id FROM attendance WHERE member_id = ? AND visit_date = ?',
-        )
-        .get(recordData.memberId, recordData.visitDate);
-      if (existing) {
+
+      // 중복 출석 확인
+      const existingRecord = await attendanceRepository.findAttendanceByMemberAndDate(
+        recordData.memberId,
+        recordData.visitDate,
+      );
+
+      if (existingRecord) {
         electronLog.warn(
           '[Main Process] Attendance record already exists for member:',
           recordData.memberId,
           'on date:',
           recordData.visitDate,
         );
-        const member = db
-          .prepare('SELECT name FROM members WHERE id = ?')
-          .get(recordData.memberId);
+        const member = await memberRepository.getMemberById(recordData.memberId); // memberName 최신화
         return {
           success: true,
-          data: {
-            id: existing.id,
-            memberId: recordData.memberId,
-            memberName: member ? member.name : recordData.memberName || 'N/A',
-            visitDate: recordData.visitDate,
+          data: { 
+            ...existingRecord, 
+            memberName: member ? member.name : (recordData.memberName || '알 수 없음') 
           },
           message: '이미 출석 처리된 회원입니다.',
         };
       }
 
-      const result = db
-        .prepare('INSERT INTO attendance (member_id, visit_date) VALUES (?, ?)')
-        .run(recordData.memberId, recordData.visitDate);
-
-      if (result.changes > 0) {
-        const member = db
-          .prepare('SELECT name FROM members WHERE id = ?')
-          .get(recordData.memberId);
-        const newRecord = {
-          id: result.lastInsertRowid as number,
-          memberId: recordData.memberId,
-          memberName: member ? member.name : recordData.memberName || 'N/A',
-          visitDate: recordData.visitDate,
-        };
-        electronLog.info(
-          '[Main Process] Attendance record added successfully:',
-          newRecord,
-        );
-        return { success: true, data: newRecord };
-      } else {
-        throw new Error('출석 기록 추가에 실패했습니다.');
+      // 출석 추가 (Attendance 타입에 맞게 전달, visitDate는 string)
+      const newRecordId = await attendanceRepository.addAttendance({
+        memberId: recordData.memberId,
+        visitDate: recordData.visitDate,
+      });
+      
+      // 추가된 전체 기록을 반환하기 위해 조회
+      const addedRecord = await attendanceRepository.findAttendanceByMemberAndDate(recordData.memberId, recordData.visitDate);
+      if (!addedRecord) { // 이론적으로는 발생하기 어려움
+          throw new Error('출석 기록 추가 후 조회에 실패했습니다.');
       }
+
+      const member = await memberRepository.getMemberById(recordData.memberId);
+      const responseRecord = {
+        ...addedRecord,
+        memberName: member ? member.name : (recordData.memberName || '알 수 없음'),
+      };
+
+      electronLog.info(
+        '[Main Process] Attendance record added successfully:',
+        responseRecord,
+      );
+      return { success: true, data: responseRecord };
     } catch (error) {
       electronLog.error(
         '[Main Process] Error adding attendance record:',
@@ -1173,14 +905,8 @@ ipcMain.handle('delete-attendance-record', async (event, recordId: number) => {
     recordId,
   );
   try {
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-    const result = db
-      .prepare('DELETE FROM attendance WHERE id = ?')
-      .run(recordId);
-    if (result.changes > 0) {
+    const success = await attendanceRepository.deleteAttendanceById(recordId);
+    if (success) {
       electronLog.info(
         '[Main Process] Attendance record deleted successfully, ID:',
         recordId,
@@ -1209,31 +935,23 @@ ipcMain.handle('search-members', async (event, searchTerm: string) => {
     searchTerm,
   );
   try {
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 초기화되지 않았습니다.');
-    }
-    // 검색어가 너무 짧거나 없는 경우 빈 배열 반환
     if (!searchTerm || searchTerm.trim().length === 0) {
       return { success: true, data: [] };
     }
-    const query = `
-      SELECT id, name, phone 
-      FROM members 
-      WHERE name LIKE ? OR phone LIKE ?
-      ORDER BY name ASC
-      LIMIT 10
-    `; // 검색 결과는 10개로 제한
-    const members = db
-      .prepare(query)
-      .all(`%${searchTerm.trim()}%`, `%${searchTerm.trim()}%`);
+    const membersFound = await memberRepository.searchMembers(searchTerm.trim());
+    const resultData = membersFound.map(m => ({ id: m.id, name: m.name, phone: m.phone }));
+    
     electronLog.info(
       '[Main Process] Member search successful, found items:',
-      members.length,
+      resultData.length,
     );
-    return { success: true, data: members };
+    return { success: true, data: resultData };
   } catch (error) {
-    electronLog.error('[Main Process] Error searching members:', error);
-    return { success: false, error: (error as Error).message, data: [] };
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : '알 수 없는 오류가 발생했습니다.';
+    electronLog.error('[Main Process] Error searching members (IPC):', errorMessage);
+    return { success: false, error: errorMessage, data: [] };
   }
 });

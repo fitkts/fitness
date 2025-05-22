@@ -1,16 +1,38 @@
 import { getDatabase } from './setup';
 import { Staff } from '../models/types';
 import * as electronLog from 'electron-log';
+import {
+  getUnixTime,
+  fromUnixTime,
+  parseISO,
+  isValid,
+  format,
+} from 'date-fns';
 
-// DB 컬럼 이름과 인터페이스 필드 이름 매핑
-function mapStaffToModel(row: any): Staff {
-  return {
+// Helper function to convert date string or Date object to Unix timestamp (seconds)
+function toTimestamp(dateValue: string | Date | undefined | null): number | null {
+  if (!dateValue) return null;
+  const date = typeof dateValue === 'string' ? parseISO(dateValue) : dateValue;
+  if (!isValid(date)) return null;
+  return getUnixTime(date);
+}
+
+// Helper function to convert Unix timestamp (seconds) to ISO string (YYYY-MM-DD)
+function fromTimestampToISO(timestamp: number | undefined | null): string | null {
+  if (timestamp === null || timestamp === undefined) return null;
+  const date = fromUnixTime(timestamp);
+  if (!isValid(date)) return null;
+  return format(date, 'yyyy-MM-dd');
+}
+
+function mapRowToStaff(row: any): Staff {
+  const staff: Partial<Staff> = {
     id: row.id,
     name: row.name,
     position: row.position,
     phone: row.phone || null,
     email: row.email || null,
-    hireDate: row.hire_date,
+    hireDate: fromTimestampToISO(row.hire_date)!,
     status: row.status,
     permissions: row.permissions
       ? JSON.parse(row.permissions)
@@ -26,9 +48,14 @@ function mapStaffToModel(row: any): Staff {
           settings: false,
         },
     notes: row.notes || null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
   };
+  if (row.created_at !== undefined && row.created_at !== null) {
+    staff.createdAt = fromTimestampToISO(row.created_at);
+  }
+  if (row.updated_at !== undefined && row.updated_at !== null) {
+    staff.updatedAt = fromTimestampToISO(row.updated_at);
+  }
+  return staff as Staff;
 }
 
 // 모든 스태프 조회
@@ -43,7 +70,7 @@ export async function getAllStaff(): Promise<Staff[]> {
       ORDER BY name
     `;
     const rows = db.prepare(query).all();
-    return rows.map(mapStaffToModel);
+    return rows.map(mapRowToStaff);
   } catch (error) {
     electronLog.error('스태프 목록 조회 오류:', error);
     throw error;
@@ -62,20 +89,22 @@ export async function getStaffById(id: number): Promise<Staff | null> {
       WHERE id = ?
     `;
     const row = db.prepare(query).get(id);
-    return row ? mapStaffToModel(row) : null;
+    return row ? mapRowToStaff(row) : null;
   } catch (error) {
     electronLog.error('스태프 조회 오류:', error);
     throw error;
   }
 }
 
-// 새 스태프 추가
+// Staff 타입에서 id, createdAt, updatedAt은 자동 생성/관리되므로 제외
+type StaffCreationData = Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>;
+
 export async function addStaff(
-  staff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>,
+  staffData: StaffCreationData,
 ): Promise<number> {
   try {
     const db = getDatabase();
-    const now = new Date().toISOString();
+    const now = getUnixTime(new Date()); // Unix timestamp
     const query = `
       INSERT INTO staff (
         name, position, phone, email, hire_date,
@@ -85,16 +114,16 @@ export async function addStaff(
     const result = db
       .prepare(query)
       .run(
-        staff.name,
-        staff.position,
-        staff.phone || null,
-        staff.email || null,
-        staff.hireDate,
-        staff.status,
-        JSON.stringify(staff.permissions),
-        staff.notes || null,
-        now,
-        now,
+        staffData.name,
+        staffData.position,
+        staffData.phone || null,
+        staffData.email || null,
+        toTimestamp(staffData.hireDate), // Unix timestamp로 변환 (hireDate는 StaffCreationData에서 필수)
+        staffData.status,
+        JSON.stringify(staffData.permissions),
+        staffData.notes || null,
+        now, // created_at
+        now, // updated_at
       );
     return result.lastInsertRowid as number;
   } catch (error) {
@@ -103,57 +132,61 @@ export async function addStaff(
   }
 }
 
-// 스태프 정보 업데이트
+// Staff 타입에서 id, createdAt, updatedAt은 직접 수정 불가. 날짜 필드는 string | Date | null 허용
+type StaffUpdateData = Partial<Omit<Staff, 'id' | 'createdAt' | 'updatedAt'> > & {
+    hireDate?: string | Date | null; 
+};
+
 export async function updateStaff(
   id: number,
-  staff: Partial<Staff>,
+  staffData: StaffUpdateData,
 ): Promise<boolean> {
   try {
     const db = getDatabase();
-    const now = new Date().toISOString();
+    const now = getUnixTime(new Date()); // Unix timestamp for updated_at
     const updates: string[] = [];
     const values: any[] = [];
 
-    if ('name' in staff) {
+    if (staffData.name !== undefined) {
       updates.push('name = ?');
-      values.push(staff.name);
+      values.push(staffData.name);
     }
-    if ('position' in staff) {
+    if (staffData.position !== undefined) {
       updates.push('position = ?');
-      values.push(staff.position);
+      values.push(staffData.position);
     }
-    if ('phone' in staff) {
+    if (staffData.phone !== undefined) {
       updates.push('phone = ?');
-      values.push(staff.phone || null);
+      values.push(staffData.phone || null);
     }
-    if ('email' in staff) {
+    if (staffData.email !== undefined) {
       updates.push('email = ?');
-      values.push(staff.email || null);
+      values.push(staffData.email || null);
     }
-    if ('hireDate' in staff) {
+    if (staffData.hireDate !== undefined) {
       updates.push('hire_date = ?');
-      values.push(staff.hireDate);
+      values.push(toTimestamp(staffData.hireDate)); // Unix timestamp로 변환
     }
-    if ('status' in staff) {
+    if (staffData.status !== undefined) {
       updates.push('status = ?');
-      values.push(staff.status);
+      values.push(staffData.status);
     }
-    if ('permissions' in staff) {
+    if (staffData.permissions !== undefined) {
       updates.push('permissions = ?');
-      values.push(JSON.stringify(staff.permissions));
+      values.push(JSON.stringify(staffData.permissions));
     }
-    if ('notes' in staff) {
+    if (staffData.notes !== undefined) {
       updates.push('notes = ?');
-      values.push(staff.notes || null);
+      values.push(staffData.notes || null);
     }
 
     if (updates.length === 0) {
-      return false;
+      return false; 
     }
 
     updates.push('updated_at = ?');
     values.push(now);
-    values.push(id);
+    values.push(id); 
 
     const query = `UPDATE staff SET ${updates.join(', ')} WHERE id = ?`;
     const result = db.prepare(query).run(...values);

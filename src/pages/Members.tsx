@@ -135,6 +135,7 @@ const Members: React.FC = () => {
 
   // 회원 저장 핸들러 (추가 또는 수정) - 스토어 함수 사용
   const handleSaveMember = async (member: Member): Promise<boolean> => {
+    console.log('[handleSaveMember] 전달받은 member 데이터:', member); // 데이터 확인용 로그 추가
     try {
       if (member.id) {
         // 스토어의 updateMember 함수 호출
@@ -145,6 +146,8 @@ const Members: React.FC = () => {
       }
       // 성공 시 Toast 메시지 등 추가 가능
       showToast?.('success', '회원 정보가 저장되었습니다.');
+      await fetchMembers(); // 데이터 새로고침
+      loadMembers();      // 페이지에 표시될 멤버 목록 새로고침
       return true; // 성공
     } catch (err) {
       console.error('회원 저장 오류 (스토어):', err);
@@ -620,16 +623,10 @@ const Members: React.FC = () => {
             </button>
 
             {/* 미니멀 엑셀 버튼 그룹 */}
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <div className="flex gap-1 items-center">
               <button
                 title="엑셀 불러오기"
-                style={{
-                  background: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: 4,
-                  padding: 6,
-                  cursor: 'pointer',
-                }}
+                className="bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200"
                 onClick={() =>
                   document.getElementById('excel-import-input')?.click()
                 }
@@ -645,26 +642,14 @@ const Members: React.FC = () => {
               />
               <button
                 title="엑셀 내보내기"
-                style={{
-                  background: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: 4,
-                  padding: 6,
-                  cursor: 'pointer',
-                }}
+                className="bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200"
                 onClick={handleExportExcel}
               >
                 <Download size={16} />
               </button>
               <button
                 title="엑셀 형식 안내"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  marginLeft: 2,
-                  cursor: 'pointer',
-                }}
+                className="bg-transparent border-none p-0 ml-0.5 cursor-pointer"
                 onClick={() => setExcelInfoOpen(true)}
               >
                 <Info size={15} color="#888" />
@@ -725,7 +710,11 @@ const Members: React.FC = () => {
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
           <div className="flex items-center">
             <AlertTriangle className="text-red-500 mr-3" size={24} />
-            <p className="text-red-700">{error}</p>
+            <p className="text-red-700">
+              {typeof error === 'string' && error.trim() !== ''
+                ? error
+                : '회원 데이터를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.'}
+            </p>
           </div>
         </div>
       )}

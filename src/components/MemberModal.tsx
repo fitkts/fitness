@@ -9,6 +9,7 @@ import MemberBasicInfoForm from './member/MemberBasicInfoForm';
 import MembershipInfoForm from './member/MembershipInfoForm';
 import MemberNotesForm from './member/MemberNotesForm';
 import MemberViewDetails from './member/MemberViewDetails';
+import MemberPaymentHistory from './member/MemberPaymentHistory';
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -265,7 +266,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
     : 0;
 
   const getModalTitle = () => {
-    if (currentIsViewMode) return '회원 상세 정보';
+    if (currentIsViewMode) return '회원 기본 정보';
     return isEditMode ? '회원 정보 수정' : '신규 회원 등록';
   };
 
@@ -276,7 +277,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
           <div className="px-4 py-3 bg-blue-50 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-blue-800">
               {currentIsViewMode
-                ? '회원 상세 정보'
+                ? '회원 기본 정보'
                 : isEditMode
                   ? '회원 정보 수정'
                   : '신규 회원 등록'}
@@ -291,7 +292,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
               formatDate={formatDate}
             />
           ) : (
-            <div className="p-4">
+            <div className="p-4 space-y-6">
               <MemberBasicInfoForm
                 formData={formData}
                 handleChange={handleChange}
@@ -309,6 +310,10 @@ const MemberModal: React.FC<MemberModalProps> = ({
             </div>
           )}
         </div>
+
+        {currentIsViewMode && formData.id && (
+          <MemberPaymentHistory memberId={formData.id} />
+        )}
 
         <MemberNotesForm
           notes={formData.notes}

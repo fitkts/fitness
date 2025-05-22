@@ -4,6 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>피트니스 회원 관리</title>
+  <script>
+    if (typeof require === 'undefined' && typeof window !== 'undefined') {
+      console.log('Shim: Defining a global "require" function for HMR compatibility.');
+      window.require = function (moduleName) {
+        console.warn(`Shimmed require called for: ${moduleName}. HMR might be affected.`);
+        if (moduleName === 'events') {
+          console.log('Shim: Returning a basic EventEmitter constructor for "events".');
+          function Emitter() {}
+          Emitter.prototype.on = function() { console.log('Shimmed EventEmitter.on called'); };
+          Emitter.prototype.emit = function() { console.log('Shimmed EventEmitter.emit called'); };
+          // EventEmitter.prototype.off = function() {}; // 필요에 따라 추가
+          return Emitter; // 생성자 반환
+        }
+        return {}; // 그 외 모듈은 빈 객체 반환
+      };
+    }
+  </script>
   <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:*; connect-src 'self' http://localhost:*">
 </head>
 <body>

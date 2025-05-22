@@ -1,3 +1,9 @@
+import { z } from 'zod';
+import { addDays, isAfter, isBefore, parseISO } from 'date-fns';
+// types.ts에서 lockerSchema (mainLockerSchema로 별칭), LockerSize, lockerFeeOptionSchema를 import
+import { lockerSchema as mainLockerSchema } from '../models/types';
+// electronLog는 여기서 직접 사용하지 않으므로 import 제거 또는 필요시 추가
+
 export const validatePhoneNumber = (phone: string): boolean => {
   const phoneRegex = /^010-\d{4}-\d{4}$/;
   return phoneRegex.test(phone);
@@ -12,4 +18,109 @@ export const validateName = (name: string): boolean => {
 export const validateMembershipType = (type: string): boolean => {
   const validTypes = ['1개월', '3개월', '6개월', '12개월'];
   return validTypes.includes(type);
+};
+
+// 락커 번호 검증 (이 함수는 types.ts의 lockerSchema.refine에서 사용됨)
+export const validateLockerNumber = (number: string): boolean => {
+  // 앞의 0을 제거하고 숫자만 허용하는 정규식 (예: '007' -> '7', 'A-01'은 다른 패턴 필요)
+  // 현재 refine 메시지 "(형식: A-01, 101 등, 숫자 부분은 1-999)"를 고려하면,
+  // 단순 숫자 외의 형식도 허용할 수 있도록 수정이 필요할 수 있음.
+  // 여기서는 기존 로직(숫자만, 1-999)을 유지하되, 복잡한 형식은 이 함수를 확장해야 함.
+  const normalizedNumber = number.replace(/^0+/, ''); // 'A-01' 같은 경우 'A-1'이 됨. 의도 확인 필요.
+  const numberRegex = /^\d+$/; // 순수 숫자만 허용
+
+  // 만약 'A-01' 같은 형식을 허용하려면 정규식을 수정해야 함. 예: /^[A-Z]-?\d{1,3}$/i
+  // 여기서는 일단 기존 숫자 검증 로직을 유지합니다.
+  if (!numberRegex.test(normalizedNumber)) {
+    // 만약 refine 메시지와 다르게 숫자 외 형식을 지원하지 않는다면, 메시지 통일 필요.
+    // electronLog.warn(`Invalid locker number format after normalization: ${number} -> ${normalizedNumber}`);
+    return false;
+  }
+  
+  const num = parseInt(normalizedNumber, 10);
+  return num >= 1 && num <= 999;
+};
+
+// 날짜 유효성 검사
+export const validateDates = (
+  startDate: string | null | undefined,
+  endDate: string | null | undefined
+): { isValid: boolean; error?: string } => {
+  if (!startDate || !endDate) {
+    return { isValid: false, error: '시작일과 종료일은 필수입니다' };
+  }
+
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  const today = new Date();
+
+  // 시작일이 오늘보다 이전인지 확인
+  if (isBefore(start, today) && !isToday(start)) {
+    // 오늘 날짜는 허용하도록 수정 (시작일이 오늘이고, 현재 시간 이전은 안됨)
+    // 더 정확히는 날짜(day) 단위로 비교해야 함. startOfDay(start) < startOfDay(today)
+    // return { isValid: false, error: '시작일은 오늘 또는 그 이후여야 합니다' };
+  }
+
+  // 종료일이 시작일보다 이후인지 확인
+  if (!isAfter(end, start)) {
+    return { isValid: false, error: '종료일은 시작일보다 이후여야 합니다' };
+  }
+
+  // 최대 사용 기간 체크 (1년)
+  const maxEndDate = addDays(start, 365);
+  if (isAfter(end, maxEndDate)) {
+    return { isValid: false, error: '최대 사용 기간은 1년입니다' };
+  }
+
+  return { isValid: true };
+};
+
+function isToday(date: Date): boolean {
+  const today = new Date();
+  return date.getFullYear() === today.getFullYear() &&
+         date.getMonth() === today.getMonth() &&
+         date.getDate() === today.getDate();
+}
+
+// 락커 상태 검증
+export const validateLockerStatus = (
+  status: string,
+  memberId?: number,
+  startDate?: string,
+  endDate?: string
+): { isValid: boolean; error?: string } => {
+  if (status === 'occupied') {
+    if (!memberId) {
+      return { isValid: false, error: '사용 중인 락커는 회원을 선택해야 합니다' };
+    }
+    if (!startDate || !endDate) {
+      return { isValid: false, error: '사용 중인 락커는 시작일과 종료일이 필요합니다' };
+    }
+  }
+
+  return { isValid: true };
+};
+
+// 락커 데이터 검증
+export const validateLocker = (data: unknown): { isValid: boolean; errors?: Record<string, string> } => {
+  try {
+    mainLockerSchema.parse(data); // models/types에서 import한 스키마 사용
+    return { isValid: true };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors: Record<string, string> = {};
+      error.errors.forEach((err) => {
+        if (err.path && err.path.length > 0) {
+          errors[err.path.join('.')] = err.message;
+        } else {
+          errors['_form'] = errors['_form'] ? `${errors['_form']}, ${err.message}` : err.message;
+        }
+      });
+      return { isValid: false, errors };
+    }
+    // electronLog를 사용하려면 import 필요
+    // electronLog.error('validateLocker - Unexpected error:', error);
+    console.error('validateLocker - Unexpected error:', error); // 콘솔 에러로 변경
+    return { isValid: false, errors: { _form: '데이터 검증 중 예기치 않은 오류가 발생했습니다.' } };
+  }
 };

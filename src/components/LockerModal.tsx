@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './common/Modal';
-import { Locker, Member } from '../types';
+import { Locker, Member, LockerSize, LockerFeeOption } from '../models/types';
 import { useToast } from '../contexts/ToastContext';
-import { Search, X } from 'lucide-react';
+import { Search, X, PlusCircle, Trash2 } from 'lucide-react';
+import { validateLocker, validateDates, validateLockerStatus } from '../utils/validation';
 
 interface LockerModalProps {
   isOpen: boolean;
@@ -15,8 +16,13 @@ interface LockerModalProps {
 const defaultLocker: Locker = {
   number: '',
   status: 'available',
-  startDate: new Date().toISOString().split('T')[0],
-  endDate: '',
+  size: LockerSize.SMALL,
+  location: '',
+  feeOptions: [{ durationDays: 30, price: 0 }],
+  memberId: undefined,
+  memberName: undefined,
+  startDate: undefined,
+  endDate: undefined,
   notes: '',
 };
 
@@ -27,7 +33,7 @@ const LockerModal: React.FC<LockerModalProps> = ({
   locker,
   isViewMode = false,
 }) => {
-  const [formData, setFormData] = useState<Locker>(defaultLocker);
+  const [formData, setFormData] = useState<Locker>(() => locker ? { ...defaultLocker, ...locker } : { ...defaultLocker });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentIsViewMode, setCurrentIsViewMode] = useState(isViewMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,23 +45,104 @@ const LockerModal: React.FC<LockerModalProps> = ({
   const { showToast } = useToast();
 
   useEffect(() => {
-    if (locker) {
-      setFormData({
-        ...locker,
-        startDate: locker.startDate || '',
-        endDate: locker.endDate || '',
-        notes: locker.notes || '',
-      });
-      setCurrentIsViewMode(isViewMode);
+    const initialData = locker ? { ...defaultLocker, ...locker, feeOptions: locker.feeOptions && locker.feeOptions.length > 0 ? locker.feeOptions : [{ durationDays: 30, price: 0 }] } : { ...defaultLocker };
+    setFormData(initialData);
+    setCurrentIsViewMode(!!locker && isViewMode);
+
+    if (locker && locker.memberId && locker.memberName) {
+      setSelectedMember({ id: locker.memberId, name: locker.memberName, joinDate: '' });
     } else {
-      setFormData(defaultLocker);
-      setCurrentIsViewMode(false);
-    }
-    setErrors({});
     setSelectedMember(null);
+    }
+
+    setSearchTerm('');
+    setSearchResults([]);
+    setErrors({});
   }, [locker, isOpen, isViewMode]);
 
-  // 회원 검색 핸들러
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    index?: number,
+    field?: keyof LockerFeeOption
+  ) => {
+    const { name, value } = e.target;
+
+    if (typeof index === 'number' && field && formData.feeOptions) {
+      const updatedFeeOptions = [...formData.feeOptions];
+      const numValue = parseInt(value, 10);
+      updatedFeeOptions[index] = {
+        ...updatedFeeOptions[index],
+        [field]: isNaN(numValue) ? 0 : numValue,
+      };
+      setFormData((prev) => ({ ...prev, feeOptions: updatedFeeOptions }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+
+    if (name === 'notes' && value.length > 500) {
+      setErrors(prev => ({ ...prev, notes: '비고는 500자 이내로 입력해주세요' }));
+    } else if (name === 'notes') {
+      setErrors(prev => { const { notes, ...rest } = prev; return rest; });
+    }
+  };
+
+  const addFeeOption = () => {
+    setFormData((prev) => ({
+      ...prev,
+      feeOptions: [...(prev.feeOptions || []), { durationDays: 0, price: 0 }],
+    }));
+  };
+
+  const removeFeeOption = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      feeOptions: prev.feeOptions?.filter((_, i) => i !== index),
+    }));
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const validationResult = validateLocker(formData);
+    if (!validationResult.isValid && validationResult.errors) {
+      setErrors(validationResult.errors);
+      return;
+    }
+
+    if (formData.status === 'occupied') {
+      const dateValidation = validateDates(formData.startDate, formData.endDate);
+      if (!dateValidation.isValid) {
+        setErrors(prev => ({ ...prev, startDate: dateValidation.error, endDate: dateValidation.error }));
+        return;
+      }
+    }
+
+    const statusValidation = validateLockerStatus(
+      formData.status,
+      formData.memberId,
+      formData.startDate,
+      formData.endDate
+    );
+    if (!statusValidation.isValid) {
+      setErrors(prev => ({ ...prev, status: statusValidation.error }));
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const success = await onSave(formData);
+      if (success) {
+        onClose();
+      }
+    } catch (error) {
+      console.error('락커 저장 오류:', error);
+      showToast('error', '저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
     if (term.length < 1) {
@@ -63,7 +150,6 @@ const LockerModal: React.FC<LockerModalProps> = ({
       setIsSearching(false);
       return;
     }
-
     try {
       setIsSearching(true);
       if (window.api && window.api.searchMembers) {
@@ -72,9 +158,7 @@ const LockerModal: React.FC<LockerModalProps> = ({
           setSearchResults(response.data);
         } else {
           setSearchResults([]);
-          if (response.error) {
-            showToast('error', `회원 검색 실패: ${response.error}`);
-          }
+          if (response.error) { showToast('error', `회원 검색 실패: ${response.error}`); }
         }
       } else {
         showToast('error', '회원 검색 API를 사용할 수 없습니다.');
@@ -89,155 +173,103 @@ const LockerModal: React.FC<LockerModalProps> = ({
     }
   };
 
-  // 회원 선택 핸들러
   const handleSelectMember = (member: Member) => {
     setSelectedMember(member);
-    setFormData((prev) => ({
-      ...prev,
-      memberId: member.id,
-      memberName: member.name,
-    }));
+    setFormData((prev) => ({ ...prev, memberId: member.id, memberName: member.name }));
     setSearchResults([]);
     setSearchTerm('');
   };
 
-  // 회원 선택 해제 핸들러
   const handleClearMember = () => {
     setSelectedMember(null);
-    setFormData((prev) => ({
-      ...prev,
-      memberId: undefined,
-      memberName: undefined,
-    }));
-  };
-
-  // 폼 제출 핸들러
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // 유효성 검사
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.number) {
-      newErrors.number = '락커 번호는 필수입니다';
-    }
-
-    if (formData.status === 'occupied') {
-      if (!formData.memberId) {
-        newErrors.memberId = '사용 중인 락커는 회원을 선택해야 합니다';
-      }
-      if (!formData.startDate) {
-        newErrors.startDate = '시작일은 필수입니다';
-      }
-      if (!formData.endDate) {
-        newErrors.endDate = '종료일은 필수입니다';
-      }
-      if (
-        formData.startDate &&
-        formData.endDate &&
-        formData.startDate > formData.endDate
-      ) {
-        newErrors.endDate = '종료일은 시작일보다 이후여야 합니다';
-      }
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const success = await onSave(formData);
-
-      if (success) {
-        showToast(
-          'success',
-          formData.id
-            ? '락커 정보가 수정되었습니다.'
-            : '락커가 배정되었습니다.',
-        );
-        onClose();
-      }
-    } catch (error) {
-      console.error('락커 저장 오류:', error);
-      showToast('error', '저장 중 오류가 발생했습니다.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 입력 핸들러
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (errors[name]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    setFormData((prev) => ({ ...prev, memberId: undefined, memberName: undefined }));
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        currentIsViewMode
-          ? '락커 상세 정보'
-          : formData.id
-            ? '락커 정보 수정'
-            : '신규 락커 등록'
-      }
-      size="md"
+      title={currentIsViewMode ? '락커 상세 정보' : formData?.id ? '락커 정보 수정' : '신규 락커 등록'}
+      size="lg"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="space-y-4">
-          {/* 락커 번호 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="number" className="block text-sm font-medium text-gray-700 mb-1">
               락커 번호 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               name="number"
-              value={formData.number}
+              id="number"
+              value={formData.number || ''}
               onChange={handleChange}
-              className={`input w-full ${errors.number ? 'border-red-500' : ''}`}
               disabled={currentIsViewMode}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
               required
             />
-            {errors.number && (
-              <p className="text-red-500 text-xs mt-1">{errors.number}</p>
-            )}
+            {errors.number && <p className="text-xs text-red-500 mt-1">{errors.number}</p>}
           </div>
 
-          {/* 상태 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              상태
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+              상태 <span className="text-red-500">*</span>
             </label>
             <select
               name="status"
+              id="status"
               value={formData.status}
               onChange={handleChange}
-              className="input w-full"
               disabled={currentIsViewMode}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
             >
               <option value="available">사용 가능</option>
               <option value="occupied">사용 중</option>
-              <option value="maintenance">점검 중</option>
+              <option value="maintenance">수리 중</option>
             </select>
+            {errors.status && <p className="text-xs text-red-500 mt-1">{errors.status}</p>}
           </div>
 
-          {/* 회원 검색 및 선택 (사용 중 상태일 때만) */}
+          <div>
+            <label htmlFor="size" className="block text-sm font-medium text-gray-700 mb-1">
+              크기
+            </label>
+            <select
+              name="size"
+              id="size"
+              value={formData.size || ''}
+              onChange={handleChange}
+              disabled={currentIsViewMode}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+            >
+              <option value="">크기 선택</option>
+              {Object.values(LockerSize).map((sizeValue) => (
+                <option key={sizeValue} value={sizeValue}>
+                  {sizeValue === LockerSize.SMALL ? '소형' : sizeValue === LockerSize.MEDIUM ? '중형' : '대형'}
+                </option>
+              ))}
+            </select>
+            {errors.size && <p className="text-xs text-red-500 mt-1">{errors.size}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+              위치
+            </label>
+            <input
+              type="text"
+              name="location"
+              id="location"
+              value={formData.location || ''}
+              onChange={handleChange}
+              disabled={currentIsViewMode}
+              placeholder="예: 1층 A구역, 2층 창가쪽"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+            />
+            {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
+          </div>
+        </div>
+
           {formData.status === 'occupied' && !currentIsViewMode && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -257,7 +289,6 @@ const LockerModal: React.FC<LockerModalProps> = ({
                 />
               </div>
 
-              {/* 검색 결과 */}
               {searchResults.length > 0 && (
                 <div className="mt-2 border rounded-md shadow-sm max-h-48 overflow-y-auto">
                   {searchResults.map((member) => (
@@ -273,7 +304,6 @@ const LockerModal: React.FC<LockerModalProps> = ({
                 </div>
               )}
 
-              {/* 선택된 회원 */}
               {selectedMember && (
                 <div className="mt-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
                   <div>
@@ -294,7 +324,6 @@ const LockerModal: React.FC<LockerModalProps> = ({
             </div>
           )}
 
-          {/* 사용 기간 (사용 중 상태일 때만) */}
           {formData.status === 'occupied' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -336,42 +365,86 @@ const LockerModal: React.FC<LockerModalProps> = ({
             </div>
           )}
 
-          {/* 비고 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+        {!currentIsViewMode && (
+          <div className="pt-4 border-t border-gray-200">
+            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2">요금 설정</h3>
+            {formData.feeOptions && formData.feeOptions.map((option, index) => (
+              <div key={index} className="grid grid-cols-12 gap-3 items-center mb-2 p-2 border rounded-md">
+                <div className="col-span-5">
+                  <label htmlFor={`durationDays-${index}`} className="block text-xs font-medium text-gray-600">기간 (일)</label>
+                  <input
+                    type="number"
+                    name={`feeOptions[${index}].durationDays`}
+                    id={`durationDays-${index}`}
+                    value={option.durationDays || 0}
+                    onChange={(e) => handleChange(e, index, 'durationDays')}
+                    className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm sm:text-sm"
+                    min="1"
+                  />
+                </div>
+                <div className="col-span-5">
+                  <label htmlFor={`price-${index}`} className="block text-xs font-medium text-gray-600">가격 (원)</label>
+                  <input
+                    type="number"
+                    name={`feeOptions[${index}].price`}
+                    id={`price-${index}`}
+                    value={option.price || 0}
+                    onChange={(e) => handleChange(e, index, 'price')}
+                    className="mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm sm:text-sm"
+                    min="0"
+                  />
+                </div>
+                <div className="col-span-2 flex items-end">
+                  {(formData.feeOptions && formData.feeOptions.length > 1) ? (
+                    <button
+                      type="button"
+                      onClick={() => removeFeeOption(index)}
+                      className="p-1 text-red-500 hover:text-red-700"
+                      title="이 옵션 삭제"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addFeeOption}
+              className="mt-2 flex items-center text-sm text-indigo-600 hover:text-indigo-800"
+            >
+              <PlusCircle size={20} className="mr-1" />
+              요금 옵션 추가
+            </button>
+            {errors.feeOptions && <p className="text-xs text-red-500 mt-1">{errors.feeOptions}</p>}
+          </div>
+        )}
+
+        <div className="pt-4 border-t border-gray-200">
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
               비고
             </label>
             <textarea
               name="notes"
-              value={formData.notes}
+            value={formData.notes || ''}
               onChange={handleChange}
               className="input w-full"
               rows={3}
               disabled={currentIsViewMode}
             />
-          </div>
+          {errors.notes && <p className="text-xs text-red-500 mt-1">{errors.notes}</p>}
         </div>
 
-        {/* 버튼 */}
-        {!currentIsViewMode && (
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-              disabled={isSubmitting}
-            >
+        <div className="pt-6 border-t border-gray-200 flex items-center justify-end space-x-3">
+          <button type="button" onClick={onClose} className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
               취소
             </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? '저장 중...' : '저장'}
+          {!currentIsViewMode && (
+            <button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+              {isSubmitting ? '저장 중...' : (formData?.id ? '수정 완료' : '락커 등록')}
             </button>
+          )}
           </div>
-        )}
       </form>
     </Modal>
   );

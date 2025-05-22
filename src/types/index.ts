@@ -1,3 +1,5 @@
+import type { Locker as LockerFromModel } from '../models/types';
+
 export interface SettingsData {
   theme: 'light' | 'dark' | 'system';
   backupSchedule: 'daily' | 'weekly' | 'monthly';
@@ -34,18 +36,8 @@ export interface Member {
   updatedAt?: string;
 }
 
-export interface Locker {
-  id?: number; // DB에서 자동 생성되므로 optional
-  number: string;
-  status: 'available' | 'occupied' | 'maintenance';
-  memberId?: number | null;
-  memberName?: string | null;
-  startDate?: string | null; // YYYY-MM-DD
-  endDate?: string | null; // YYYY-MM-DD
-  notes?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// 기존 Locker 인터페이스 정의는 삭제되고, 아래에서 새로운 타입으로 정의됩니다.
+export type Locker = LockerFromModel;
 
 // 대시보드 통계 데이터 타입
 export interface DashboardStats {

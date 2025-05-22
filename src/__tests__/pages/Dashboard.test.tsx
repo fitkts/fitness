@@ -46,11 +46,17 @@ describe('Dashboard 페이지', () => {
       activeMembers: 80,
       newMembersThisMonth: 10,
       attendanceToday: 5,
-      membershipDistribution: [{ type: '1개월', count: 50 }],
-      monthlyAttendance: [{ month: '2023-01', count: 200 }],
+      membershipDistribution: [{ type: '1개월', count: 50 }, { type: '3개월', count: 30 }],
+      monthlyAttendance: [{ month: '2023년 1월', count: 200 }, { month: '2022년 12월', count: 180 }],
       recentActivities: {
-        recentMembers: [],
-        recentAttendance: [],
+        recentMembers: [
+          { id: 1, name: '최근가입자1', joinDate: '2023-01-15', phone:'', gender:'남성', birthDate:'', membershipType:'', membershipStart:'', membershipEnd:'', createdAt: '2023-01-15', updatedAt: '2023-01-15' },
+          { id: 2, name: '최근가입자2', joinDate: '2023-01-10', phone:'', gender:'여성', birthDate:'', membershipType:'', membershipStart:'', membershipEnd:'', createdAt: '2023-01-10', updatedAt: '2023-01-10' },
+        ],
+        recentAttendance: [
+          { id: 101, memberId: 1, memberName: '홍길동', visitDate: '2023-01-20', createdAt: '2023-01-20' },
+          { id: 102, memberId: 2, memberName: '김영희', visitDate: '2023-01-20' }, // createdAt은 옵셔널
+        ],
       },
     };
     // @ts-ignore: 모킹된 함수에 Promise가 아닌 값을 직접 할당하기 위함
@@ -65,6 +71,31 @@ describe('Dashboard 페이지', () => {
     expect(screen.getByText('100')).toBeInTheDocument();
     expect(screen.getByText(/활성 회원/i)).toBeInTheDocument();
     expect(screen.getByText('80')).toBeInTheDocument();
+    expect(screen.getByText(/이달 신규/i)).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getByText(/오늘 출석/i)).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+
+    // membershipDistribution 데이터 확인 (예시: 첫 번째 항목)
+    // Dashboard.tsx에서 이 데이터를 어떻게 표시하는지에 따라 selector 수정 필요
+    // 예를 들어, "1개월: 50명"과 같이 표시된다면:
+    // expect(await screen.findByText(/1개월: 50명/i)).toBeInTheDocument();
+
+    // monthlyAttendance 데이터 확인 (예시: 첫 번째 항목)
+    // Dashboard.tsx에서 이 데이터를 어떻게 표시하는지에 따라 selector 수정 필요
+    // 예를 들어, "2023년 1월: 200회"와 같이 표시된다면:
+    // expect(await screen.findByText(/2023년 1월: 200회/i)).toBeInTheDocument();
+
+    // recentMembers 데이터 확인
+    expect(await screen.findByText('최근가입자1')).toBeInTheDocument();
+    expect(await screen.findByText('2023-01-15')).toBeInTheDocument(); // 최근가입자1의 joinDate
+    expect(await screen.findByText('최근가입자2')).toBeInTheDocument();
+
+    // recentAttendance 데이터 확인
+    // Dashboard.tsx에서 recentAttendance의 memberName과 visitDate를 표시한다고 가정
+    expect(await screen.findByText('홍길동')).toBeInTheDocument(); // 최근 출석한 홍길동
+    expect(await screen.findByText('2023-01-20')).toBeInTheDocument(); // 홍길동의 visitDate
+    expect(await screen.findByText('김영희')).toBeInTheDocument(); // 최근 출석한 김영희
 
     const canvases = screen.getAllByRole('img');
     expect(canvases.length).toBeGreaterThanOrEqual(1);
@@ -91,8 +122,8 @@ describe('Dashboard 페이지', () => {
       membershipDistribution: [],
       monthlyAttendance: [],
       recentActivities: {
-        recentMembers: [],
-        recentAttendance: [],
+        recentMembers: [], // Member[] 타입이므로 빈 배열
+        recentAttendance: [], // 위에서 정의한 recentAttendance 객체 타입의 빈 배열
       },
     };
     // @ts-ignore

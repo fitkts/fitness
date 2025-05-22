@@ -47,6 +47,11 @@ const commonConfig = {
         test: /\.(png|svg|jpg|jpeg|gif)$/i,
         type: 'asset/resource',
       },
+      {
+        test: /\.node$/,
+        exclude: /node_modules/,
+        use: 'node-loader',
+      },
     ],
   },
 };
@@ -59,6 +64,7 @@ const mainConfig = {
   externalsPresets: { node: true },
   externals: {
     'better-sqlite3': 'commonjs2 better-sqlite3',
+    'fsevents': 'commonjs2 fsevents',
   },
   output: {
     path: path.resolve(__dirname, 'dist/main'),
@@ -77,6 +83,27 @@ const rendererConfig = {
   ...commonConfig,
   entry: './src/renderer/index.tsx',
   target: 'electron-renderer',
+  externals: {
+    'fsevents': 'commonjs2 fsevents',
+  },
+  resolve: {
+    extensions: ['.tsx', '.ts', '.js'],
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+    fallback: {
+      "events": require.resolve("events/"),
+      "path": false,
+      "fs": false,
+      "util": false,
+      "url": false,
+      "assert": false,
+      "stream": false,
+      "constants": false,
+      "os": false
+      // 필요한 경우 다른 Node.js 모듈에 대한 fallback을 여기에 추가
+    }
+  },
   output: {
     path: path.resolve(__dirname, 'dist/renderer'),
     filename: 'renderer.js',
@@ -87,7 +114,7 @@ const rendererConfig = {
     static: {
       directory: path.join(__dirname, 'dist/renderer'),
     },
-    port: 5000,
+    port: 3000,
     hot: true,
     historyApiFallback: true,
     devMiddleware: {

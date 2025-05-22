@@ -1,0 +1,36 @@
+## TypeScript 타입 오류(TS2322) 해결 요약: Locker 타입 불일치
+
+### 1. 문제 현상
+
+- `src/pages/Lockers.tsx` 파일에서 `LockerModal` 컴포넌트로 `locker` 속성을 전달하는 부분(386번째 줄)에서 TypeScript 타입 오류(TS2322)가 발생했습니다.
+- 오류 메시지는 `LockerModal` 컴포넌트가 `locker` 속성의 하위 필드인 `number`를 필수 문자열(`string`)로 기대하지만, `Lockers.tsx`에서 전달하는 과정에서 해당 `number` 필드가 선택적 문자열(`string?` 또는 `string | undefined`)로 잘못 인식되어 타입이 호환되지 않는다는 내용이었습니다.
+
+### 2. 문제 원인
+
+근본적인 원인은 프로젝트 내에서 `Locker`라는 이름의 타입이 두 곳에서 서로 다르게 정의되어 사용되고 있었기 때문입니다:
+
+1.  **`src/models/types.ts`**: Zod 스키마(`lockerSchema`)를 기반으로 `Locker` 타입이 추론되어 정의되었습니다. 이 정의에 따르면 `Locker` 타입의 `number` 속성은 `z.string().min(1)`으로, 비어있지 않은 필수 문자열이었습니다. `Lockers.tsx` 파일은 이 경로의 `Locker` 타입을 사용하고 있었습니다.
+
+2.  **`src/types/index.ts`**: `Locker`라는 이름의 인터페이스가 직접 정의되어 있었습니다. 이 인터페이스의 구조는 Zod 스키마 기반의 `Locker` 타입과 유사했지만, TypeScript 컴파일러는 이 둘을 서로 다른 별개의 타입으로 간주했습니다. 특히, `LockerModal.tsx` 파일은 이 경로의 `Locker` 인터페이스를 사용하고 있었습니다.
+
+결과적으로 `Lockers.tsx`에서 사용하는 `Locker` 타입과 `LockerModal`에서 기대하는 `Locker` 타입이 서로 달라, `selectedLocker` 객체를 `LockerModal`로 전달할 때 타입 불일치 오류가 발생한 것입니다.
+
+### 3. 해결 과정
+
+문제 해결을 위해 다음 단계를 진행했습니다:
+
+1.  **초기 분석 및 시도**: 오류 메시지와 관련 파일들(`Lockers.tsx`, `LockerModal.tsx`, `src/models/types.ts`)을 순차적으로 검토하여 `Locker` 타입의 정의와 사용 방식을 파악했습니다. `Lockers.tsx`에서 `LockerModal`로 `locker` prop을 전달할 때 `selectedLocker as Locker`와 같이 타입 단언을 추가해 보았으나, 이는 근본적인 타입 불일치를 해결하지 못했습니다.
+
+2.  **타입 정의 불일치 발견**: `LockerModal.tsx`가 `import { Locker } from '../types';`를 통해 `src/types/index.ts`에 정의된 `Locker` 인터페이스를 참조하고 있음을 확인했습니다. 이로 인해 `src/models/types.ts`의 `Locker` 타입과 다른 정의를 사용하고 있다는 사실이 명확해졌습니다.
+
+3.  **타입 정의 일원화 (핵심 해결책)**:
+    *   `src/types/index.ts` 파일에서 직접 정의되어 있던 `export interface Locker { ... }` 부분을 삭제했습니다.
+    *   대신, `src/types/index.ts` 파일 상단에 `import type { Locker as LockerFromModel } from '../models/types';` 코드를 추가하여 Zod 스키마 기반의 `Locker` 타입을 가져왔습니다.
+    *   그리고 `export type Locker = LockerFromModel;` 코드를 추가하여, `src/models/types.ts`에서 정의된 `Locker` 타입을 `src/types/index.ts`를 통해 다시 내보내도록 수정했습니다.
+
+4.  **결과 확인**: 이 변경으로 인해 프로젝트 전체에서 `Locker` 타입이 `src/models/types.ts`의 정의로 통일되었습니다. `LockerModal.tsx`도 일관된 `Locker` 타입을 사용하게 되어, `Lockers.tsx`에서 `LockerModal`로 `locker` 속성을 전달할 때 발생하던 타입 오류(TS2322)가 해결되었습니다. 이전에 `Lockers.tsx`에 임시로 추가했던 타입 단언(`as Locker`)도 더 이상 필요 없게 되어 제거했습니다.
+
+### 4. 추가 고려 사항
+
+- 수정 과정에서 `src/types/index.ts`에 원래 정의되어 있던 `Locker` 인터페이스에는 `memberJoinDate?: string | null;` 필드가 있었으나, `src/models/types.ts`의 `lockerSchema` 기반 `Locker` 타입에는 해당 필드가 없었습니다.
+- 만약 `memberJoinDate` 필드가 애플리케이션 로직상 실제로 필요한 필드라면, 타입 일관성을 위해 `src/models/types.ts` 파일의 `lockerSchema`에도 해당 필드를 추가하는 것을 고려해야 합니다. 현재는 타입 오류 해결에 집중하여 이 부분은 그대로 두었습니다. 

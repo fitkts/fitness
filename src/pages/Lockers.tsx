@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Key, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Edit, Trash2, Key, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import LockerModal from '../components/LockerModal';
 import { Locker } from '../models/types';
 import {
@@ -9,6 +9,9 @@ import {
   deleteLocker,
 } from '../database/ipcService';
 import { useToast } from '../contexts/ToastContext';
+import { useCache } from '../hooks/useCache';
+
+const ITEMS_PER_PAGE = 12; // 한 페이지당 표시할 락커 수
 
 const Lockers: React.FC = () => {
   const [lockers, setLockers] = useState<Locker[]>([]);
@@ -25,6 +28,12 @@ const Lockers: React.FC = () => {
 
   const { showToast } = useToast();
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const { get: getCache, set: setCache } = useCache<Locker[]>();
+
   // 초기 데이터 로드
   useEffect(() => {
     loadLockers();
@@ -34,15 +43,48 @@ const Lockers: React.FC = () => {
   const loadLockers = async () => {
     try {
       setIsLoading(true);
-      const response = await getAllLockers();
-      if (response.success && response.data) {
-        setLockers(response.data);
+      const response: any = await getAllLockers(currentPage, ITEMS_PER_PAGE, searchTerm, filter);
+
+      console.log('getAllLockers response:', response);
+
+      if (response && response.success && response.data && Array.isArray(response.data.data)) {
+        const sanitizedLockers: Locker[] = response.data.data.map((l: any): Locker => {
+          const lockerNumber = (l.number === null || l.number === undefined || String(l.number).trim() === '') 
+                             ? 'UNKNOWN' 
+                             : String(l.number);
+          const lockerStatus = ['available', 'occupied', 'maintenance'].includes(l.status) ? l.status : 'available';
+
+          return {
+            id: l.id as number | undefined, // 타입 명시
+            number: lockerNumber,
+            status: lockerStatus as 'available' | 'occupied' | 'maintenance',
+            size: l.size ?? undefined, // size 추가 (LockerSize 타입은 string enum이므로 별도 캐스팅 불필요)
+            location: l.location ?? undefined, // location 추가
+            feeOptions: l.feeOptions ?? undefined, // feeOptions 추가 (객체 배열로 가정)
+            memberId: l.memberId ?? undefined, 
+            memberName: l.memberName ?? undefined, 
+            startDate: l.startDate ?? undefined,
+            endDate: l.endDate ?? undefined,
+            notes: l.notes ?? undefined,
+            createdAt: l.createdAt ?? undefined,
+            updatedAt: l.updatedAt ?? undefined,
+          };
+        });
+        setLockers(sanitizedLockers);
+        setTotalItems(response.data.total);
+        setTotalPages(Math.ceil(response.data.total / ITEMS_PER_PAGE));
       } else {
-        showToast('error', '락커 목록을 불러오는데 실패했습니다.');
+        console.error('락커 목록 로드 실패:', response);
+        const errorMessage = response?.message || response?.error?.message || response?.error || '락커 목록을 불러오는데 실패했습니다.';
+        showToast('error', errorMessage);
+        setLockers([]);
+        setTotalItems(0);
+        setTotalPages(1);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('락커 목록 로드 오류:', error);
-      showToast('error', '락커 목록을 불러오는 중 오류가 발생했습니다.');
+      const message = error?.message || '락커 목록을 불러오는 중 오류가 발생했습니다.';
+      showToast('error', message);
     } finally {
       setIsLoading(false);
     }
@@ -132,19 +174,69 @@ const Lockers: React.FC = () => {
     }
   };
 
-  // 검색 및 필터링된 락커 목록
-  const filteredLockers = lockers.filter((locker) => {
-    // 검색어 필터링
-    const matchesSearch =
-      locker.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      locker.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      false;
+  // 임시: 서버에서 받은 lockers 데이터를 그대로 사용
+  const filteredLockers = lockers;
 
-    // 상태 필터링
-    const matchesStatus = filter === 'all' || locker.status === filter;
+  // 페이지네이션된 락커 목록 계산
+  const paginatedLockers = filteredLockers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
-    return matchesSearch && matchesStatus;
-  });
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  // 페이지네이션 컴포넌트
+  const Pagination = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 rounded ${
+            currentPage === i
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-200 hover:bg-gray-300'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return (
+      <div className="flex items-center justify-center gap-2 mt-4">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        {pages}
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+    );
+  };
+
+  // 검색어나 필터가 변경될 때 첫 페이지로 이동하고 데이터 다시 로드
+  useEffect(() => {
+    setCurrentPage(1);
+    loadLockers();
+  }, [searchTerm, filter]);
+
+  // 페이지 변경 시 데이터 다시 로드
+  useEffect(() => {
+    loadLockers();
+  }, [currentPage]);
 
   // 로딩 중 표시
   if (isLoading) {
@@ -209,7 +301,7 @@ const Lockers: React.FC = () => {
 
       {/* 락커 목록 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredLockers.map((locker) => (
+        {paginatedLockers.map((locker) => (
           <div
             key={locker.id}
             className={`p-4 rounded-lg shadow ${
@@ -283,14 +375,28 @@ const Lockers: React.FC = () => {
         ))}
       </div>
 
+      {/* 페이지네이션 */}
+      <Pagination />
+
       {/* 모달 */}
-      <LockerModal
-        isOpen={modalOpen}
-        onClose={handleCloseModal}
-        onSave={handleSaveLocker}
-        locker={selectedLocker}
-        isViewMode={isViewMode}
-      />
+      {modalOpen && selectedLocker && (
+        <LockerModal
+          isOpen={modalOpen}
+          onClose={handleCloseModal}
+          onSave={handleSaveLocker}
+          locker={selectedLocker as Locker} 
+          isViewMode={isViewMode}
+        />
+      )}
+      {modalOpen && !selectedLocker && (
+         <LockerModal
+          isOpen={modalOpen}
+          onClose={handleCloseModal}
+          onSave={handleSaveLocker}
+          locker={null}
+          isViewMode={false} // 신규 추가 시 isViewMode는 항상 false
+        />
+      )}
     </div>
   );
 };

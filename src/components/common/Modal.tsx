@@ -26,12 +26,10 @@ const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
-      document.body.style.overflow = 'hidden';
     } else {
       const timer = setTimeout(() => {
         setIsVisible(false);
       }, 300); // 애니메이션 시간과 동일하게 설정
-      document.body.style.overflow = 'unset';
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -86,6 +84,9 @@ const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
       className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-8 ${
         isOpen ? 'animate-fadeIn' : 'animate-fadeOut'
       }`}
@@ -98,10 +99,11 @@ const Modal: React.FC<ModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-lg font-semibold">{title}</h3>
+          <h3 id="modal-title" className="text-lg font-semibold">{title}</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500 focus:outline-none"
+            aria-label="닫기"
           >
             <X size={20} />
           </button>

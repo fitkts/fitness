@@ -33,11 +33,13 @@ export const useMemberStore = create<MemberState>((set, get) => ({
       set({ members: fetchedMembers || [], isLoading: false }); // 데이터가 없을 경우 빈 배열 설정
     } catch (err) {
       console.error('IPC: 회원 목록 로딩 실패:', err);
-      const errorMessage =
-        err instanceof Error ? err.message : '알 수 없는 오류 발생';
-      set({ error: `회원 목록 로딩 실패: ${errorMessage}`, isLoading: false });
-      // 에러 발생 시 빈 배열로 설정할 수도 있음
-      // set({ members: [], error: `회원 목록 로딩 실패: ${errorMessage}`, isLoading: false });
+      let detailedMessage = '알 수 없는 오류 발생'; // 기본 메시지
+      if (err instanceof Error && typeof err.message === 'string' && err.message.trim() !== '') {
+        detailedMessage = err.message;
+      }
+      // 최종 오류 메시지 구성
+      const finalErrorMessage = `회원 목록 로딩 실패: ${detailedMessage}`;
+      set({ error: finalErrorMessage, isLoading: false });
     }
   },
 

@@ -115,15 +115,15 @@ export async function setupDatabase(): Promise<void> {
             phone TEXT,
             email TEXT,
             gender TEXT,
-            birth_date TEXT,
-            join_date TEXT NOT NULL,
+            birth_date INTEGER,
+            join_date INTEGER NOT NULL,
             membership_type TEXT,
-            membership_start TEXT,
-            membership_end TEXT,
-            last_visit TEXT,
+            membership_start INTEGER,
+            membership_end INTEGER,
+            last_visit INTEGER,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            updated_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer))
           )
         `);
 
@@ -132,8 +132,8 @@ export async function setupDatabase(): Promise<void> {
           CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             member_id INTEGER NOT NULL,
-            visit_date TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            visit_date INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
             FOREIGN KEY (member_id) REFERENCES members(id)
           )
         `);
@@ -144,10 +144,10 @@ export async function setupDatabase(): Promise<void> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             member_id INTEGER NOT NULL,
             amount INTEGER NOT NULL,
-            payment_date TEXT NOT NULL,
+            payment_date INTEGER NOT NULL,
             payment_type TEXT NOT NULL,
             description TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
             FOREIGN KEY (member_id) REFERENCES members(id)
           )
         `);
@@ -187,7 +187,7 @@ export async function setupDatabase(): Promise<void> {
         } catch (error) {
           electronLog.info('start_date 컬럼 추가 중...');
           db.exec(`
-            ALTER TABLE payments ADD COLUMN start_date TEXT;
+            ALTER TABLE payments ADD COLUMN start_date INTEGER;
           `);
         }
 
@@ -200,7 +200,7 @@ export async function setupDatabase(): Promise<void> {
         } catch (error) {
           electronLog.info('end_date 컬럼 추가 중...');
           db.exec(`
-            ALTER TABLE payments ADD COLUMN end_date TEXT;
+            ALTER TABLE payments ADD COLUMN end_date INTEGER;
           `);
         }
 
@@ -243,6 +243,19 @@ export async function setupDatabase(): Promise<void> {
           `);
         }
 
+        // 결제 테이블에 staff_id 컬럼 추가
+        try {
+          db.exec(`
+            SELECT staff_id FROM payments LIMIT 1;
+          `);
+          electronLog.info('staff_id 컬럼이 이미 존재합니다.');
+        } catch (error) {
+          electronLog.info('staff_id 컬럼 추가 중...');
+          db.exec(`
+            ALTER TABLE payments ADD COLUMN staff_id INTEGER;
+          `);
+        }
+
         // 기존 membership_types 테이블이 있는지 확인
         let hasCorrectMembershipTypesSchema = false;
         try {
@@ -279,8 +292,8 @@ export async function setupDatabase(): Promise<void> {
               description TEXT,
               max_uses INTEGER,
               available_facilities TEXT,
-              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+              created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+              updated_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer))
             )
           `);
         }
@@ -293,30 +306,64 @@ export async function setupDatabase(): Promise<void> {
             position TEXT NOT NULL,
             phone TEXT,
             email TEXT,
-            hire_date TEXT NOT NULL,
+            hire_date INTEGER NOT NULL,
             status TEXT NOT NULL,
             permissions TEXT NOT NULL,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            updated_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer))
           )
         `);
 
-        // 락커 테이블 생성
+        // 락커 테이블 생성 (기본 구조)
         db.exec(`
           CREATE TABLE IF NOT EXISTS lockers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            number TEXT NOT NULL,
-            status TEXT NOT NULL,
+            number TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'available',
+            size TEXT,
+            location TEXT,
+            fee_options TEXT, -- JSON 문자열로 요금 옵션 저장
             member_id INTEGER,
-            start_date TEXT,
-            end_date TEXT,
+            start_date INTEGER,
+            end_date INTEGER,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (member_id) REFERENCES members(id)
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            updated_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL
           )
         `);
+        electronLog.info('락커 테이블 (lockers) 스키마 확인/생성/수정 완료.');
+
+        // lockers 테이블에 size 컬럼 추가 (존재하지 않을 경우)
+        try {
+          db.exec(`SELECT size FROM lockers LIMIT 1;`);
+          electronLog.info('lockers 테이블에 size 컬럼이 이미 존재합니다.');
+        } catch (error) {
+          electronLog.info('lockers 테이블에 size 컬럼 추가 중...');
+          db.exec(`ALTER TABLE lockers ADD COLUMN size TEXT;`);
+        }
+
+        // lockers 테이블에 location 컬럼 추가 (존재하지 않을 경우)
+        try {
+          db.exec(`SELECT location FROM lockers LIMIT 1;`);
+          electronLog.info('lockers 테이블에 location 컬럼이 이미 존재합니다.');
+        } catch (error) {
+          electronLog.info('lockers 테이블에 location 컬럼 추가 중...');
+          db.exec(`ALTER TABLE lockers ADD COLUMN location TEXT;`);
+        }
+
+        // lockers 테이블에 fee_options 컬럼 추가 (존재하지 않을 경우)
+        try {
+          db.exec(`SELECT fee_options FROM lockers LIMIT 1;`);
+          electronLog.info('lockers 테이블에 fee_options 컬럼이 이미 존재합니다.');
+        } catch (error) {
+          electronLog.info('lockers 테이블에 fee_options 컬럼 추가 중...');
+          db.exec(`ALTER TABLE lockers ADD COLUMN fee_options TEXT;`);
+        }
+        
+        // 다른 staff, settings 등의 테이블 생성/수정 로직이 있다면 그 이후에...
+        electronLog.info('데이터베이스 스키마 설정 완료.');
       } catch (tableError) {
         electronLog.error('테이블 생성 오류:', tableError);
         // 개발 모드에서는 오류가 있어도 계속 진행

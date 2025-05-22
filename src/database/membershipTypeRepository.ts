@@ -1,10 +1,33 @@
 import { getDatabase } from './setup';
 import { MembershipType } from '../models/types'; // MembershipType 타입 임포트 (경로 확인)
 import * as electronLog from 'electron-log';
+import {
+  getUnixTime,
+  fromUnixTime,
+  parseISO,
+  isValid,
+  format,
+} from 'date-fns';
+
+// Helper function to convert date string or Date object to Unix timestamp (seconds)
+function toTimestamp(dateValue: string | Date | undefined | null): number | null {
+  if (!dateValue) return null;
+  const date = typeof dateValue === 'string' ? parseISO(dateValue) : dateValue;
+  if (!isValid(date)) return null;
+  return getUnixTime(date);
+}
+
+// Helper function to convert Unix timestamp (seconds) to ISO string (YYYY-MM-DD)
+function fromTimestampToISO(timestamp: number | undefined | null): string | null {
+  if (timestamp === null || timestamp === undefined) return null;
+  const date = fromUnixTime(timestamp);
+  if (!isValid(date)) return null;
+  return format(date, 'yyyy-MM-dd');
+}
 
 // DB 컬럼 이름과 인터페이스 필드 이름 매핑 (snake_case -> camelCase)
-function mapMembershipTypeToModel(row: any): MembershipType {
-  return {
+function mapRowToMembershipType(row: any): MembershipType {
+  const type: Partial<MembershipType> = {
     id: row.id,
     name: row.name,
     durationMonths: row.duration_months,
@@ -16,6 +39,13 @@ function mapMembershipTypeToModel(row: any): MembershipType {
       ? JSON.parse(row.available_facilities)
       : undefined, // JSON 문자열 파싱
   };
+  if (row.created_at !== undefined && row.created_at !== null) {
+    type.createdAt = fromTimestampToISO(row.created_at);
+  }
+  if (row.updated_at !== undefined && row.updated_at !== null) {
+    type.updatedAt = fromTimestampToISO(row.updated_at);
+  }
+  return type as MembershipType;
 }
 
 // 모든 이용권 종류 조회
@@ -24,12 +54,12 @@ export async function getAllMembershipTypes(): Promise<MembershipType[]> {
     const db = getDatabase();
     const query = `
       SELECT
-        id, name, duration_months, price, is_active, description, max_uses, available_facilities
+        id, name, duration_months, price, is_active, description, max_uses, available_facilities, created_at, updated_at
       FROM membership_types
       ORDER BY name ASC
     `;
     const rows = db.prepare(query).all();
-    return rows.map(mapMembershipTypeToModel);
+    return rows.map(mapRowToMembershipType);
   } catch (error) {
     electronLog.error('이용권 종류 목록 조회 오류:', error);
     throw error;
@@ -44,12 +74,12 @@ export async function getMembershipTypeById(
     const db = getDatabase();
     const query = `
       SELECT
-        id, name, duration_months, price, is_active, description, max_uses, available_facilities
+        id, name, duration_months, price, is_active, description, max_uses, available_facilities, created_at, updated_at
       FROM membership_types
       WHERE id = ?
     `;
     const row = db.prepare(query).get(id);
-    return row ? mapMembershipTypeToModel(row) : null;
+    return row ? mapRowToMembershipType(row) : null;
   } catch (error) {
     electronLog.error('이용권 종류 조회 오류:', error);
     throw error;
@@ -58,11 +88,11 @@ export async function getMembershipTypeById(
 
 // 새 이용권 종류 추가
 export async function addMembershipType(
-  typeData: Omit<MembershipType, 'id'>,
+  typeData: Omit<MembershipType, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<number> {
   try {
     const db = getDatabase();
-    const now = new Date().toISOString();
+    const now = getUnixTime(new Date()); // Unix timestamp
     const query = `
       INSERT INTO membership_types (
         name, duration_months, price, is_active, description, max_uses, available_facilities, created_at, updated_at
@@ -78,8 +108,8 @@ export async function addMembershipType(
       typeData.availableFacilities
         ? JSON.stringify(typeData.availableFacilities)
         : null, // 배열을 JSON 문자열로 변환
-      now,
-      now,
+      now, // created_at
+      now, // updated_at
     );
     return result.lastInsertRowid as number;
   } catch (error) {
@@ -91,11 +121,11 @@ export async function addMembershipType(
 // 이용권 종류 업데이트
 export async function updateMembershipType(
   id: number,
-  typeData: Partial<Omit<MembershipType, 'id'>>,
+  typeData: Partial<Omit<MembershipType, 'id' | 'createdAt' | 'updatedAt'>>,
 ): Promise<boolean> {
   try {
     const db = getDatabase();
-    const now = new Date().toISOString();
+    const now = getUnixTime(new Date()); // Unix timestamp for updated_at
     const updates: string[] = [];
     const values: any[] = [];
 

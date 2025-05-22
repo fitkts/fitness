@@ -4,12 +4,12 @@ import {
   Users,
   Calendar,
   CreditCard,
-  Archive,
   Settings as SettingsIcon,
   Briefcase,
   Key,
   ChevronLeft,
   ChevronRight,
+  BarChart,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -53,10 +53,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         return <Key size={20} />;
       case '직원 관리':
         return <Briefcase size={20} />;
-      case '백업 관리':
-        return <Archive size={20} />;
+      case '통계 관리':
+        return <BarChart size={20} />;
       case '설정':
         return <SettingsIcon size={20} />;
+
       default:
         return <div />;
     }

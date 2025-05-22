@@ -53,26 +53,35 @@ const Settings: React.FC = () => {
               ...prevSettings,
               ...loadedSettings,
             }));
-            showToast('success', '설정을 불러왔습니다.');
+            // 초기 로딩 시에만 토스트 표시
+            if (isLoading) {
+              showToast('success', '설정을 불러왔습니다.');
+            }
           } else {
-            showToast(
-              'info',
-              '저장된 설정이 없거나 유효하지 않습니다. 기본 설정을 사용합니다.',
-            );
+            if (isLoading) {
+              showToast(
+                'info',
+                '저장된 설정이 없거나 유효하지 않습니다. 기본 설정을 사용합니다.',
+              );
+            }
           }
         } else {
           console.warn('Electron API (loadSettings) is not available.');
-          showToast('warning', '설정 API를 사용할 수 없습니다.');
+          if (isLoading) {
+            showToast('warning', '설정 API를 사용할 수 없습니다.');
+          }
         }
       } catch (error) {
         console.error('설정 로드 오류:', error);
-        showToast('error', '설정을 불러오는데 실패했습니다.');
+        if (isLoading) {
+          showToast('error', '설정을 불러오는데 실패했습니다.');
+        }
       } finally {
         setIsLoading(false);
       }
     };
     loadAppSettings();
-  }, [showToast]);
+  }, []); // showToast 의존성 제거
 
   // 설정 변경 핸들러
   const handleSettingChange = (

@@ -2,1314 +2,526 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Plus,
   Search,
-  Filter,
-  CreditCard,
-  Calendar,
-  Download,
-  MoreHorizontal,
-  Settings,
   Edit,
   Trash2,
+  Filter,
+  DollarSign,
+  CreditCard,
   AlertTriangle,
-  Info,
   ChevronUp,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Database,
-  Upload,
-  X as CloseIcon,
+  Download,
+  ListChecks,
+  Settings2,
 } from 'lucide-react';
-import PaymentModal from '../components/payment/PaymentModal';
-import MembershipTypeModal from '../components/MembershipTypeModal';
+import NewPaymentModal from '../components/payment/NewPaymentModal';
+import MembershipTypeModal from '../components/payment/MembershipTypeModal';
+import PaymentTable from '../components/payment/PaymentTable';
+import MembershipTypeList from '../components/payment/MembershipTypeList';
 import {
-  getAllPayments,
-  addPayment,
-  updatePayment,
-  deletePayment,
-  getAllMembershipTypes,
-  addMembershipType,
-  updateMembershipType,
-  deleteMembershipType,
   getAllMembers,
+  getAllPayments,
+  getAllMembershipTypes,
+  getAllStaff,
+  deletePayment,
+  deleteMembershipType,
 } from '../database/ipcService';
-import { useToast, ToastType } from '../contexts/ToastContext';
-import { Member, Payment, MembershipType } from '../models/types';
-import * as XLSX from 'xlsx';
-import { PaymentStatus, PaymentMethod } from '../types/payment';
+import { useToast } from '../contexts/ToastContext';
+import { Member, Payment, MembershipType, Staff } from '../models/types';
+import { MemberOption } from '../components/payment/NewMemberSearchInput';
 
-const Payment: React.FC = () => {
-  // 상태 관리
+const formatDate = (dateString: string | undefined | null): string => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '유효하지 않은 날짜';
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  } catch (e) {
+    return '날짜 변환 오류';
+  }
+};
+
+const formatCurrency = (value: number | undefined | null): string => {
+  if (value === undefined || value === null) return 'N/A';
+  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(value);
+};
+
+const ITEMS_PER_PAGE = 10; // 페이지당 항목 수
+
+const PaymentPage: React.FC = () => {
+  const { showToast } = useToast();
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [membershipTypes, setMembershipTypes] = useState<MembershipType[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'payments' | 'membership-types'>(
-    'payments',
-  );
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState<
-    'all' | 'today' | 'this-week' | 'this-month'
-  >('all');
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | '완료' | '취소' | '환불'
-  >('all');
-  const [showFilterOptions, setShowFilterOptions] = useState<boolean>(false);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
 
-  // 정렬 관련 상태
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: 'ascending' | 'descending' | null;
-  }>({ key: '', direction: null });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 페이지네이션 관련 상태
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(30);
-  const [showAll, setShowAll] = useState<boolean>(false);
-  const [pagedPayments, setPagedPayments] = useState<Payment[]>([]);
-
-  // 모달 상태 관리
   const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
-  const [membershipTypeModalOpen, setMembershipTypeModalOpen] =
-    useState<boolean>(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [selectedMembershipType, setSelectedMembershipType] =
-    useState<MembershipType | null>(null);
-  const [isViewMode, setIsViewMode] = useState<boolean>(false);
+  const [isPaymentViewMode, setIsPaymentViewMode] = useState<boolean>(false);
 
-  // useToast를 try-catch로 감싸서 오류 방지
-  let showToast: (type: ToastType, message: string) => void;
-  try {
-    const toastContext = useToast();
-    showToast =
-      toastContext?.showToast ||
-      ((type, message) => console.log(`Fallback Toast (${type}): ${message}`));
-  } catch (error) {
-    console.error('Payment: Toast 컨텍스트를 사용할 수 없습니다:', error);
-    showToast = (type, message) =>
-      console.log(`Error Toast (${type}): ${message}`);
-  }
+  const [membershipTypeModalOpen, setMembershipTypeModalOpen] = useState<boolean>(false);
+  const [selectedMembershipType, setSelectedMembershipType] = useState<MembershipType | null>(null);
+  const [isMembershipTypeViewMode, setIsMembershipTypeViewMode] = useState<boolean>(false);
+  
+  const [activeTab, setActiveTab] = useState<'payments' | 'membershipTypes'>('payments');
 
-  // 통계 데이터 계산 (useMemo로 성능 최적화)
-  const statistics = useMemo(() => {
-    const now = new Date();
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const [paymentSortConfig, setPaymentSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: 'paymentDate', direction: 'descending' });
+  const [membershipTypeSortConfig, setMembershipTypeSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: 'name', direction: 'ascending' });
 
-    const totalAmount = payments.reduce(
-      (sum, payment) =>
-        payment.status === '완료' ? sum + payment.amount : sum,
-      0,
-    );
+  // 페이지네이션 상태 추가
+  const [paymentsCurrentPage, setPaymentsCurrentPage] = useState<number>(1);
+  const [membershipTypesCurrentPage, setMembershipTypesCurrentPage] = useState<number>(1);
 
-    const thisMonthAmount = payments.reduce((sum, payment) => {
-      const paymentDate = new Date(payment.paymentDate);
-      return payment.status === '완료' && paymentDate >= thisMonth
-        ? sum + payment.amount
-        : sum;
-    }, 0);
+  const requestPaymentSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (paymentSortConfig.key === key && paymentSortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setPaymentSortConfig({ key, direction });
+    setPaymentsCurrentPage(1); // 정렬 시 첫 페이지로 이동
+  };
 
-    const lastMonthAmount = payments.reduce((sum, payment) => {
-      const paymentDate = new Date(payment.paymentDate);
-      return payment.status === '완료' &&
-        paymentDate >= lastMonth &&
-        paymentDate < thisMonth
-        ? sum + payment.amount
-        : sum;
-    }, 0);
-
-    const paymentMethods: { [key: string]: number } = {};
-    payments.forEach((payment) => {
-      if (payment.status === '완료') {
-        paymentMethods[payment.paymentMethod] =
-          (paymentMethods[payment.paymentMethod] || 0) + payment.amount;
-      }
-    });
-
-    const membershipTypeStats: { [key: string]: number } = {};
-    payments.forEach((payment) => {
-      if (payment.status === '완료') {
-        membershipTypeStats[payment.membershipType] =
-          (membershipTypeStats[payment.membershipType] || 0) + payment.amount;
-      }
-    });
-
-    const sortedMembershipTypes = Object.entries(membershipTypeStats)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3);
-
-    return {
-      totalAmount,
-      thisMonthAmount,
-      lastMonthAmount,
-      paymentMethods,
-      topMembershipTypes: sortedMembershipTypes,
-      totalPayments: payments.length,
-      completedPayments: payments.filter((p) => p.status === '완료').length,
-      cancelledPayments: payments.filter((p) => p.status === '취소').length,
-      refundedPayments: payments.filter((p) => p.status === '환불').length,
-    };
-  }, [payments]);
-
-  // 데이터 로드 함수
+  const requestMembershipTypeSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (membershipTypeSortConfig.key === key && membershipTypeSortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setMembershipTypeSortConfig({ key, direction });
+    setMembershipTypesCurrentPage(1); // 정렬 시 첫 페이지로 이동
+  };
+  
   const loadData = useCallback(async () => {
-    setLoading(true);
+    setIsLoading(true);
+    setError(null);
     try {
-      const [paymentsRes, typesRes, membersRes] = await Promise.all([
+      const [paymentsRes, membershipTypesRes, membersRes, staffRes] = await Promise.all([
         getAllPayments(),
         getAllMembershipTypes(),
         getAllMembers(),
+        getAllStaff(),
       ]);
 
       if (paymentsRes.success && paymentsRes.data) {
         setPayments(paymentsRes.data);
       } else {
-        showToast(
-          'error',
-          '결제 내역 로드 실패: ' + (paymentsRes.error || '알 수 없는 오류'),
-        );
-        setPayments([]);
+        setError(prev => (prev ? prev + '\n' : '') + ('결제 내역 로드 실패: ' + (paymentsRes.error || '알 수 없는 오류')));
       }
 
-      if (typesRes.success && typesRes.data) {
-        setMembershipTypes(typesRes.data);
+      if (membershipTypesRes.success && membershipTypesRes.data) {
+        setMembershipTypes(membershipTypesRes.data);
       } else {
-        showToast(
-          'error',
-          '이용권 종류 로드 실패: ' + (typesRes.error || '알 수 없는 오류'),
-        );
-        setMembershipTypes([]);
+        setError(prev => (prev ? prev + '\n' : '') + ('이용권 종류 로드 실패: ' + (membershipTypesRes.error || '알 수 없는 오류')));
       }
 
       if (membersRes.success && membersRes.data) {
         setMembers(membersRes.data);
       } else {
-        showToast(
-          'error',
-          '회원 목록 로드 실패: ' + (membersRes.error || '알 수 없는 오류'),
-        );
+        console.warn('회원 목록 로드 실패 (결제용):', membersRes.error);
         setMembers([]);
       }
-    } catch (error) {
-      console.error('데이터 로드 중 오류 발생:', error);
-      showToast('error', '데이터 로드 중 오류가 발생했습니다.');
+
+      if (staffRes.success && staffRes.data) {
+        setStaffList(staffRes.data);
+      } else {
+        console.warn('직원 목록 로드 실패 (결제용):', staffRes.error);
+        setStaffList([]);
+      }
+
+    } catch (err: any) {
+      console.error('데이터 로딩 중 심각한 오류 발생:', err);
+      setError('데이터를 불러오는 중 심각한 오류가 발생했습니다. ' + err.message);
       setPayments([]);
       setMembershipTypes([]);
       setMembers([]);
+      setStaffList([]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [showToast]);
+  }, []);
 
-  // 초기 데이터 로드
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // 금액 포맷팅 함수
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('ko-KR', { style: 'decimal' }).format(value);
+  const memberOptionsForModal: MemberOption[] = useMemo(() => {
+    return members.map(member => ({
+      id: member.id as number,
+      name: member.name,
+      memberId: String(member.id)
+    }));
+  }, [members]);
+
+  const handleOpenPaymentModal = (payment: Payment | null = null, viewMode: boolean = false) => {
+    setSelectedPayment(payment);
+    setIsPaymentViewMode(viewMode);
+    setPaymentModalOpen(true);
   };
 
-  // 날짜 포맷팅 함수
-  const formatDate = (dateString: string | undefined | null) => {
-    if (!dateString) return 'N/A';
-
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+  const handleClosePaymentModal = () => {
+    setPaymentModalOpen(false);
+    setSelectedPayment(null);
+    setIsPaymentViewMode(false);
   };
 
-  // 정렬 요청 처리 함수
-  const requestSort = (key: string) => {
-    let direction: 'ascending' | 'descending' | null = 'ascending';
-
-    if (sortConfig.key === key) {
-      if (sortConfig.direction === 'ascending') {
-        direction = 'descending';
-      } else if (sortConfig.direction === 'descending') {
-        direction = null;
-      }
-    }
-
-    setSortConfig({ key, direction });
+  const handlePaymentSaveSuccess = () => {
+    handleClosePaymentModal();
+    loadData(); 
+    showToast('success', selectedPayment ? '결제 정보가 성공적으로 수정되었습니다.' : '새 결제가 성공적으로 등록되었습니다.');
   };
 
-  // 정렬된 결제 목록 생성
+  const handleOpenMembershipTypeModal = (type: MembershipType | null = null, viewMode: boolean = false) => {
+    setSelectedMembershipType(type);
+    setIsMembershipTypeViewMode(viewMode);
+    setMembershipTypeModalOpen(true);
+  };
+
+  const handleCloseMembershipTypeModal = () => {
+    setMembershipTypeModalOpen(false);
+    setSelectedMembershipType(null);
+    setIsMembershipTypeViewMode(false);
+  };
+
+  const handleMembershipTypeSaveSuccess = () => {
+    handleCloseMembershipTypeModal();
+    loadData();
+    showToast('success', selectedMembershipType ? '이용권 정보가 성공적으로 수정되었습니다.' : '새 이용권이 성공적으로 추가되었습니다.');
+  };
+
   const sortedPayments = useMemo(() => {
-    const sortablePayments = [...payments];
-
-    if (sortConfig.direction === null) {
-      return sortablePayments;
-    }
-
-    return sortablePayments.sort((a, b) => {
-      if (
-        a[sortConfig.key as keyof Payment] === undefined ||
-        b[sortConfig.key as keyof Payment] === undefined
-      ) {
+    let sortableItems = [...payments];
+    if (paymentSortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = (a as any)[paymentSortConfig.key!];
+        const valB = (b as any)[paymentSortConfig.key!];
+        if (valA < valB) {
+          return paymentSortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (valA > valB) {
+          return paymentSortConfig.direction === 'ascending' ? 1 : -1;
+        }
         return 0;
-      }
+      });
+    }
+    return sortableItems;
+  }, [payments, paymentSortConfig]);
 
-      // 금액 정렬
-      if (sortConfig.key === 'amount') {
-        if (sortConfig.direction === 'ascending') {
-          return a.amount - b.amount;
-        } else {
-          return b.amount - a.amount;
+  const sortedMembershipTypes = useMemo(() => {
+    let sortableItems = [...membershipTypes];
+    if (membershipTypeSortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = (a as any)[membershipTypeSortConfig.key!];
+        const valB = (b as any)[membershipTypeSortConfig.key!];
+        if (valA < valB) {
+          return membershipTypeSortConfig.direction === 'ascending' ? -1 : 1;
         }
-      }
-
-      // 날짜 정렬
-      if (
-        sortConfig.key === 'paymentDate' ||
-        sortConfig.key === 'startDate' ||
-        sortConfig.key === 'endDate'
-      ) {
-        const aDate = new Date(a[sortConfig.key] as string).getTime();
-        const bDate = new Date(b[sortConfig.key] as string).getTime();
-
-        if (sortConfig.direction === 'ascending') {
-          return aDate - bDate;
-        } else {
-          return bDate - aDate;
+        if (valA > valB) {
+          return membershipTypeSortConfig.direction === 'ascending' ? 1 : -1;
         }
-      }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [membershipTypes, membershipTypeSortConfig]);
 
-      // 문자열 정렬
-      if (typeof a[sortConfig.key as keyof Payment] === 'string') {
-        const aValue = (a[sortConfig.key as keyof Payment] as string) || '';
-        const bValue = (b[sortConfig.key as keyof Payment] as string) || '';
+  // 페이지네이션된 데이터
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (paymentsCurrentPage - 1) * ITEMS_PER_PAGE;
+    return sortedPayments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedPayments, paymentsCurrentPage]);
 
-        if (sortConfig.direction === 'ascending') {
-          return aValue.localeCompare(bValue);
-        } else {
-          return bValue.localeCompare(aValue);
-        }
-      }
+  const paginatedMembershipTypes = useMemo(() => {
+    const startIndex = (membershipTypesCurrentPage - 1) * ITEMS_PER_PAGE;
+    return sortedMembershipTypes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedMembershipTypes, membershipTypesCurrentPage]);
 
-      return 0;
-    });
-  }, [payments, sortConfig]);
-
-  // 필터링된 결제 목록
-  const filteredPayments = useMemo(() => {
-    return sortedPayments.filter((payment) => {
-      // 검색어 필터링
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        if (
-          !payment.memberName.toLowerCase().includes(term) &&
-          !payment.receiptNumber?.toLowerCase().includes(term) &&
-          !payment.membershipType.toLowerCase().includes(term)
-        ) {
-          return false;
-        }
-      }
-
-      // 날짜 필터링
-      if (dateFilter !== 'all') {
-        const now = new Date();
-        const today = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-        );
-        const thisWeekStart = new Date(today);
-        thisWeekStart.setDate(today.getDate() - today.getDay());
-        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        const paymentDate = new Date(payment.paymentDate);
-
-        if (dateFilter === 'today' && paymentDate < today) {
-          return false;
-        }
-        if (dateFilter === 'this-week' && paymentDate < thisWeekStart) {
-          return false;
-        }
-        if (dateFilter === 'this-month' && paymentDate < thisMonthStart) {
-          return false;
-        }
-      }
-
-      // 상태 필터링
-      if (statusFilter !== 'all' && payment.status !== statusFilter) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [sortedPayments, searchTerm, dateFilter, statusFilter]);
-
-  // 페이지당 표시 결제 수 변경 핸들러
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setCurrentPage(1);
-  };
-
-  // 전체 보기 토글 핸들러
-  const handleShowAllToggle = () => {
-    setShowAll(!showAll);
-    setCurrentPage(1);
-  };
+  // 총 페이지 수 계산
+  const totalPaymentPages = Math.ceil(sortedPayments.length / ITEMS_PER_PAGE);
+  const totalMembershipTypePages = Math.ceil(sortedMembershipTypes.length / ITEMS_PER_PAGE);
 
   // 페이지 변경 핸들러
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
+  const handlePaymentPageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPaymentPages) {
+      setPaymentsCurrentPage(newPage);
     }
   };
 
-  // 페이지네이션 컴포넌트
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  const handleMembershipTypePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalMembershipTypePages) {
+      setMembershipTypesCurrentPage(newPage);
     }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
+  };
+  
+  // Pagination UI 컴포넌트
+  const PaginationControls: React.FC<{
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+    itemCount: number;
+  }> = ({ currentPage, totalPages, onPageChange, itemCount }) => {
+    if (itemCount === 0) return null;
     return (
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
-        <div className="flex justify-between flex-1 sm:hidden">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            이전
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            다음
-          </button>
+      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600">
+        <div className="mb-2 sm:mb-0">
+          총 {itemCount}개 중 { (currentPage -1) * ITEMS_PER_PAGE + 1 } - { Math.min(currentPage * ITEMS_PER_PAGE, itemCount) } 표시
         </div>
-        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-gray-700">
-              총 <span className="font-medium">{filteredPayments.length}</span>
-              건 중{' '}
-              <span className="font-medium">
-                {(currentPage - 1) * pageSize + 1}
-              </span>
-              {' - '}
-              <span className="font-medium">
-                {Math.min(currentPage * pageSize, filteredPayments.length)}
-              </span>{' '}
-              건 표시
-            </p>
-          </div>
-          <div>
-            <nav
-              className="inline-flex -space-x-px rounded-md shadow-sm"
-              aria-label="Pagination"
-            >
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              {startPage > 1 && (
-                <>
-                  <button
-                    onClick={() => handlePageChange(1)}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    1
-                  </button>
-                  {startPage > 2 && (
-                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      ...
-                    </span>
-                  )}
-                </>
-              )}
-
-              {pageNumbers.map((number) => (
-                <button
-                  key={number}
-                  onClick={() => handlePageChange(number)}
-                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                    currentPage === number
-                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {number}
-                </button>
-              ))}
-
-              {endPage < totalPages && (
-                <>
-                  {endPage < totalPages - 1 && (
-                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      ...
-                    </span>
-                  )}
-                  <button
-                    onClick={() => handlePageChange(totalPages)}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </nav>
-          </div>
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+            className="px-2.5 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={14} className="mr-1 inline" /> 첫 페이지
+          </button>
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-2.5 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="px-3 py-1.5">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-2.5 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={14} />
+          </button>
+          <button
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-2.5 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            마지막 페이지 <ChevronRight size={14} className="ml-1 inline"/>
+          </button>
         </div>
       </div>
     );
   };
 
-  // 엑셀 내보내기 함수
-  const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(payments);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '결제내역');
-    XLSX.writeFile(wb, '결제내역.xlsx');
-  };
 
-  // Enum → String 변환
-  const statusToString = (
-    status: PaymentStatus | string,
-  ): '완료' | '취소' | '환불' => {
-    if (
-      status === PaymentStatus.COMPLETED ||
-      status === 'COMPLETED' ||
-      status === '완료'
-    )
-      return '완료';
-    if (
-      status === PaymentStatus.CANCELLED ||
-      status === 'CANCELLED' ||
-      status === '취소'
-    )
-      return '취소';
-    if (
-      status === PaymentStatus.REFUNDED ||
-      status === 'REFUNDED' ||
-      status === '환불'
-    )
-      return '환불';
-    return '완료'; // 기본값
-  };
-  const paymentMethodToString = (method: PaymentMethod | string): string => {
-    if (method === PaymentMethod.CARD || method === 'CARD' || method === '카드')
-      return '카드';
-    if (method === PaymentMethod.CASH || method === 'CASH' || method === '현금')
-      return '현금';
-    if (method === 'TRANSFER' || method === '계좌이체') return '계좌이체';
-    if (method === 'ETC' || method === '기타') return '기타';
-    return '카드'; // 기본값
-  };
-  // String → Enum 변환
-  const statusToEnum = (status: string): PaymentStatus => {
-    if (status === '완료' || status === 'COMPLETED')
-      return PaymentStatus.COMPLETED;
-    if (status === '취소' || status === 'CANCELLED')
-      return PaymentStatus.CANCELLED;
-    if (status === '환불' || status === 'REFUNDED')
-      return PaymentStatus.REFUNDED;
-    return PaymentStatus.COMPLETED;
-  };
-  const paymentMethodToEnum = (method: string): PaymentMethod => {
-    if (method === '카드' || method === 'CARD') return PaymentMethod.CARD;
-    if (method === '현금' || method === 'CASH') return PaymentMethod.CASH;
-    return PaymentMethod.CARD;
-  };
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen flex justify-center items-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600">데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col rounded mb-4">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">결제 관리</h1>
-
-        {/* 탭 메뉴 */}
-        <div className="mb-6 border-b border-gray-200">
-          <div className="flex space-x-8">
-            <button
-              className={`pb-4 px-1 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'payments'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              onClick={() => setActiveTab('payments')}
-            >
-              결제 내역
-            </button>
-            <button
-              className={`pb-4 px-1 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'membership-types'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              onClick={() => setActiveTab('membership-types')}
-            >
-              이용권 관리
-            </button>
+  if (error) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+          <div className="flex items-center">
+            <AlertTriangle className="text-red-500 mr-3" size={24} />
+            <div className="text-red-700">
+              <p className="font-bold">오류 발생</p>
+              {error.split('\n').map((line, index) => <p key={index}>{line}</p>)}
+              <button
+                onClick={loadData}
+                className="mt-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+              >
+                다시 시도
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* 결제 내역 탭 */}
-        {activeTab === 'payments' && (
-          <>
-            {/* 검색 및 필터 영역 */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div className="flex flex-wrap gap-4 items-center mb-4">
-                <div className="relative flex-grow">
-                  <input
-                    type="text"
-                    placeholder="회원명, 이용권, 영수증 번호로 검색..."
-                    className="border border-gray-300 p-3 rounded-md w-full pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <Search
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={20}
-                  />
-                </div>
+  return (
+    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
+      <header className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <h1 className="text-3xl font-bold text-gray-800">결제 및 이용권 관리</h1>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleOpenPaymentModal(null, false)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+          >
+            <DollarSign size={18} className="mr-2" /> 새 결제 등록
+          </button>
+          <button
+            onClick={() => handleOpenMembershipTypeModal(null, false)}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-150 ease-in-out"
+          >
+            <CreditCard size={18} className="mr-2" /> 새 이용권 추가
+          </button>
+        </div>
+      </header>
 
-                <button
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-md flex items-center transition-colors"
-                  onClick={() => setShowFilterOptions(!showFilterOptions)}
-                >
-                  <Filter size={18} className="mr-2" />
-                  필터 {showFilterOptions ? '숨기기' : '보기'}
-                </button>
-
-                <button
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-md flex items-center transition-colors ml-auto"
-                  onClick={() => setPaymentModalOpen(true)}
-                >
-                  <Plus size={18} className="mr-2" />새 결제 등록
-                </button>
-
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <button
-                    title="엑셀 내보내기"
-                    style={{
-                      background: '#f3f4f6',
-                      border: 'none',
-                      borderRadius: 4,
-                      padding: 6,
-                      cursor: 'pointer',
-                    }}
-                    onClick={handleExportExcel}
-                  >
-                    <Download size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {showFilterOptions && (
-                <div className="bg-gray-50 p-4 rounded-md flex flex-wrap gap-4 items-center animate-fadeIn">
-                  <div>
-                    <label
-                      htmlFor="dateFilter"
-                      className="mr-2 font-medium text-gray-700"
-                    >
-                      기간:
-                    </label>
-                    <select
-                      id="dateFilter"
-                      className="border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value as any)}
-                    >
-                      <option value="all">전체 기간</option>
-                      <option value="today">오늘</option>
-                      <option value="this-week">이번 주</option>
-                      <option value="this-month">이번 달</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="statusFilter"
-                      className="mr-2 font-medium text-gray-700"
-                    >
-                      상태:
-                    </label>
-                    <select
-                      id="statusFilter"
-                      className="border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value as any)}
-                    >
-                      <option value="all">전체</option>
-                      <option value="완료">완료</option>
-                      <option value="취소">취소</option>
-                      <option value="환불">환불</option>
-                    </select>
-                  </div>
-
-                  <button
-                    className="text-sm text-blue-500 hover:text-blue-700 ml-auto"
-                    onClick={() => {
-                      setDateFilter('all');
-                      setStatusFilter('all');
-                    }}
-                  >
-                    필터 초기화
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 통계 요약 영역 */}
-            {!loading && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-                <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-blue-600 font-medium">
-                      총 결제액
-                    </p>
-                    <p className="text-2xl font-bold text-blue-800 mt-1">
-                      ₩ {formatCurrency(statistics.totalAmount)}
-                    </p>
-                  </div>
-
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <p className="text-sm text-green-600 font-medium">
-                      이번 달 결제액
-                    </p>
-                    <p className="text-2xl font-bold text-green-800 mt-1">
-                      ₩ {formatCurrency(statistics.thisMonthAmount)}
-                      <span className="text-sm font-normal ml-1">
-                        (
-                        {(
-                          (statistics.thisMonthAmount /
-                            statistics.totalAmount) *
-                            100 || 0
-                        ).toFixed(1)}
-                        %)
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <p className="text-sm text-yellow-600 font-medium">
-                      지난 달 결제액
-                    </p>
-                    <p className="text-2xl font-bold text-yellow-800 mt-1">
-                      ₩ {formatCurrency(statistics.lastMonthAmount)}
-                      <span className="text-sm font-normal ml-1">
-                        (
-                        {(
-                          (statistics.lastMonthAmount /
-                            statistics.totalAmount) *
-                            100 || 0
-                        ).toFixed(1)}
-                        %)
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-800 mt-1">
-                      {statistics.totalPayments}건
-                      <div className="text-sm font-normal mt-1">
-                        <span className="text-green-600">
-                          완료: {statistics.completedPayments}건
-                        </span>
-                        <br />
-                        <span className="text-red-600">
-                          취소: {statistics.cancelledPayments}건
-                        </span>
-                        <br />
-                        <span className="text-yellow-600">
-                          환불: {statistics.refundedPayments}건
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 결제 내역 테이블 */}
-            {!loading && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                  <div className="flex items-center space-x-2 sm:space-x-4">
-                    <select
-                      value={pageSize}
-                      onChange={(e) =>
-                        handlePageSizeChange(Number(e.target.value))
-                      }
-                      className={`border border-gray-300 rounded-md px-2 py-1.5 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        showAll ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                      disabled={showAll}
-                    >
-                      <option value={10}>10개씩 보기</option>
-                      <option value={20}>20개씩 보기</option>
-                      <option value={30}>30개씩 보기</option>
-                      <option value={50}>50개씩 보기</option>
-                    </select>
-                    <button
-                      onClick={handleShowAllToggle}
-                      className={`px-2 py-1.5 sm:px-3 text-sm rounded-md transition-colors ${
-                        showAll
-                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {showAll ? '페이지 보기' : '전체 보기'}
-                    </button>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    총 {filteredPayments.length}건의 결제
-                    {!showAll &&
-                      ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, filteredPayments.length)}번째 표시)`}
-                  </div>
-                </div>
-
-                <div
-                  className="w-full overflow-x-auto"
-                  style={{ maxHeight: 'calc(100vh - 350px)', minWidth: 600 }}
-                >
-                  <table className="min-w-full divide-y divide-gray-200 text-sm sm:text-base">
-                    <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                      <tr>
-                        <th
-                          className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => requestSort('memberName')}
-                        >
-                          <div className="flex items-center">
-                            회원명
-                            {sortConfig.key === 'memberName' && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'ascending' ? (
-                                  <ChevronUp
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : sortConfig.direction === 'descending' ? (
-                                  <ChevronDown
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th
-                          className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => requestSort('paymentDate')}
-                        >
-                          <div className="flex items-center">
-                            결제일
-                            {sortConfig.key === 'paymentDate' && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'ascending' ? (
-                                  <ChevronUp
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : sortConfig.direction === 'descending' ? (
-                                  <ChevronDown
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th
-                          className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => requestSort('membershipType')}
-                        >
-                          <div className="flex items-center">
-                            이용권
-                            {sortConfig.key === 'membershipType' && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'ascending' ? (
-                                  <ChevronUp
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : sortConfig.direction === 'descending' ? (
-                                  <ChevronDown
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th
-                          className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => requestSort('paymentMethod')}
-                        >
-                          <div className="flex items-center">
-                            결제 방법
-                            {sortConfig.key === 'paymentMethod' && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'ascending' ? (
-                                  <ChevronUp
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : sortConfig.direction === 'descending' ? (
-                                  <ChevronDown
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th
-                          className="py-2 px-2 sm:py-2.5 sm:px-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => requestSort('amount')}
-                        >
-                          <div className="flex items-center justify-end">
-                            금액
-                            {sortConfig.key === 'amount' && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'ascending' ? (
-                                  <ChevronUp
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : sortConfig.direction === 'descending' ? (
-                                  <ChevronDown
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th
-                          className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => requestSort('status')}
-                        >
-                          <div className="flex items-center">
-                            상태
-                            {sortConfig.key === 'status' && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'ascending' ? (
-                                  <ChevronUp
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : sortConfig.direction === 'descending' ? (
-                                  <ChevronDown
-                                    className="text-blue-500"
-                                    size={14}
-                                  />
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
-                          작업
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {filteredPayments.length > 0 ? (
-                        filteredPayments.map((payment) => (
-                          <tr
-                            key={payment.id}
-                            className="hover:bg-blue-50 transition-colors duration-150 cursor-pointer group"
-                            onClick={() => {
-                              setSelectedPayment(payment);
-                              setIsViewMode(true);
-                              setPaymentModalOpen(true);
-                            }}
-                          >
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap font-medium text-gray-900 group-hover:text-blue-600">
-                              {payment.memberName}
-                            </td>
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
-                              {formatDate(payment.paymentDate)}
-                            </td>
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
-                              {payment.membershipType}
-                              <div className="text-xs text-gray-500">
-                                {formatDate(payment.startDate)} ~{' '}
-                                {formatDate(payment.endDate)}
-                              </div>
-                            </td>
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
-                              {payment.paymentMethod}
-                            </td>
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-right text-gray-900">
-                              ₩ {formatCurrency(payment.amount)}
-                            </td>
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  payment.status === '완료'
-                                    ? 'bg-green-100 text-green-800'
-                                    : payment.status === '취소'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-yellow-100 text-yellow-800'
-                                }`}
-                              >
-                                {payment.status}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-center">
-                              <div
-                                className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedPayment(payment);
-                                    setIsViewMode(true);
-                                    setPaymentModalOpen(true);
-                                  }}
-                                  className="text-blue-500 hover:text-blue-700 transition-colors p-1"
-                                  title="상세보기"
-                                >
-                                  <Info size={16} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedPayment(payment);
-                                    setIsViewMode(false);
-                                    setPaymentModalOpen(true);
-                                  }}
-                                  className="text-yellow-500 hover:text-yellow-700 transition-colors p-1"
-                                  title="수정"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      window.confirm(
-                                        '이 결제 기록을 삭제하시겠습니까?',
-                                      )
-                                    ) {
-                                      deletePayment(payment.id!);
-                                    }
-                                  }}
-                                  className="text-red-500 hover:text-red-700 transition-colors p-1"
-                                  title="삭제"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="py-8 px-4 text-center text-gray-500"
-                          >
-                            <div className="flex flex-col items-center justify-center">
-                              <Database
-                                size={48}
-                                className="text-gray-300 mb-3"
-                              />
-                              <p className="text-lg">결제 내역이 없습니다.</p>
-                              <p className="text-sm text-gray-400 mt-1">
-                                결제를 등록하려면 '새 결제 등록' 버튼을
-                                클릭하세요.
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 페이지네이션은 전체 보기 모드일 때는 숨김 */}
-                {!showAll && renderPagination()}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* 이용권 관리 탭 */}
-        {activeTab === 'membership-types' && (
-          <>
-            {/* 검색 및 필터 영역 */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div className="flex flex-wrap gap-4 items-center">
-                <div className="relative flex-grow">
-                  <input
-                    type="text"
-                    placeholder="이용권 이름 또는 설명으로 검색..."
-                    className="border border-gray-300 p-3 rounded-md w-full pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <Search
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={20}
-                  />
-                </div>
-
-                <button
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-md flex items-center transition-colors"
-                  onClick={() => {
-                    setSelectedMembershipType(null);
-                    setIsViewMode(false);
-                    setMembershipTypeModalOpen(true);
-                  }}
-                >
-                  <Plus size={18} className="mr-2" />새 이용권 추가
-                </button>
-              </div>
-            </div>
-
-            {/* 이용권 목록 */}
-            {!loading && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {membershipTypes.length === 0 ? (
-                  <div className="col-span-full bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <Database size={48} className="text-gray-300 mb-3" />
-                      <p className="text-lg text-gray-500">
-                        등록된 이용권이 없습니다.
-                      </p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        새 이용권을 추가하려면 '새 이용권 추가' 버튼을
-                        클릭하세요.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  membershipTypes
-                    .filter((type) => {
-                      if (!searchTerm) return true;
-                      const term = searchTerm.toLowerCase();
-                      return (
-                        type.name.toLowerCase().includes(term) ||
-                        type.description?.toLowerCase().includes(term)
-                      );
-                    })
-                    .map((type) => (
-                      <div
-                        key={type.id}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-                      >
-                        <div className="p-5">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {type.name}
-                              </h3>
-                              <p className="text-sm text-gray-500 mb-2">
-                                {type.durationMonths}개월
-                              </p>
-                            </div>
-
-                            <span
-                              className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                type.isActive
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}
-                            >
-                              {type.isActive ? '활성화' : '비활성화'}
-                            </span>
-                          </div>
-
-                          <div className="mt-4 text-gray-900 text-2xl font-bold">
-                            ₩ {formatCurrency(type.price)}
-                          </div>
-
-                          {type.description && (
-                            <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                              {type.description}
-                            </p>
-                          )}
-
-                          {type.maxUses && (
-                            <div className="mt-2 inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                              {type.maxUses}회 이용 가능
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="px-5 py-3 bg-gray-50 flex justify-end space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedMembershipType(type);
-                              setIsViewMode(true);
-                              setMembershipTypeModalOpen(true);
-                            }}
-                            className="text-blue-500 hover:text-blue-700 transition-colors p-1"
-                            title="상세보기"
-                          >
-                            <Info size={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedMembershipType(type);
-                              setIsViewMode(false);
-                              setMembershipTypeModalOpen(true);
-                            }}
-                            className="text-yellow-500 hover:text-yellow-700 transition-colors p-1"
-                            title="수정"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  '이 이용권을 삭제하시겠습니까? 관련된 결제 기록에는 영향이 없습니다.',
-                                )
-                              ) {
-                                deleteMembershipType(type.id!);
-                              }
-                            }}
-                            className="text-red-500 hover:text-red-700 transition-colors p-1"
-                            title="삭제"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                )}
-              </div>
-            )}
-          </>
-        )}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'payments'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+          >
+            <ListChecks size={16} className="inline mr-2" /> 결제 내역 ({sortedPayments.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('membershipTypes')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'membershipTypes'
+                ? 'border-green-500 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+          >
+            <Settings2 size={16} className="inline mr-2" /> 이용권 관리 ({sortedMembershipTypes.length})
+          </button>
+        </nav>
       </div>
 
-      {/* 결제 모달 */}
-      <PaymentModal
-        isOpen={paymentModalOpen}
-        onClose={() => {
-          setPaymentModalOpen(false);
-          setSelectedPayment(null);
-          setIsViewMode(false);
-        }}
-        onSave={async (paymentArgument) => {
-          try {
-            const paymentForSave = {
-              ...paymentArgument,
-              status: statusToString(paymentArgument.status),
-              paymentMethod: paymentMethodToString(
-                paymentArgument.paymentMethod,
-              ),
-            };
-            if (paymentArgument.id) {
-              await updatePayment(paymentForSave as Payment);
-            } else {
-              await addPayment(
-                paymentForSave as Omit<Payment, 'id' | 'createdAt'>,
-              );
-            }
-            showToast(
-              'success',
-              paymentArgument.id
-                ? '결제 정보가 수정되었습니다.'
-                : '새 결제가 등록되었습니다.',
-            );
-            loadData();
-            return true;
-          } catch (error) {
-            console.error('결제 저장 오류:', error);
-            showToast('error', '결제 저장 중 오류가 발생했습니다.');
-            return false;
-          }
-        }}
-        payment={
-          selectedPayment
-            ? {
-                ...selectedPayment,
-                status: statusToEnum(selectedPayment.status as string),
-                paymentMethod: paymentMethodToEnum(
-                  selectedPayment.paymentMethod as string,
-                ),
-              }
-            : undefined
-        }
-        isViewMode={isViewMode}
-        memberOptions={members.map((m) => ({ id: m.id!, name: m.name }))}
-        membershipTypeOptions={membershipTypes
-          .filter((t) => t.isActive)
-          .map((t) => ({
-            name: t.name!,
-            price: t.price!,
-            durationMonths: t.durationMonths!,
-          }))}
-        onOpenMembershipTypeModal={() => setMembershipTypeModalOpen(true)}
-      />
+      {activeTab === 'payments' && (
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">결제 내역</h2>
+          {paginatedPayments.length === 0 && sortedPayments.length > 0 && (
+             <div className="text-center py-10">
+                <p className="text-gray-500">현재 페이지에 표시할 결제 내역이 없습니다.</p>
+             </div>
+          )}
+          {sortedPayments.length === 0 ? (
+            <div className="text-center py-10">
+              <DollarSign size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">등록된 결제 내역이 없습니다.</p>
+              <p className="text-sm text-gray-400 mt-1">
+                '새 결제 등록' 버튼을 클릭하여 결제를 추가하세요.
+              </p>
+            </div>
+          ) : (
+            <>
+              <PaymentTable
+                payments={paginatedPayments} // 정렬 후 페이지네이션된 데이터 전달
+                membershipTypes={membershipTypes}
+                sortConfig={paymentSortConfig}
+                requestSort={requestPaymentSort}
+                formatDate={formatDate}
+                formatCurrency={formatCurrency}
+                onViewPayment={(payment) => handleOpenPaymentModal(payment, true)}
+                onEditPayment={(payment) => handleOpenPaymentModal(payment, false)}
+                onDeletePayment={async (paymentId) => {
+                  if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
+                    try {
+                      const result = await deletePayment(paymentId);
+                      if (result.success) {
+                        showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
+                        loadData(); 
+                        setPaymentsCurrentPage(1); // 삭제 후 첫 페이지로
+                      } else {
+                        showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
+                      }
+                    } catch (error: any) {
+                      showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
+                    }
+                  }
+                }}
+              />
+              <PaginationControls
+                currentPage={paymentsCurrentPage}
+                totalPages={totalPaymentPages}
+                onPageChange={handlePaymentPageChange}
+                itemCount={sortedPayments.length}
+              />
+            </>
+          )}
+        </div>
+      )}
 
-      {/* 이용권 모달 */}
-      <MembershipTypeModal
-        isOpen={membershipTypeModalOpen}
-        onClose={() => {
-          setMembershipTypeModalOpen(false);
-          setSelectedMembershipType(null);
-          setIsViewMode(false);
-        }}
-        onSave={async (type) => {
-          try {
-            if (type.id) {
-              await updateMembershipType(type);
-            } else {
-              await addMembershipType(type);
-            }
-            showToast(
-              'success',
-              type.id
-                ? '이용권 정보가 수정되었습니다.'
-                : '새 이용권이 추가되었습니다.',
-            );
-            loadData();
-            return true;
-          } catch (error) {
-            console.error('이용권 저장 오류:', error);
-            showToast('error', '이용권 저장 중 오류가 발생했습니다.');
-            return false;
-          }
-        }}
-        membershipType={selectedMembershipType}
-        isViewMode={isViewMode}
-      />
+      {activeTab === 'membershipTypes' && (
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">이용권 관리</h2>
+          {paginatedMembershipTypes.length === 0 && sortedMembershipTypes.length > 0 && (
+             <div className="text-center py-10">
+                <p className="text-gray-500">현재 페이지에 표시할 이용권 종류가 없습니다.</p>
+             </div>
+          )}
+          {sortedMembershipTypes.length === 0 ? (
+            <div className="text-center py-10">
+              <CreditCard size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">등록된 이용권 종류가 없습니다.</p>
+              <p className="text-sm text-gray-400 mt-1">
+                '새 이용권 추가' 버튼을 클릭하여 이용권을 추가하세요.
+              </p>
+            </div>
+          ) : (
+            <>
+              <MembershipTypeList
+                membershipTypes={paginatedMembershipTypes} // 정렬 후 페이지네이션된 데이터 전달
+                sortConfig={membershipTypeSortConfig}
+                requestSort={requestMembershipTypeSort}
+                formatCurrency={formatCurrency}
+                onViewType={(type) => handleOpenMembershipTypeModal(type, true)}
+                onEditType={(type) => handleOpenMembershipTypeModal(type, false)}
+                onDeleteType={async (typeId) => {
+                  if (window.confirm('정말로 이 이용권 종류를 삭제하시겠습니까? 이 작업은 연결된 결제 내역에 영향을 줄 수 있습니다.')) {
+                    try {
+                      const result = await deleteMembershipType(typeId);
+                      if (result.success) {
+                        showToast('success', '이용권 종류가 성공적으로 삭제되었습니다.');
+                        loadData();
+                        setMembershipTypesCurrentPage(1); // 삭제 후 첫 페이지로
+                      } else {
+                        showToast('error', `이용권 종류 삭제 실패: ${result.error || '알 수 없는 오류'}`);
+                      }
+                    } catch (error: any) {
+                      showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
+                    }
+                  }
+                }}
+              />
+              <PaginationControls
+                currentPage={membershipTypesCurrentPage}
+                totalPages={totalMembershipTypePages}
+                onPageChange={handleMembershipTypePageChange}
+                itemCount={sortedMembershipTypes.length}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {paymentModalOpen && (
+        <NewPaymentModal
+          isOpen={paymentModalOpen}
+          onClose={handleClosePaymentModal}
+          onSaveSuccess={handlePaymentSaveSuccess}
+          payment={selectedPayment}
+          isViewMode={isPaymentViewMode}
+          members={memberOptionsForModal}
+          membershipTypes={membershipTypes}
+          staffList={staffList}
+        />
+      )}
+
+      {membershipTypeModalOpen && (
+        <MembershipTypeModal
+          isOpen={membershipTypeModalOpen}
+          onClose={handleCloseMembershipTypeModal}
+          onSaveSuccess={handleMembershipTypeSaveSuccess}
+          membershipType={selectedMembershipType}
+          isViewMode={isMembershipTypeViewMode}
+        />
+      )}
     </div>
   );
 };
 
-export default Payment;
+export default PaymentPage;

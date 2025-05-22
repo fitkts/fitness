@@ -5,7 +5,7 @@ interface MemberViewDetailsProps {
   formData: Partial<Member>;
   membershipStatus: 'active' | 'expired';
   daysLeft: number;
-  formatDate: (dateString: string | undefined) => string;
+  formatDate: (dateString: string | undefined | null) => string;
 }
 
 const MemberViewDetails: React.FC<MemberViewDetailsProps> = ({

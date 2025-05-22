@@ -1,0 +1,77 @@
+## 결제 테이블 표시 문제 해결 과정 요약 (담당 직원, 결제 방법)
+
+**최종 목표:** 결제 내역 테이블에 담당 직원 이름과 결제 방법(한글)이 올바르게 표시되도록 한다.
+
+**발생 문제:**
+1.  새 결제 등록 시 담당 직원을 선택하고 저장해도 테이블에 표시되지 않고, 수정 화면에 들어가면 선택이 해제되어 있음.
+2.  결제 테이블의 '결제 방법' 란에 아무런 값도 표시되지 않음.
+
+**해결 과정 및 주요 변경 사항:**
+
+### 1단계: 담당 직원 정보 저장 및 표시 문제 해결
+
+*   **원인 파악:**
+    *   `src/components/payment/NewPaymentForm.tsx` 에서 담당 직원 (`staffId`) 선택 UI가 누락되어 있었음.
+    *   폼 제출 시 `staffId`가 포함되지 않아 데이터베이스에 저장되지 않았음.
+*   **해결:**
+    *   `NewPaymentForm.tsx`에 담당 직원을 선택할 수 있는 `<select>` 드롭다운 UI 추가.
+        *   `staffList` 프롭스를 받아와서 직원 목록을 옵션으로 표시.
+        *   `formData` 상태에 `staffId`를 포함하고, `handleChange` 함수에서 업데이트하도록 수정.
+        *   `value` 속성에 `formData.staffId || ''`를 바인딩하여 선택된 값이 유지되도록 함.
+        *   수정 모드일 때 `initialPayment.staffId`를 사용하여 `formData`의 `staffId` 초기값 설정.
+    *   `src/database/paymentRepository.ts`:
+        *   `addPayment` 및 `updatePayment` 함수에서 `staff_id` (데이터베이스 컬럼명)를 올바르게 처리하고 있는지 확인 (이전에 `staff_id` 컬럼 추가 작업은 완료된 상태였음).
+    *   `src/models/types.ts` (`paymentSchema` 및 `Payment` 타입):
+        *   `staffId` (선택 사항) 및 `staffName` (선택 사항, `paymentRepository`에서 JOIN으로 가져옴) 필드가 이미 정의되어 있었음.
+    *   `src/components/payment/PaymentTable.tsx`:
+        *   테이블 헤더에 '담당 직원' 열 추가.
+        *   테이블 바디에서 `payment.staffName`을 표시하도록 수정.
+        *   담당 직원 열도 정렬 가능하도록 `requestSort` 함수와 연동.
+
+### 2단계: 결제 방법 표시 문제 해결
+
+*   **원인 파악:**
+    *   데이터베이스 (`payments` 테이블)에는 `payment_method` (영문 예: 'card', 'cash') 컬럼과 `payment_type` (한글 예: '카드', '현금') 컬럼이 모두 존재했음.
+    *   결제 등록/수정 폼 (`NewPaymentForm.tsx`)에서는 `paymentMethod` (영문) 값을 사용하고, 이를 `payment_type` (한글)으로 변환하여 데이터베이스에 저장하려고 시도했으나, 실제로는 `payment_method` 컬럼에 영문 값을 그대로 저장하고 있었음.
+    *   데이터 조회 시 (`paymentRepository.ts`의 `mapRowToPayment` 함수)에는 `payment_method` (영문)만 `Payment` 객체의 `paymentMethod` 필드에 매핑하고, `payment_type` (한글)은 매핑하지 않고 있었음.
+    *   결제 테이블 (`PaymentTable.tsx`)에서는 `payment.paymentType` (한글)을 표시하려고 했으나, 이 값이 비어있었음 (또는 `payment.payment_method` 영문 값을 직접 표시하려고 시도했을 수 있음).
+*   **해결:**
+    *   **데이터 저장 일관성 유지:**
+        *   `src/components/payment/NewPaymentForm.tsx`:
+            *   폼 상태 `formData.paymentMethod`는 영문 값('card', 'cash', 'transfer')을 그대로 유지.
+            *   폼 제출 시, `onSubmit` 함수에서 `paymentData`를 구성할 때 `payment_type`은 `paymentTypeMap[formData.paymentMethod]` 와 같이 한글로 변환하여 전달하고, `payment_method`는 `formData.paymentMethod` (영문)를 전달.
+        *   `src/database/ipcService.ts` 및 `src/main/main.ts` (`add-payment`, `update-payment` 핸들러):
+            *   `paymentRepository.addPayment` 및 `updatePayment` 함수로 전달되는 `paymentData` 객체에 `payment_method` (영문)와 `payment_type` (한글)이 모두 포함되도록 함.
+        *   `src/database/paymentRepository.ts`:
+            *   `addPayment`, `updatePayment` 함수: `INSERT` 및 `UPDATE` 쿼리에서 `payment_method` (영문) 컬럼과 `payment_type` (한글) 컬럼에 각각 올바른 값을 저장하도록 수정.
+    *   **데이터 조회 및 매핑 수정:**
+        *   `src/database/paymentRepository.ts`:
+            *   `mapRowToPayment` 함수: 데이터베이스에서 조회한 `row.payment_type` (한글) 값을 `Payment` 객체의 `paymentType` 필드에 매핑하도록 수정.
+            *   `getAllPayments` (및 유사 함수들): `SELECT` 쿼리에 `p.payment_type`이 포함되어 있는지 확인.
+    *   **테이블 표시 로직 확인 및 수정:**
+        *   `src/components/payment/PaymentTable.tsx`:
+            *   '결제 방법'을 표시하는 `<td>` 태그에서 `payment.paymentType` (한글)을 사용하도록 명확히 함. (기존에 `payment.paymentMethod`를 사용하고 있었다면 `payment.paymentType`으로 변경)
+    *   **폼 초기값 설정 수정:**
+        *   `src/components/payment/NewPaymentForm.tsx`:
+            *   수정 모드에서 `initialPayment` 데이터를 받아올 때, `formData.paymentMethod` (UI 선택용 영문 값)을 `initialPayment.paymentMethod` (DB에서 온 영문 값)로 설정하도록 `useEffect` 로직 수정.
+
+### 3단계: 최종 확인 및 디버깅 (DB 직접 확인 및 로그 추가)
+
+*   **SQLite Browser 사용:**
+    *   `fitness.db` 파일을 직접 열어 `payments` 테이블의 `payment_method`와 `payment_type` 컬럼에 실제 어떤 값들이 저장되어 있는지 확인.
+    *   이를 통해 데이터 저장 로직이 의도대로 작동하는지, 아니면 데이터 자체가 잘못 저장되고 있는지 파악.
+    *   확인 결과, `payment_method`에는 영문, `payment_type`에는 한글 값이 잘 저장되고 있었음.
+*   **프론트엔드 데이터 흐름 로그 추가:**
+    *   `src/pages/Payment.tsx`의 `loadData` 함수 내에서 `getAllPayments()`로부터 받은 데이터를 `console.log`로 출력하여 `paymentType` 필드에 값이 제대로 들어오는지 확인.
+    *   확인 결과, `paymentType` 필드에 한글 결제 방법이 잘 포함되어 있었음.
+*   **문제 지점 특정:** 위 확인 결과, 데이터 자체는 백엔드에서 프론트엔드 페이지 컴포넌트까지 잘 전달되고 있었으므로, 문제는 `PaymentPage.tsx`에서 `PaymentTable.tsx`로 데이터를 전달하거나, `PaymentTable.tsx` 내부에서 해당 데이터를 화면에 표시하는 부분에 있을 것으로 예상됨.
+    *   `PaymentTable.tsx`의 `payment.paymentType`을 사용하는 부분을 재검토하여 오타나 로직 오류가 없는지 확인.
+    *   이 과정에서 `PaymentTable.tsx`가 `payment.paymentType`을 올바르게 사용하고 있음을 최종적으로 확인하고 문제가 해결됨.
+
+**추가 조치 (린트 오류 수정):**
+*   `src/pages/Payment.tsx`에서 `showToast` 함수 호출 방식이 잘못되어 발생한 린트 오류들을 수정.
+    *   `showToast({ type: 'success', message: '...' })` (객체 전달)에서 `showToast('success', '...')` (직접 인자 전달) 방식으로 변경하여 `ToastContext`의 정의와 일치시킴.
+
+**결론:**
+
+담당 직원 정보는 폼 UI 누락 및 데이터 전송 과정에서의 누락이 원인이었고, 결제 방법 표시는 데이터베이스 저장/조회 로직과 프론트엔드에서의 데이터 매핑 및 표시 방식 간의 불일치가 복합적으로 작용한 문제였습니다. 단계적인 원인 분석과 코드 수정을 통해 모든 문제를 해결하고 정상적으로 기능하도록 복구했습니다. 
