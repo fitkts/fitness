@@ -1,32 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Calendar as CalendarIcon, TrendingUp, ListFilter, AlertCircle, Database, RefreshCw } from 'lucide-react';
+import { getAllPayments } from '../database/ipcService';
+import { Payment } from '../models/types';
+import { useToast } from '../contexts/ToastContext';
 
-// --- 목업 데이터 및 타입 정의 ---
-interface PaymentData {
-  id: string;
-  date: string; // YYYY-MM-DD
-  amount: number;
-  status: '완료' | '취소' | '환불';
-  membershipType: string;
-  paymentMethod: '카드' | '현금' | '계좌이체';
-}
-
-const mockPayments: PaymentData[] = [
-  { id: '1', date: '2023-10-01', amount: 150000, status: '완료', membershipType: '1개월 PT', paymentMethod: '카드' },
-  { id: '2', date: '2023-10-01', amount: 100000, status: '완료', membershipType: '헬스 3개월', paymentMethod: '현금' },
-  { id: '3', date: '2023-10-02', amount: 200000, status: '완료', membershipType: '6개월 PT', paymentMethod: '카드' },
-  { id: '4', date: '2023-10-03', amount: 50000, status: '취소', membershipType: '1일권', paymentMethod: '카드' },
-  { id: '5', date: '2023-10-05', amount: 300000, status: '완료', membershipType: '12개월 헬스', paymentMethod: '계좌이체' },
-  { id: '6', date: '2023-10-08', amount: 150000, status: '완료', membershipType: '1개월 PT', paymentMethod: '카드' },
-  { id: '7', date: '2023-10-15', amount: 100000, status: '완료', membershipType: '헬스 3개월', paymentMethod: '현금' },
-  { id: '8', date: '2023-10-20', amount: 250000, status: '완료', membershipType: '필라테스 3개월', paymentMethod: '카드' },
-  { id: '9', date: '2023-10-28', amount: 120000, status: '환불', membershipType: '헬스 1개월', paymentMethod: '현금' },
-  { id: '10', date: '2023-11-01', amount: 160000, status: '완료', membershipType: '1개월 PT', paymentMethod: '카드' },
-  { id: '11', date: '2023-11-05', amount: 110000, status: '완료', membershipType: '헬스 3개월', paymentMethod: '현금' },
-  { id: '12', date: '2023-11-10', amount: 220000, status: '완료', membershipType: '6개월 PT', paymentMethod: '카드' },
-];
-
+// --- 타입 정의 ---
 type ViewType = 'daily' | 'weekly' | 'monthly';
 
 interface ProcessedData {
@@ -42,7 +21,8 @@ const formatCurrency = (value: number) => {
 
 // --- Statistics 컴포넌트 ---
 const Statistics: React.FC = () => {
-  const [paymentsData, setPaymentsData] = useState<PaymentData[]>([]);
+  const { showToast } = useToast();
+  const [paymentsData, setPaymentsData] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,50 +32,70 @@ const Statistics: React.FC = () => {
   const [startDate, setStartDate] = useState<string>(firstDayOfMonth.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState<string>(today.toISOString().split('T')[0]);
   const [viewType, setViewType] = useState<ViewType>('daily');
+  const [statusFilter, setStatusFilter] = useState<'전체' | '완료' | '취소' | '환불'>('완료');
 
-  // 데이터 로딩 시뮬레이션
-  useEffect(() => {
+  // 데이터 로딩 함수
+  const loadPaymentData = async () => {
     setIsLoading(true);
     setError(null);
-    // 실제 API 호출 시 이곳에서 데이터를 가져옵니다.
-    setTimeout(() => {
-      setPaymentsData(mockPayments);
+    try {
+      const response = await getAllPayments();
+      if (response.success && response.data) {
+        setPaymentsData(response.data);
+        console.log('통계용 결제 데이터 로드 성공:', response.data.length, '건');
+        console.log('완료:', response.data.filter(p => p.status === '완료').length, '건');
+        console.log('취소:', response.data.filter(p => p.status === '취소').length, '건');
+        console.log('환불:', response.data.filter(p => p.status === '환불').length, '건');
+      } else {
+        const errorMessage = response.error || '결제 데이터를 불러오는데 실패했습니다.';
+        setError(errorMessage);
+        console.error('결제 데이터 로드 실패:', errorMessage);
+        showToast('error', errorMessage);
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || '결제 데이터를 불러오는 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      console.error('결제 데이터 로딩 중 오류:', err);
+      showToast('error', errorMessage);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    loadPaymentData();
   }, []);
   
   const refreshData = () => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => {
-      // 실제로는 여기서 API를 다시 호출합니다.
-      // 지금은 목업데이터를 그대로 사용하지만, 새로운 데이터를 가져오는 것처럼 시뮬레이션 할 수 있습니다.
-      // 예를 들어, mockPayments 배열을 조금 수정하거나, 새로운 요청을 보내는 것처럼 처리합니다.
-      setPaymentsData([...mockPayments]); // 새 배열을 생성하여 상태 업데이트 강제
-      setIsLoading(false);
-      // showToast('success', '데이터를 새로고침했습니다.'); // Toast 메시지 (ToastContext 필요)
-      console.log("데이터 새로고침 완료");
-    }, 500);
+    console.log('통계 데이터 새로고침 시작');
+    loadPaymentData().then(() => {
+      showToast('success', '통계 데이터를 새로고침했습니다.');
+    });
   };
-
 
   // 선택된 기간 및 통계 단위에 따라 데이터 가공
   const processedData = useMemo((): ProcessedData[] => {
-    if (!paymentsData) return [];
+    if (!paymentsData || paymentsData.length === 0) return [];
 
     const filtered = paymentsData.filter(p => {
-      const paymentDate = new Date(p.date);
-      return p.status === '완료' && 
-             paymentDate >= new Date(startDate) && 
-             paymentDate <= new Date(endDate);
+      // Payment 타입의 paymentDate 사용 (YYYY-MM-DD 형식)
+      const paymentDateStr = p.paymentDate.split('T')[0]; // ISO 문자열에서 날짜 부분만 추출
+      const startDateStr = startDate;
+      const endDateStr = endDate;
+      
+      const dateMatches = paymentDateStr >= startDateStr && paymentDateStr <= endDateStr;
+      const statusMatches = statusFilter === '전체' || p.status === statusFilter;
+      
+      return dateMatches && statusMatches;
     });
 
     if (viewType === 'daily') {
       const dailyData: { [date: string]: { 매출: number; 건수: number } } = {};
       filtered.forEach(p => {
-        if (!dailyData[p.date]) dailyData[p.date] = { 매출: 0, 건수: 0 };
-        dailyData[p.date].매출 += p.amount;
-        dailyData[p.date].건수 += 1;
+        const dateKey = p.paymentDate.split('T')[0]; // YYYY-MM-DD 형식으로 정규화
+        if (!dailyData[dateKey]) dailyData[dateKey] = { 매출: 0, 건수: 0 };
+        dailyData[dateKey].매출 += p.amount;
+        dailyData[dateKey].건수 += 1;
       });
       return Object.entries(dailyData)
         .map(([date, data]) => ({ name: date, ...data }))
@@ -103,7 +103,7 @@ const Statistics: React.FC = () => {
     } else if (viewType === 'weekly') {
       const weeklyData: { [week: string]: { 매출: number; 건수: number } } = {};
       filtered.forEach(p => {
-        const d = new Date(p.date);
+        const d = new Date(p.paymentDate);
         const year = d.getFullYear();
         const week = Math.ceil((((d.getTime() - new Date(year, 0, 1).getTime()) / 86400000) + new Date(year, 0, 1).getDay() + 1) / 7);
         const weekLabel = `${year}-W${week.toString().padStart(2, '0')}`;
@@ -117,7 +117,7 @@ const Statistics: React.FC = () => {
     } else { // monthly
       const monthlyData: { [month: string]: { 매출: number; 건수: number } } = {};
       filtered.forEach(p => {
-        const monthLabel = p.date.substring(0, 7); // YYYY-MM
+        const monthLabel = p.paymentDate.substring(0, 7); // YYYY-MM
         if (!monthlyData[monthLabel]) monthlyData[monthLabel] = { 매출: 0, 건수: 0 };
         monthlyData[monthLabel].매출 += p.amount;
         monthlyData[monthLabel].건수 += 1;
@@ -126,7 +126,7 @@ const Statistics: React.FC = () => {
         .map(([month, data]) => ({ name: month, ...data }))
         .sort((a,b) => a.name.localeCompare(b.name));
     }
-  }, [paymentsData, startDate, endDate, viewType]);
+  }, [paymentsData, startDate, endDate, viewType, statusFilter]);
 
   const summary = useMemo(() => {
     const totalSales = processedData.reduce((sum, item) => sum + item.매출, 0);
@@ -152,7 +152,7 @@ const Statistics: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-screen p-6 bg-red-50">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <p className="text-lg text-red-700 mb-2">오류가 발생했습니다.</p>
-        <p className="text-gray-600">{error}</p>
+        <p className="text-gray-600 mb-4">{error}</p>
          <button
             onClick={refreshData}
             className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center transition-colors"
@@ -207,7 +207,7 @@ const Statistics: React.FC = () => {
 
       {/* --- 컨트롤 패널 --- */}
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
           {/* 기간 선택 */}
           <div className="lg:col-span-2">
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">기간 선택</label>
@@ -255,6 +255,22 @@ const Statistics: React.FC = () => {
               <option value="monthly">월간</option>
             </select>
           </div>
+
+          {/* 상태 필터 선택 */}
+          <div>
+            <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">결제 상태</label>
+            <select
+              id="statusFilter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as '전체' | '완료' | '취소' | '환불')}
+              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 text-sm"
+            >
+              <option value="전체">전체</option>
+              <option value="완료">완료</option>
+              <option value="취소">취소</option>
+              <option value="환불">환불</option>
+            </select>
+          </div>
           
           {/* 새로고침 버튼 */}
           <div>
@@ -273,11 +289,11 @@ const Statistics: React.FC = () => {
       {/* --- 요약 카드 --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-sm font-medium text-gray-500">총 매출액 (완료 건)</h3>
+          <h3 className="text-sm font-medium text-gray-500">총 매출액 ({statusFilter})</h3>
           <p className="text-3xl font-bold text-blue-600 mt-1">{formatCurrency(summary.totalSales)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-sm font-medium text-gray-500">총 결제 건수 (완료 건)</h3>
+          <h3 className="text-sm font-medium text-gray-500">총 결제 건수 ({statusFilter})</h3>
           <p className="text-3xl font-bold text-green-600 mt-1">{summary.totalCount.toLocaleString()} 건</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -303,21 +319,23 @@ const Statistics: React.FC = () => {
                  <LineChart data={processedData} margin={{ top: 5, right: 20, left: 30, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0"/>
                     <XAxis dataKey="name" tick={{fontSize: 12}} />
-                    <YAxis tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} tick={{fontSize: 12}}/>
-                    <Tooltip formatter={(value: number, name) => [name === '매출' ? formatCurrency(value) : value.toLocaleString(), name]}/>
+                    <YAxis yAxisId="left" tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} tick={{fontSize: 12}}/>
+                    <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}}/>
+                    <Tooltip formatter={(value: number, name) => [name === '매출' ? formatCurrency(value) : `${value.toLocaleString()}건`, name]}/>
                     <Legend wrapperStyle={{fontSize: "14px"}}/>
-                    <Line type="monotone" dataKey="매출" stroke="#3b82f6" strokeWidth={2} dot={{r:4}} activeDot={{r:6}} />
-                    <Line type="monotone" dataKey="건수" yAxisId="right" stroke="#10b981" strokeWidth={2} />
+                    <Line yAxisId="left" type="monotone" dataKey="매출" stroke="#3b82f6" strokeWidth={2} dot={{r:4}} activeDot={{r:6}} />
+                    <Line yAxisId="right" type="monotone" dataKey="건수" stroke="#10b981" strokeWidth={2} dot={{r:4}} activeDot={{r:6}} />
                  </LineChart>
             ) : ( // 월간은 막대차트
                 <BarChart data={processedData} margin={{ top: 5, right: 20, left: 30, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0"/>
                     <XAxis dataKey="name" tick={{fontSize: 12}} />
-                    <YAxis tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} tick={{fontSize: 12}} />
-                    <Tooltip formatter={(value: number, name) => [name === '매출' ? formatCurrency(value) : value.toLocaleString(), name]}/>
+                    <YAxis yAxisId="left" tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} tick={{fontSize: 12}} />
+                    <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}} />
+                    <Tooltip formatter={(value: number, name) => [name === '매출' ? formatCurrency(value) : `${value.toLocaleString()}건`, name]}/>
                     <Legend wrapperStyle={{fontSize: "14px"}}/>
-                    <Bar dataKey="매출" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30}/>
-                    <Bar dataKey="건수" yAxisId="right" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30}/>
+                    <Bar yAxisId="left" dataKey="매출" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30}/>
+                    <Bar yAxisId="right" dataKey="건수" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30}/>
               </BarChart>
             )}
           </ResponsiveContainer>

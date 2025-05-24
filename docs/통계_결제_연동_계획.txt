@@ -1,0 +1,58 @@
+# 통계 관리 - 결제 데이터 연동 계획
+
+## 1. 목표
+- `Payment.tsx` (결제 관리)에서 사용하는 실제 결제 데이터를 `Statistics.tsx` (통계 관리) 페이지에 연동하여 정확한 매출 통계를 제공한다.
+- 기존 목업(mock) 데이터를 실제 데이터 호출로 대체한다.
+
+## 2. 현재 상황 및 문제점
+- `Statistics.tsx`에서 `window.api.getAllPayments()` 또는 `window.electron.ipcRenderer.invoke`를 직접 호출 시도 중 오류 발생.
+- 이는 preload 스크립트를 통해 노출된 API를 사용하는 방식이 일관되지 않거나, 해당 시점에 `window.api` 또는 `window.electron` 객체가 준비되지 않았을 수 있음을 시사함.
+- `Payment.tsx`는 `../database/ipcService.ts` 를 통해 동일한 `getAllPayments` 함수를 성공적으로 호출하고 있음.
+
+## 3. 해결 전략 및 단계별 계획
+
+### 3.1. API 호출 방식 통일 (Statistics.tsx 수정)
+   - **작업 내용:** `Statistics.tsx`에서 `window.api` 또는 `window.electron.ipcRenderer`를 직접 호출하는 대신, `Payment.tsx`와 동일하게 `../database/ipcService.ts` (또는 유사한 경로의 서비스 파일)를 통해 `getAllPayments` 함수를 import 하여 사용한다.
+   - **이점:**
+     - 이미 검증된 API 호출 방식을 재사용하여 안정성 확보.
+     - Preload 스크립트와 렌더러 간의 인터페이스를 직접 다루지 않아 코드 복잡도 감소.
+   - **세부 작업:**
+     1. `Statistics.tsx` 상단에 `import { getAllPayments } from '../database/ipcService';` (또는 정확한 경로) 추가.
+     2. `fetchData` 함수 내에서 `const result = await getAllPayments();` 형태로 호출 변경.
+
+### 3.2. 데이터 구조 확인 및 매핑 (Statistics.tsx 수정)
+   - **작업 내용:** `getAllPayments` 함수가 반환하는 실제 데이터 객체의 구조를 다시 한번 확인하고, `Statistics.tsx`의 `PaymentData` 인터페이스와 매핑 로직을 점검한다.
+   - **확인 대상 필드 (실제 데이터 -> `PaymentData` 인터페이스):**
+     - `id` (타입: `number`): `PaymentData.id` (타입: `number`)
+     - `paymentDate` (타입: `string`, 형식: 'YYYY-MM-DD'): `PaymentData.date`
+     - `amount` (타입: `number`): `PaymentData.amount`
+     - `status` (타입: `'완료' | '취소' | '환불'`): `PaymentData.status`
+     - `membershipType` (타입: `string`): `PaymentData.membershipType`
+     - `paymentType` (타입: `'카드' | '현금' | '계좌이체' | '기타'`): `PaymentData.paymentMethod` (이 부분은 현재 `Statistics.tsx`에서 사용 중인 `paymentMethod`의 타입과 일치하는지, 아니면 `paymentMethod` 필드를 직접 사용할지 결정 필요. `PaymentData` 인터페이스의 `paymentMethod` enum에 `'기타'`가 포함되도록 수정하는 것이 좋음)
+   - **세부 작업:**
+     1. `getAllPayments` 호출 후 받는 `result.data` 내부 객체의 실제 필드명을 기준으로 `transformedData` 매핑 로직 수정.
+     2. `PaymentData` 인터페이스의 `paymentMethod` 타입에 `'기타'`를 추가하거나, 실제 데이터의 `paymentMethod` 필드(만약 존재하고 더 적합하다면)를 사용하도록 로직 변경. (현재는 `p.paymentType`을 `paymentMethod`로 매핑하고 있으므로, `PaymentData`의 `paymentMethod` enum이 `paymentType`의 모든 값을 포함하도록 하는 것이 좋음. 이전 수정에서 `'기타'`를 추가했었음.)
+
+### 3.3. 데이터 로딩 및 오류 처리 (Statistics.tsx)
+   - **작업 내용:** `fetchData` 함수 내에서 데이터 로딩 상태(`isLoading`) 및 오류 상태(`error`)를 올바르게 관리하는지 확인한다.
+   - **세부 작업:**
+     1. `getAllPayments` 호출 전 `setIsLoading(true)`, `setError(null)`.
+     2. 호출 성공 시 `setPaymentsData(transformedData)`.
+     3. 호출 실패 또는 `result.success === false`일 경우 `setError(message)`.
+     4. `finally` 블록에서 `setIsLoading(false)`. (현재 로직 유지)
+
+### 3.4. UI 검증
+   - **작업 내용:** 수정된 코드로 애플리케이션을 실행하여 "매출 통계" 페이지가 다음 사항을 올바르게 처리하는지 확인한다.
+     - 실제 결제 데이터가 정상적으로 로드되어 차트 및 요약 정보에 반영되는가?
+     - 기간 선택 필터가 올바르게 작동하는가?
+     - 통계 단위(일간/주간/월간) 변경 시 데이터가 올바르게 집계되는가?
+     - 데이터가 없을 경우 적절한 메시지가 표시되는가?
+     - 오류 발생 시 사용자에게 오류 메시지가 명확하게 전달되는가?
+
+## 4. 기대 효과
+- "통계 관리" 페이지에서 실제 결제 데이터를 기반으로 한 정확한 매출 통계를 볼 수 있게 된다.
+- 코드의 일관성 및 안정성이 향상된다.
+
+## 5. 추가 고려 사항
+- **`ipcService.ts` 경로 확인:** `Statistics.tsx`에서 `ipcService.ts`를 import 할 때 정확한 상대 경로를 사용해야 한다. `Payment.tsx`의 import 경로를 참고한다.
+- **테스트 코드 작성:** 기능 구현 완료 후, Jest 등을 사용하여 데이터 연동 및 계산 로직에 대한 단위 테스트 또는 통합 테스트를 작성하여 코드 품질을 유지한다. 

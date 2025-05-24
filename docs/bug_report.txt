@@ -1,0 +1,42 @@
+## 피트니스 센터 관리 프로그램 결제 기능 오류 해결 및 리팩토링 요약
+
+**날짜:** 2023년 (실제 날짜로 변경해주세요)
+
+**문제 상황:**
+
+1.  **회원 검색 선택 불가:** 새 결제 모달에서 회원 검색 시 드롭다운 목록의 회원을 마우스나 키보드로 선택할 수 없는 버그 발생.
+2.  **결제 내역 미반영:** 새 결제 등록 후 `MemberPaymentHistory.tsx`에 즉시 반영되지 않는 문제.
+3.  **코드 복잡도:** `src/pages/Payment.tsx` 파일의 기능이 많아(통계, 필터링, 정렬, 페이지네이션 등) 오류 수정 및 유지보수가 어려움.
+
+**해결 과정:**
+
+1.  **회원 검색 문제 해결 시도 (실패):**
+    *   `z-index` 조정, `onMouseDown`, `onClickCapture`, `stopPropagation`, `setTimeout`, `isDropdownOpen` 상태 추가 등 다양한 방법 시도.
+    *   **결론:** 기존 컴포넌트 구조의 복잡성으로 인해 근본적인 해결이 어려움.
+
+2.  **결제 내역 실시간 반영 시도 (부분 성공):**
+    *   `localStorage`와 `storage` 이벤트를 사용하여 결제 성공 시 `MemberPaymentHistory.tsx`를 새로고침하도록 구현.
+    *   **한계점:** `Payment.tsx`의 전체적인 복잡도로 인해 다른 기능과의 연동 및 추가적인 문제 발생 가능성 존재.
+
+3.  **새로운 접근 방식 (컴포넌트 재작성 및 간소화):**
+    *   기존 새 결제 관련 컴포넌트들 (`PaymentModal.tsx`, `PaymentForm.tsx`, `MemberSearchInput.tsx` 등)을 모두 삭제.
+    *   핵심 기능 중심으로 새로운 컴포넌트 (`NewPaymentModal.tsx`, `NewPaymentForm.tsx`, `NewMemberSearchInput.tsx`) 생성 시작.
+    *   `src/pages/Payment.tsx` 파일의 기능을 대폭 축소하여 **"새 결제 모달 표시 및 회원 데이터 전달"** 핵심 기능만 남김.
+        *   기존의 결제 목록 표시, 통계, 필터링, 정렬, 페이지네이션, 기존 결제 수정/삭제 로직 등을 모두 제거하거나 주석 처리.
+        *   `getAllMembers` API를 호출하여 회원 목록을 가져오고, 이를 `NewPaymentModal`에 `mockMembers` prop으로 전달하도록 수정.
+        *   `MemberOption` 타입에 맞게 회원 데이터를 가공 (id, name, memberId (string으로 변환된 id)).
+        *   다수의 린트 오류 (타입 불일치, 잘못된 prop 전달, 정의되지 않은 변수 사용 등) 해결.
+
+**최종 해결 상태:**
+
+*   `src/pages/Payment.tsx`는 새 결제 모달을 열고 필요한 회원 정보를 전달하는 단순화된 역할만 수행.
+*   회원 검색 및 선택 문제는 새로 작성될 `NewMemberSearchInput.tsx`에서 집중적으로 해결 예정.
+*   결제 내역 실시간 반영 문제는 새 결제 로직이 안정화된 후, `NewPaymentModal`에서 결제 성공 시 적절한 콜백 함수 (예: `onPaymentSuccess`)를 호출하여 `Payment.tsx`에서 데이터를 다시 로드하는 방식으로 구현 예정.
+
+**향후 계획:**
+
+1.  `NewMemberSearchInput.tsx`의 회원 검색 및 선택 기능 (드롭다운, 키보드 탐색, 선택) 안정적으로 구현.
+2.  `NewPaymentForm.tsx`에 나머지 결제 정보 입력 필드 (이용권 종류, 금액, 결제일 등) 구현.
+3.  `NewPaymentModal.tsx`에서 `NewPaymentForm.tsx`의 데이터를 취합하여 실제 결제 저장 로직 ( `addPayment` API 호출) 구현 및 성공/실패 처리.
+4.  결제 성공 시 `Payment.tsx`에 알림 및 필요한 경우 데이터 새로고침 로직 연결.
+5.  단계적으로 간소화 과정에서 제거되었던 결제 목록 표시, 필터링 등의 기능을 필요에 따라 `Payment.tsx` 또는 별도 컴포넌트로 재구현 (이전보다 모듈화되고 관리하기 쉬운 구조로). 

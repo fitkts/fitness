@@ -1,0 +1,42 @@
+## Payment.tsx 기능 확장 및 페이지네이션 구현 요약 (2024-07-30)
+
+**목표:** `Payment.tsx`에 `PaymentTable` 및 `MembershipTypeList` 컴포넌트를 통합하고, 각 목록에 대한 페이지네이션 기능을 구현합니다.
+
+**진행 과정:**
+
+1.  **컴포넌트 통합:**
+    *   `Payment.tsx`에 `PaymentTable.tsx` 및 `MembershipTypeList.tsx` 컴포넌트를 import 했습니다.
+    *   기존에 준비된 탭 UI 내부에 각 테이블 컴포넌트를 조건부로 렌더링하도록 수정했습니다.
+    *   테이블에 필요한 props (데이터, 모달 핸들러 등)를 전달했습니다.
+
+2.  **삭제 기능 구현:**
+    *   `ipcService.ts`에서 `deletePayment` 및 `deleteMembershipType` 함수 시그니처를 확인했습니다 (각각 `id` 인자 1개만 받음).
+    *   `Payment.tsx`에서 `ipcService`의 해당 함수들을 import 했습니다.
+    *   `PaymentTable`의 `onDeletePayment` 핸들러와 `MembershipTypeList`의 `onDeleteType` 핸들러 내부에서 `window.confirm`으로 사용자 확인 후, `ipcService`의 삭제 함수를 호출하여 실제 데이터 삭제 로직을 구현했습니다.
+    *   삭제 성공 시 `loadData()`를 호출하여 목록을 새로고침하고, `showToast`로 사용자에게 알림을 표시하도록 했습니다.
+
+3.  **정렬 기능 구현:**
+    *   `Payment.tsx`에 각 테이블(`payments`, `membershipTypes`)에 대한 정렬 상태 (`paymentSortConfig`, `membershipTypeSortConfig`) 및 정렬 요청 함수 (`requestPaymentSort`, `requestMembershipTypeSort`)를 추가했습니다.
+    *   날짜 및 통화 포맷팅 함수 (`formatDate`, `formatCurrency`)를 `Payment.tsx`에 정의했습니다.
+    *   이러한 정렬 상태, 요청 함수, 포맷팅 함수를 `PaymentTable`과 `MembershipTypeList`에 props로 전달했습니다.
+    *   `MembershipTypeList.tsx`의 `MembershipTypeListProps` 인터페이스를 수정하여 `sortConfig`, `requestSort`, `formatCurrency` prop을 받도록 하고, 테이블 헤더에 정렬 UI(클릭 시 정렬, 정렬 방향 표시 아이콘)를 적용했습니다. (내부 `formatCurrency` 함수는 제거)
+    *   `Payment.tsx`에서 `useMemo`를 사용하여 정렬된 데이터 (`sortedPayments`, `sortedMembershipTypes`)를 계산하고 테이블에 전달하도록 수정했습니다.
+
+4.  **페이지네이션 기능 구현:**
+    *   `Payment.tsx`에 페이지당 항목 수 (`ITEMS_PER_PAGE`) 상수를 정의했습니다.
+    *   각 목록에 대한 현재 페이지 상태 (`paymentsCurrentPage`, `membershipTypesCurrentPage`)를 추가했습니다.
+    *   정렬 실행 시 또는 항목 삭제 시 현재 페이지를 1로 초기화하도록 수정했습니다.
+    *   `useMemo`를 사용하여 정렬된 데이터를 기반으로 현재 페이지에 해당하는 항목만 잘라낸 페이지네이션된 데이터 (`paginatedPayments`, `paginatedMembershipTypes`)를 계산했습니다.
+    *   총 페이지 수 (`totalPaymentPages`, `totalMembershipTypePages`)를 계산했습니다.
+    *   페이지 변경 핸들러 함수 (`handlePaymentPageChange`, `handleMembershipTypePageChange`)를 구현했습니다.
+    *   `PaginationControls`라는 재사용 가능한 UI 컴포넌트를 `Payment.tsx` 내에 만들어, 현재 페이지/총 페이지 수 표시, 첫 페이지/이전 페이지/다음 페이지/마지막 페이지 이동 버튼을 포함하도록 했습니다.
+    *   각 테이블 컴포넌트 (`PaymentTable`, `MembershipTypeList`)에는 페이지네이션된 데이터를 전달하고, 테이블 하단에 `PaginationControls` 컴포넌트를 렌더링하여 페이지 이동 기능을 제공했습니다.
+    *   데이터가 없을 때의 메시지 표시 로직을, 전체 데이터가 없는 경우와 현재 페이지에만 데이터가 없는 경우를 구분하여 표시하도록 개선했습니다.
+
+**Linter 오류 관련:**
+*   초기에 `PaymentTableProps` 누락 오류는 `Payment.tsx`에서 필요한 props (`sortConfig`, `requestSort`, `formatDate`, `formatCurrency`)를 전달함으로써 해결했습니다.
+*   `MembershipTypeListProps` 누락 오류도 `MembershipTypeList.tsx`를 수정하고 `Payment.tsx`에서 해당 props를 전달하여 해결했습니다.
+*   `Expected 2 arguments, but got 1.` Linter 오류가 `deletePayment` 및 `deleteMembershipType` 호출 부분에서 지속적으로 발생했습니다. `ipcService`의 함수 정의 및 호출부 모두 단일 ID 인자를 사용하고 있어 코드 로직상의 문제는 아닌 것으로 판단됩니다. 이는 Linter의 특정 코드 패턴(예: `async/await`과 `window.confirm` 조합) 해석 오류 또는 프로젝트 설정과 관련된 문제일 가능성이 있으며, 추후 심층 분석이 필요합니다. 현재 기능 동작에는 영향을 주지 않을 것으로 예상됩니다.
+
+**결과:**
+`Payment.tsx` 페이지에 결제 내역과 이용권 목록을 표시하는 테이블이 성공적으로 통합되었으며, 각 테이블은 정렬 및 페이지네이션 기능을 갖추게 되었습니다. CRUD 중 삭제 기능이 구현되었고, 생성/수정은 기존 모달을 통해 이루어집니다. 
