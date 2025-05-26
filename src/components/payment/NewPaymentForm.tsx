@@ -89,6 +89,13 @@ const NewPaymentForm: React.FC<NewPaymentFormProps> = ({
     }
   }, [initialPayment, membershipTypes]);
 
+  // members 배열이 변경되고 한 명만 있다면 자동으로 선택
+  useEffect(() => {
+    if (!initialPayment && members.length === 1 && !formData.memberOption) {
+      setFormData(prev => ({ ...prev, memberOption: members[0] }));
+    }
+  }, [members, initialPayment, formData.memberOption]);
+
   const handleMemberSelected = (member: MemberOption | null) => {
     setFormData(prev => ({ ...prev, memberOption: member }));
   };

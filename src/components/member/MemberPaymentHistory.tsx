@@ -1,21 +1,33 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Payment as PaymentType } from '../../models/types';
-import { getAllPayments } from '../../database/ipcService';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Payment as PaymentType, MembershipType, Staff } from '../../models/types';
+import { getAllPayments, getAllMembershipTypes, getAllStaff } from '../../database/ipcService';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import NewPaymentModal from '../payment/NewPaymentModal';
+import { MemberOption } from '../payment/NewMemberSearchInput';
+import { useToast } from '../../contexts/ToastContext';
 
 interface MemberPaymentHistoryProps {
   memberId: number;
+  memberName?: string;
 }
 
 const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
   memberId,
+  memberName,
 }) => {
+  const { showToast } = useToast();
+  
   const [payments, setPayments] = useState<PaymentType[]>([]);
   const [loadingPayments, setLoadingPayments] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(5);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
+  const [membershipTypes, setMembershipTypes] = useState<MembershipType[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [loadingModalData, setLoadingModalData] = useState<boolean>(false);
 
   const formatDateToYYMMDD = (dateString: string | undefined | null) => {
     if (!dateString) return '-';
@@ -238,10 +250,77 @@ const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
     );
   };
 
+  // 모달용 데이터 로딩
+  const loadModalData = useCallback(async () => {
+    setLoadingModalData(true);
+    try {
+      const [membershipTypesRes, staffRes] = await Promise.all([
+        getAllMembershipTypes(),
+        getAllStaff(),
+      ]);
+
+      if (membershipTypesRes.success && membershipTypesRes.data) {
+        setMembershipTypes(membershipTypesRes.data);
+      }
+
+      if (staffRes.success && staffRes.data) {
+        setStaffList(staffRes.data);
+      }
+    } catch (error) {
+      console.error('모달 데이터 로딩 실패:', error);
+    } finally {
+      setLoadingModalData(false);
+    }
+  }, []);
+
+  // 결제 모달 열기
+  const handleOpenPaymentModal = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault(); // 부모 form submit 방지
+      e.stopPropagation(); // 이벤트 전파 중단
+    }
+    setPaymentModalOpen(true);
+    if (membershipTypes.length === 0 || staffList.length === 0) {
+      loadModalData();
+    }
+  };
+
+  // 결제 모달 닫기
+  const handleClosePaymentModal = () => {
+    setPaymentModalOpen(false);
+  };
+
+  // 결제 저장 성공 시
+  const handlePaymentSaveSuccess = () => {
+    handleClosePaymentModal();
+    loadPayments(); // 결제 내역 새로고침
+    
+    // localStorage 이벤트 발생시켜서 다른 컴포넌트들도 업데이트
+    localStorage.setItem('paymentUpdated', new Date().toISOString());
+    
+    showToast('success', '새 결제가 성공적으로 등록되었습니다.');
+  };
+
+  // 현재 회원을 MemberOption 형태로 변환
+  const currentMemberOption: MemberOption[] = useMemo(() => {
+    if (memberId && memberName) {
+      return [{ id: memberId, name: memberName, memberId: String(memberId) }];
+    }
+    return [];
+  }, [memberId, memberName]);
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">결제 내역</h3>
+        <button
+          type="button"
+          onClick={handleOpenPaymentModal}
+          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          결제 추가
+        </button>
       </div>
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 pb-4 border-b border-gray-200">
@@ -346,6 +425,18 @@ const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
         )}
         {!loadingPayments && !showAll && totalPages > 1 && renderPagination()}
       </div>
+
+      {/* 결제 추가 모달 */}
+      <NewPaymentModal
+        isOpen={paymentModalOpen}
+        onClose={handleClosePaymentModal}
+        onSaveSuccess={handlePaymentSaveSuccess}
+        payment={null} // 새 결제이므로 null
+        isViewMode={false} // 편집 모드
+        members={currentMemberOption} // 현재 회원만 포함된 배열
+        membershipTypes={membershipTypes}
+        staffList={staffList}
+      />
     </div>
   );
 };

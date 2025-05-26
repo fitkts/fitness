@@ -312,7 +312,10 @@ const MemberModal: React.FC<MemberModalProps> = ({
         </div>
 
         {currentIsViewMode && formData.id && (
-          <MemberPaymentHistory memberId={formData.id} />
+          <MemberPaymentHistory 
+            memberId={formData.id} 
+            memberName={formData.name}
+          />
         )}
 
         <MemberNotesForm

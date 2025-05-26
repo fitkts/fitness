@@ -45,10 +45,14 @@ const Members: React.FC = () => {
     search: '',
     status: 'all',
   });
-  const [showFilterOptions, setShowFilterOptions] = useState<boolean>(false);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [isViewMode, setIsViewMode] = useState<boolean>(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+
+  // 추가 필터 상태
+  const [selectedStaff, setSelectedStaff] = useState<string>('all');
+  const [selectedGender, setSelectedGender] = useState<string>('all');
+  const [selectedMembershipType, setSelectedMembershipType] = useState<string>('all');
 
   // 정렬 관련 상태 추가
   const [sortConfig, setSortConfig] = useState<{
@@ -179,19 +183,10 @@ const Members: React.FC = () => {
 
   // 필터링된 회원 목록
   const filteredMembers = members.filter((member) => {
-    // 검색어 필터링
+    // 검색어 필터링 (이름만)
     if (
       filter.search &&
-      !member.name.includes(filter.search) &&
-      !member.phone?.includes(filter.search)
-    ) {
-      return false;
-    }
-
-    // 회원권 타입 필터링
-    if (
-      filter.membershipType &&
-      member.membershipType !== filter.membershipType
+      !member.name.includes(filter.search)
     ) {
       return false;
     }
@@ -210,6 +205,21 @@ const Members: React.FC = () => {
       if (filter.status === 'expired' && endDate && endDate >= now) {
         return false;
       }
+    }
+
+    // 직원별 필터링
+    if (selectedStaff !== 'all' && member.staffName !== selectedStaff) {
+      return false;
+    }
+
+    // 성별 필터링
+    if (selectedGender !== 'all' && member.gender !== selectedGender) {
+      return false;
+    }
+
+    // 이용권별 필터링
+    if (selectedMembershipType !== 'all' && member.membershipType !== selectedMembershipType) {
+      return false;
     }
 
     return true;
@@ -389,27 +399,24 @@ const Members: React.FC = () => {
     loadMembers(); // 즉시 데이터 다시 로드
   };
 
-  // 회원 목록 로드 함수 수정
-  const loadMembers = async () => {
+  // 회원 목록 로드 함수 수정 - 클라이언트 사이드 필터링으로 변경
+  const loadMembers = () => {
     try {
-      const response = await getMembersWithPagination(
-        showAll ? 1 : currentPage,
-        showAll ? members.length : pageSize,
-        {
-          search: filter.search,
-          status: filter.status,
-          membershipType: filter.membershipType,
-          sortKey: sortConfig.key,
-          sortDirection: sortConfig.direction,
-        },
-      );
-
-      if (response.success && response.data) {
-        setPagedMembers(response.data.members);
-        setTotalPages(showAll ? 1 : Math.ceil(response.data.total / pageSize));
+      // 클라이언트 사이드에서 필터링 및 정렬된 회원 목록 사용
+      const currentSortedMembers = sortedMembers;
+      
+      if (showAll) {
+        // 전체 보기일 때는 필터링된 모든 데이터 표시
+        setPagedMembers(currentSortedMembers);
+        setTotalPages(1);
       } else {
-        console.error('회원 목록 로드 오류:', response.error);
-        showToast?.('error', '회원 목록을 불러오는데 실패했습니다.');
+        // 페이지네이션 적용
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const pagedData = currentSortedMembers.slice(startIndex, endIndex);
+        
+        setPagedMembers(pagedData);
+        setTotalPages(Math.ceil(currentSortedMembers.length / pageSize));
       }
     } catch (error) {
       console.error('회원 목록 로드 오류:', error);
@@ -420,7 +427,7 @@ const Members: React.FC = () => {
   // 페이지 변경 시 데이터 다시 로드
   useEffect(() => {
     loadMembers();
-  }, [currentPage, filter, sortConfig, pageSize, showAll]); // pageSize와 showAll 의존성 추가
+  }, [currentPage, filter, sortConfig, pageSize, showAll, selectedStaff, selectedGender, selectedMembershipType]); // 새로운 필터 상태들 추가
 
   // 페이지 변경 핸들러
   const handlePageChange = (newPage: number) => {
@@ -466,14 +473,14 @@ const Members: React.FC = () => {
         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              총 <span className="font-medium">{totalPages * pageSize}</span>명
+              총 <span className="font-medium">{sortedMembers.length}</span>명
               중{' '}
               <span className="font-medium">
-                {(currentPage - 1) * pageSize + 1}
+                {showAll ? 1 : (currentPage - 1) * pageSize + 1}
               </span>
               {' - '}
               <span className="font-medium">
-                {Math.min(currentPage * pageSize, totalPages * pageSize)}
+                {showAll ? sortedMembers.length : Math.min(currentPage * pageSize, sortedMembers.length)}
               </span>{' '}
               명 표시
             </p>
@@ -589,110 +596,156 @@ const Members: React.FC = () => {
 
         {/* 검색 및 필터 영역 */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="flex flex-wrap gap-4 items-center mb-4">
-            <div className="relative flex-grow">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            {/* 검색 박스 - 1/3 크기 */}
+            <div className="relative w-full sm:w-80">
               <input
                 type="text"
-                placeholder="이름 또는 전화번호 검색"
-                className="border border-gray-300 p-3 rounded-md w-full pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="이름 검색"
+                className="border border-gray-300 p-2.5 rounded-md w-full pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={filter.search}
-                onChange={(e) =>
-                  setFilter({ ...filter, search: e.target.value })
-                }
+                onChange={(e) => {
+                  setFilter({ ...filter, search: e.target.value });
+                  setCurrentPage(1); // 검색 시 첫 페이지로 이동
+                }}
               />
               <Search
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={20}
+                size={18}
               />
             </div>
 
-            <button
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-md flex items-center transition-colors"
-              onClick={() => setShowFilterOptions(!showFilterOptions)}
-            >
-              <Filter size={18} className="mr-2" />
-              필터 {showFilterOptions ? '숨기기' : '보기'}
-            </button>
+            {/* 필터 버튼들 */}
+            <div className="flex flex-wrap gap-2 items-center">
+              {/* 상태별 필터 */}
+              <select
+                className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={filter.status}
+                onChange={(e) => {
+                  setFilter({
+                    ...filter,
+                    status: e.target.value as MemberFilter['status'],
+                  });
+                  setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+                }}
+              >
+                <option value="all">전체 상태</option>
+                <option value="active">활성</option>
+                <option value="expired">만료</option>
+              </select>
 
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-md flex items-center transition-colors ml-auto"
-              onClick={handleAddMember}
-            >
-              <Plus size={18} className="mr-2" />
-              회원 추가
-            </button>
+              {/* 직원별 필터 */}
+              <select
+                className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedStaff}
+                onChange={(e) => {
+                  setSelectedStaff(e.target.value);
+                  setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+                }}
+              >
+                <option value="all">전체 직원</option>
+                {staffList.map((staff) => (
+                  <option key={staff.id} value={staff.name}>
+                    {staff.name}
+                  </option>
+                ))}
+              </select>
 
-            {/* 미니멀 엑셀 버튼 그룹 */}
-            <div className="flex gap-1 items-center">
-              <button
-                title="엑셀 불러오기"
-                className="bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200"
-                onClick={() =>
-                  document.getElementById('excel-import-input')?.click()
-                }
+              {/* 성별 필터 */}
+              <select
+                className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedGender}
+                onChange={(e) => {
+                  setSelectedGender(e.target.value);
+                  setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+                }}
               >
-                <Upload size={16} />
-              </button>
-              <input
-                id="excel-import-input"
-                type="file"
-                accept=".xlsx, .xls"
-                style={{ display: 'none' }}
-                onChange={handleImportExcel}
-              />
-              <button
-                title="엑셀 내보내기"
-                className="bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200"
-                onClick={handleExportExcel}
+                <option value="all">전체 성별</option>
+                {/* 실제 데이터에서 추출된 성별 값들 */}
+                {Array.from(new Set(members.map(m => m.gender).filter(Boolean))).map((gender) => (
+                  <option key={gender} value={gender}>
+                    {gender}
+                  </option>
+                ))}
+              </select>
+
+              {/* 이용권별 필터 */}
+              <select
+                className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedMembershipType}
+                onChange={(e) => {
+                  setSelectedMembershipType(e.target.value);
+                  setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+                }}
               >
-                <Download size={16} />
-              </button>
+                <option value="all">전체 이용권</option>
+                {Array.from(new Set(members.map(m => m.membershipType).filter(Boolean))).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+
+              {/* 필터 초기화 버튼 */}
               <button
-                title="엑셀 형식 안내"
-                className="bg-transparent border-none p-0 ml-0.5 cursor-pointer"
-                onClick={() => setExcelInfoOpen(true)}
+                className="text-sm text-blue-500 hover:text-blue-700 px-2 py-1 rounded transition-colors"
+                onClick={() => {
+                  setFilter({ search: '', status: 'all' });
+                  setSelectedStaff('all');
+                  setSelectedGender('all');
+                  setSelectedMembershipType('all');
+                  setCurrentPage(1); // 초기화 시 첫 페이지로 이동
+                }}
               >
-                <Info size={15} color="#888" />
+                초기화
               </button>
             </div>
-          </div>
 
-          {showFilterOptions && (
-            <div className="bg-gray-50 p-4 rounded-md flex flex-wrap gap-4 items-center animate-fadeIn">
-              <div>
-                <label
-                  htmlFor="statusFilter"
-                  className="mr-2 font-medium text-gray-700"
-                >
-                  회원 상태:
-                </label>
-                <select
-                  id="statusFilter"
-                  className="border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={filter.status}
-                  onChange={(e) =>
-                    setFilter({
-                      ...filter,
-                      status: e.target.value as MemberFilter['status'],
-                    })
+            {/* 오른쪽 버튼 그룹 */}
+            <div className="flex gap-2 items-center">
+              <button
+                className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-md flex items-center transition-colors"
+                onClick={handleAddMember}
+              >
+                <Plus size={16} className="mr-2" />
+                회원 추가
+              </button>
+
+              {/* 엑셀 버튼 그룹 */}
+              <div className="flex gap-1 items-center">
+                <button
+                  title="엑셀 불러오기"
+                  className="bg-gray-100 border-none rounded p-2 cursor-pointer hover:bg-gray-200"
+                  onClick={() =>
+                    document.getElementById('excel-import-input')?.click()
                   }
                 >
-                  <option value="all">전체</option>
-                  <option value="active">활성</option>
-                  <option value="expired">만료</option>
-                </select>
+                  <Upload size={16} />
+                </button>
+                <input
+                  id="excel-import-input"
+                  type="file"
+                  accept=".xlsx, .xls"
+                  style={{ display: 'none' }}
+                  onChange={handleImportExcel}
+                />
+                <button
+                  title="엑셀 내보내기"
+                  className="bg-gray-100 border-none rounded p-2 cursor-pointer hover:bg-gray-200"
+                  onClick={handleExportExcel}
+                >
+                  <Download size={16} />
+                </button>
+                <button
+                  title="엑셀 형식 안내"
+                  className="bg-transparent border-none p-1 cursor-pointer"
+                  onClick={() => setExcelInfoOpen(true)}
+                >
+                  <Info size={15} color="#888" />
+                </button>
               </div>
-
-              {/* 추가 필터 옵션을 여기에 넣을 수 있습니다 */}
-
-              <button
-                className="text-sm text-blue-500 hover:text-blue-700 ml-auto"
-                onClick={() => setFilter({ search: '', status: 'all' })}
-              >
-                필터 초기화
-              </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -800,9 +853,9 @@ const Members: React.FC = () => {
               </button>
             </div>
             <div className="text-sm text-gray-500">
-              총 {members.length}명의 회원
+              총 {sortedMembers.length}명의 회원
               {!showAll &&
-                ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, members.length)}번째 표시)`}
+                ` (${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, sortedMembers.length)}번째 표시)`}
             </div>
           </div>
           {/* 반응형 테이블: 가로 스크롤, 패딩 조정, 모바일에서 폰트/패딩 축소 */}
