@@ -1,5 +1,18 @@
 import { z } from 'zod';
-import { validateLockerNumber } from '../utils/validation';
+
+// 락커 번호 검증 함수를 여기로 이동 (circular import 방지)
+const validateLockerNumber = (number: string): boolean => {
+  // 앞의 0을 제거하고 숫자만 허용하는 정규식
+  const normalizedNumber = number.replace(/^0+/, '');
+  const numberRegex = /^\d+$/;
+
+  if (!numberRegex.test(normalizedNumber)) {
+    return false;
+  }
+  
+  const num = parseInt(normalizedNumber, 10);
+  return num >= 1 && num <= 9999; // 범위를 더 넓게 조정
+};
 
 // 회원 스키마
 export const memberSchema = z.object({
@@ -145,13 +158,11 @@ export type LockerFeeOption = z.infer<typeof lockerFeeOptionSchema>;
 export const lockerSchema = z.object({
   id: z.number().optional(),
   number: z.string().min(1, { message: '락커 번호는 필수입니다' })
-            .refine(validateLockerNumber, { message: '유효한 락커 번호를 입력해주세요. (형식: A-01, 101 등, 숫자 부분은 1-999)' }),
+            .refine(validateLockerNumber, { message: '유효한 락커 번호를 입력해주세요. (1-9999 숫자)' }),
   size: z.nativeEnum(LockerSize, { errorMap: () => ({ message: '유효한 락커 크기를 선택해주세요.' })}).optional(),
   location: z.string().max(100, '위치는 100자 이내로 입력해주세요.').optional(),
   status: z.enum(['available', 'occupied', 'maintenance'], { errorMap: () => ({ message: '유효한 락커 상태를 선택해주세요.' })}),
-  feeOptions: z.array(lockerFeeOptionSchema)
-              .min(1, { message: '유료 락커는 하나 이상의 요금 옵션이 필요합니다.'})
-              .optional(),
+  feeOptions: z.array(lockerFeeOptionSchema).optional().default([]),
   memberId: z.number().optional(),
   memberName: z.string().optional(),
   startDate: z.string().optional(),
@@ -159,6 +170,15 @@ export const lockerSchema = z.object({
   notes: z.string().max(500, '비고는 500자 이내로 입력해주세요.').optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+}).refine((data) => {
+  // 사용 중인 락커는 회원 정보가 필요
+  if (data.status === 'occupied') {
+    return data.memberId && data.startDate && data.endDate;
+  }
+  return true;
+}, {
+  message: '사용 중인 락커는 회원 정보와 사용 기간이 필요합니다.',
+  path: ['status']
 });
 
 // TypeScript 타입 정의

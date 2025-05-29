@@ -44,6 +44,9 @@ const LockerModal: React.FC<LockerModalProps> = ({
 
   const { showToast } = useToast();
 
+  // 신규 추가 모드인지 확인
+  const isAddMode = !locker;
+
   useEffect(() => {
     const initialData = locker ? { ...defaultLocker, ...locker, feeOptions: locker.feeOptions && locker.feeOptions.length > 0 ? locker.feeOptions : [{ durationDays: 30, price: 0 }] } : { ...defaultLocker };
     setFormData(initialData);
@@ -193,6 +196,7 @@ const LockerModal: React.FC<LockerModalProps> = ({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* 기본 정보 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="number" className="block text-sm font-medium text-gray-700 mb-1">
@@ -270,102 +274,110 @@ const LockerModal: React.FC<LockerModalProps> = ({
           </div>
         </div>
 
-          {formData.status === 'occupied' && !currentIsViewMode && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                회원 검색
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="회원명 또는 전화번호로 검색..."
-                  className="input w-full pl-10"
-                />
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={18}
-                />
-              </div>
-
-              {searchResults.length > 0 && (
-                <div className="mt-2 border rounded-md shadow-sm max-h-48 overflow-y-auto">
-                  {searchResults.map((member) => (
-                    <div
-                      key={member.id}
-                      onClick={() => handleSelectMember(member)}
-                      className="p-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      <p className="font-medium">{member.name}</p>
-                      <p className="text-sm text-gray-500">{member.phone}</p>
-                    </div>
-                  ))}
+        {/* 회원 정보 (사용 중 상태이거나 기존 락커 수정 시에만 표시) */}
+        {(formData.status === 'occupied' || (!isAddMode && !currentIsViewMode)) && (
+          <>
+            {/* 회원 검색 (View 모드가 아닐 때만) */}
+            {!currentIsViewMode && formData.status === 'occupied' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  회원 검색
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    placeholder="회원명 또는 전화번호로 검색..."
+                    className="input w-full pl-10"
+                  />
+                  <Search
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={18}
+                  />
                 </div>
-              )}
 
-              {selectedMember && (
-                <div className="mt-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{selectedMember.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {selectedMember.phone}
-                    </p>
+                {searchResults.length > 0 && (
+                  <div className="mt-2 border rounded-md shadow-sm max-h-48 overflow-y-auto">
+                    {searchResults.map((member) => (
+                      <div
+                        key={member.id}
+                        onClick={() => handleSelectMember(member)}
+                        className="p-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-sm text-gray-500">{member.phone}</p>
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleClearMember}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X size={18} />
-                  </button>
+                )}
+
+                {selectedMember && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{selectedMember.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {selectedMember.phone}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearMember}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 사용 기간 (사용 중 상태일 때만) */}
+            {formData.status === 'occupied' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    시작일 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                    className={`input w-full ${errors.startDate ? 'border-red-500' : ''}`}
+                    disabled={currentIsViewMode}
+                    required
+                  />
+                  {errors.startDate && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.startDate}
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-
-          {formData.status === 'occupied' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  시작일 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="startDate"
-                  value={formData.startDate}
-                  onChange={handleChange}
-                  className={`input w-full ${errors.startDate ? 'border-red-500' : ''}`}
-                  disabled={currentIsViewMode}
-                  required
-                />
-                {errors.startDate && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.startDate}
-                  </p>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    종료일 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    className={`input w-full ${errors.endDate ? 'border-red-500' : ''}`}
+                    disabled={currentIsViewMode}
+                    required
+                  />
+                  {errors.endDate && (
+                    <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  종료일 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  className={`input w-full ${errors.endDate ? 'border-red-500' : ''}`}
-                  disabled={currentIsViewMode}
-                  required
-                />
-                {errors.endDate && (
-                  <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>
-                )}
-              </div>
-            </div>
-          )}
+            )}
+          </>
+        )}
 
-        {!currentIsViewMode && (
+        {/* 요금 설정 (신규 추가 모드가 아니고 View 모드도 아닐 때만 표시) */}
+        {!isAddMode && !currentIsViewMode && (
           <div className="pt-4 border-t border-gray-200">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2">요금 설정</h3>
             {formData.feeOptions && formData.feeOptions.map((option, index) => (
@@ -420,6 +432,7 @@ const LockerModal: React.FC<LockerModalProps> = ({
           </div>
         )}
 
+        {/* 비고 */}
         <div className="pt-4 border-t border-gray-200">
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
               비고
@@ -435,6 +448,7 @@ const LockerModal: React.FC<LockerModalProps> = ({
           {errors.notes && <p className="text-xs text-red-500 mt-1">{errors.notes}</p>}
         </div>
 
+        {/* 버튼 영역 */}
         <div className="pt-6 border-t border-gray-200 flex items-center justify-end space-x-3">
           <button type="button" onClick={onClose} className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
               취소
