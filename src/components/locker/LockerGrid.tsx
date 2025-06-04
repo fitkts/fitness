@@ -18,17 +18,23 @@ const LockerGrid: React.FC<LockerGridProps> = ({
 }) => {
   // 레이아웃 방향에 따른 그리드 스타일
   const getGridClasses = () => {
-    const baseClasses = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3";
-    
     if (layoutDirection === 'column') {
-      return `${baseClasses} auto-rows-max`;
+      // 열 우선: 세로로 먼저 채우고 가로로 확장
+      return "grid gap-3 auto-cols-max";
     }
-    return baseClasses;
+    // 행 우선: 기본 그리드 (가로로 먼저 채우고 세로로 확장)
+    return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3";
   };
 
   const getGridStyle = () => {
     if (layoutDirection === 'column') {
-      return { gridAutoFlow: 'column' };
+      // 열 우선: rows를 동적으로 계산하고 column flow 사용
+      const itemsPerColumn = Math.ceil(lockers.length / 8); // 최대 8개 컬럼 가정
+      return { 
+        gridTemplateRows: `repeat(${Math.min(itemsPerColumn, 10)}, minmax(0, 1fr))`, // 최대 10행
+        gridAutoFlow: 'column',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' // 최소 200px 너비
+      };
     }
     return { gridAutoFlow: 'row' };
   };

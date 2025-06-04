@@ -67,10 +67,10 @@ function mapRowToLocker(row: any): Locker {
   return locker as Locker;
 }
 
-// 락커 번호 정규화 함수 추가
-function normalizeLockerNumber(number: string): string {
-  // 앞의 0을 제거하고 숫자만 남김
-  return number.replace(/^0+/, '');
+// 락커 번호 정규화 함수 수정 - 비교용으로만 사용
+function normalizeLockerNumberForComparison(number: string): string {
+  // 비교할 때만 앞의 0을 제거
+  return number.replace(/^0+/, '') || '0'; // 빈 문자열 방지
 }
 
 // 모든 락커 조회 (페이지네이션 적용)
@@ -126,13 +126,6 @@ export async function getAllLockers(
     if (status && status !== 'all') {
       countConditions.push('l.status = ?');
       countParams.push(status);
-       // searchTerm이 없고 status 필터만 있을 때 JOIN이 누락될 수 있으므로 추가
-      if (!searchTerm && status === 'occupied') { 
-          // 'occupied' 상태이고 memberName을 보여줘야 한다면 JOIN이 필요할 수 있지만,
-          // 현재 countQuery는 COUNT(*)만 하므로 memberName은 불필요. JOIN은 선택사항.
-          // 다만, 기본 query와 일관성을 위해 JOIN을 유지하는 것이 나을 수 있음.
-          // 여기서는 간결성을 위해 JOIN을 추가하지 않음. 필요시 추가.
-      }
     }
 
     let countQuery = `SELECT COUNT(*) as total ${countBaseQuery}`;
@@ -143,12 +136,17 @@ export async function getAllLockers(
     const totalResult = db.prepare(countQuery).get(...countParams);
     const total = totalResult.total;
 
-    // 정렬 방식 수정: 앞의 0을 제거하고 숫자로 정렬
-    query += " ORDER BY CAST(REPLACE(l.number, '0', '') AS INTEGER)";
+    // 정렬 방식 수정: 숫자 부분과 문자 부분을 모두 고려한 자연스러운 정렬
+    query += ` ORDER BY 
+      CASE 
+        WHEN l.number GLOB '[0-9]*' 
+        THEN CAST(l.number AS INTEGER) 
+        ELSE 999999 
+      END,
+      l.number COLLATE NOCASE`;
 
     // 페이지네이션 적용
     query += ' LIMIT ? OFFSET ?';
-    // params 배열 (데이터 조회용)은 기존 로직을 유지
     const queryParams = [...params, pageSize, (page - 1) * pageSize];
 
     // 데이터 조회
@@ -203,11 +201,9 @@ export async function addLocker(
 
     const db = getDatabase();
     
-    const normalizedNumber = normalizeLockerNumber(lockerData.number);
-    
     const existingLocker = db
       .prepare('SELECT id FROM lockers WHERE number = ?') // 저장하는 number 필드와 직접 비교
-      .get(normalizedNumber); // 정규화된 번호로 비교
+      .get(lockerData.number); // 정규화된 번호로 비교
     
     if (existingLocker) {
       throw new Error('이미 존재하는 락커 번호입니다.');
@@ -224,7 +220,7 @@ export async function addLocker(
     const result = db
       .prepare(query)
       .run(
-        normalizedNumber, // 정규화된 번호 저장
+        lockerData.number,
         lockerData.status,
         lockerData.size || null,
         lockerData.location || null,
@@ -284,15 +280,14 @@ export async function updateLocker(
     const now = getUnixTime(new Date());
 
     if (lockerData.number !== undefined) {
-      const normalizedNumber = normalizeLockerNumber(lockerData.number);
       const existingLocker = db
         .prepare('SELECT id FROM lockers WHERE number = ? AND id != ?')
-        .get(normalizedNumber, id);
+        .get(lockerData.number, id);
       if (existingLocker) {
         throw new Error('이미 다른 락커가 사용 중인 번호입니다.');
       }
       fields.push('number = ?');
-      params.push(normalizedNumber);
+      params.push(lockerData.number);
     }
     if (lockerData.status !== undefined) {
       fields.push('status = ?');

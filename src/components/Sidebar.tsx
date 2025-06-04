@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart,
+  FileText,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -53,6 +54,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         return <Key size={20} />;
       case '직원 관리':
         return <Briefcase size={20} />;
+      case '상담일지':
+        return <FileText size={20} />;
       case '통계 관리':
         return <BarChart size={20} />;
       case '설정':

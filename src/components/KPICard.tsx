@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, Eye } from 'lucide-react';
 import { KPICardProps } from '../types/statistics';
+import { formatPercent } from '../utils/formatters';
 
 const KPICard: React.FC<KPICardProps> = ({
   title,
@@ -22,98 +23,72 @@ const KPICard: React.FC<KPICardProps> = ({
   chartType = 'line',
   onDetailClick
 }) => {
-  const isPositive = change !== undefined && change >= 0;
-  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
-
-  const renderChart = () => {
-    if (!chartData || chartData.length === 0) return null;
-
-    if (chartType === 'line') {
-      return (
-        <LineChart data={chartData}>
-          <Line 
-            type="monotone" 
-            dataKey="value" 
-            stroke="#8884d8" 
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
-      );
-    }
-
-    if (chartType === 'bar') {
-      return (
-        <BarChart data={chartData}>
-          <Bar dataKey="value" fill="#8884d8" />
-        </BarChart>
-      );
-    }
-
-    if (chartType === 'pie') {
-      return (
-        <PieChart>
-          <Pie
-            data={chartData}
-            dataKey="value"
-            cx="50%"
-            cy="50%"
-            outerRadius={30}
-            fill="#8884d8"
-          >
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-            ))}
-          </Pie>
-        </PieChart>
-      );
-    }
-
-    return null;
-  };
+  const isPositive = change !== undefined ? change >= 0 : true;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-6">
-      {/* 카드 헤더 */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-lg ${color}`}>
-            {icon}
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-600">{title}</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          </div>
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-2 rounded-lg ${color}`}>
+          {icon}
         </div>
         <button
           onClick={onDetailClick}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="상세 보기"
+          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          title="상세보기"
         >
-          <Eye size={18} />
+          <Eye size={16} />
         </button>
       </div>
 
-      {/* 증감률 표시 */}
-      {change !== undefined && (
-        <div className="flex items-center gap-2 mb-4">
-          <div className={`flex items-center gap-1 text-sm ${
-            isPositive ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span className="font-medium">{Math.abs(change).toFixed(1)}%</span>
-          </div>
-          <span className="text-xs text-gray-500">
-            전년 동기 대비
-          </span>
+      {/* 값과 변화율 */}
+      <div className="mb-3">
+        <h3 className="text-sm font-medium text-gray-600 mb-1">{title}</h3>
+        <div className="flex items-end justify-between">
+          <span className="text-2xl font-bold text-gray-900">{value}</span>
+          {change !== undefined && (
+            <div className={`flex items-center text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+              {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              <span className="ml-1">{formatPercent(Math.abs(change))}</span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 미니 차트 */}
       {chartData && chartData.length > 0 && (
-        <div className="h-20">
+        <div className="h-12">
           <ResponsiveContainer width="100%" height="100%">
-            {renderChart()}
+            {chartType === 'line' ? (
+              <LineChart data={chartData}>
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#3B82F6" 
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            ) : chartType === 'bar' ? (
+              <BarChart data={chartData}>
+                <Bar dataKey="value" fill="#3B82F6" />
+              </BarChart>
+            ) : (
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={8}
+                  outerRadius={20}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3B82F6' : '#93C5FD'} />
+                  ))}
+                </Pie>
+              </PieChart>
+            )}
           </ResponsiveContainer>
         </div>
       )}

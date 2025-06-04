@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Locker } from '../models/types';
 import { LockerAction } from '../config/lockerConfig';
 import { PAGINATION_CONFIG } from '../config/lockerConfig';
@@ -27,6 +27,10 @@ const Lockers: React.FC = () => {
   const [sortBy, setSortBy] = useState('number_asc');
   const [layoutDirection, setLayoutDirection] = useState<'row' | 'column'>('row');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // 첫 로드 추적을 위한 ref
+  const isFirstLoad = useRef(true);
 
   // 모달 상태
   const [modalOpen, setModalOpen] = useState(false);
@@ -37,23 +41,64 @@ const Lockers: React.FC = () => {
   const { showToast } = useToast();
 
   // 데이터 로드
-  const loadLockers = async () => {
+  const loadLockers = async (page: number = 1) => {
     try {
       setIsLoading(true);
-      const response = await getAllLockers(1, 1000, '', 'all'); // 모든 데이터를 한번에 가져오기
+      // 서버 사이드 페이지네이션 사용
+      const requestParams = {
+        page,
+        pageSize: PAGINATION_CONFIG.ITEMS_PER_PAGE,
+        searchTerm: searchTerm || '',
+        filter: filter === 'all' ? 'all' : filter as any
+      };
+      
+      console.log('🚀 락커 데이터 요청 시작:', requestParams);
+      
+      const response = await getAllLockers(
+        requestParams.page,
+        requestParams.pageSize,
+        requestParams.searchTerm,
+        requestParams.filter
+      );
+      
+      console.log('📡 서버 응답:', {
+        success: response?.success,
+        dataLength: response?.data?.data?.length || 0,
+        total: response?.data?.total || 0,
+        actualResponse: response
+      });
       
       if (response && response.success && response.data) {
-        const lockersData = Array.isArray(response.data) ? response.data : response.data.data || [];
+        const lockersData = response.data.data || [];
+        const total = response.data.total || 0;
+        
+        console.log('✅ 처리된 락커 데이터:', {
+          requestedPage: page,
+          receivedCount: lockersData.length,
+          totalFromServer: total,
+          totalPages: Math.ceil(total / PAGINATION_CONFIG.ITEMS_PER_PAGE),
+          lockersPreview: lockersData.slice(0, 3).map(l => ({ 
+            id: l.id, 
+            number: l.number, 
+            status: l.status 
+          })),
+          searchActive: !!searchTerm,
+          filterActive: filter !== 'all'
+        });
+        
         setLockers(lockersData);
+        setTotalItems(total);
       } else {
-        console.error('락커 목록 로드 실패:', response);
+        console.error('❌ 락커 목록 로드 실패:', response);
         showToast('error', '락커 목록을 불러오는데 실패했습니다.');
         setLockers([]);
+        setTotalItems(0);
       }
     } catch (error) {
-      console.error('락커 목록 로드 오류:', error);
+      console.error('💥 락커 목록 로드 오류:', error);
       showToast('error', '락커 목록을 불러오는 중 오류가 발생했습니다.');
       setLockers([]);
+      setTotalItems(0);
     } finally {
       setIsLoading(false);
     }
@@ -61,29 +106,37 @@ const Lockers: React.FC = () => {
 
   // 초기 로드
   useEffect(() => {
-    loadLockers();
+    if (isFirstLoad.current) {
+      loadLockers(1);
+      isFirstLoad.current = false;
+    }
   }, []);
 
-  // 필터링된 락커 목록 계산
-  const filteredLockers = useMemo(() => {
-    const filtered = filterLockers(lockers, searchTerm, filter);
-    return sortLockersAdvanced(filtered, sortBy);
-  }, [lockers, searchTerm, filter, sortBy]);
-
-  // 페이지네이션 계산
-  const pagination = useMemo(() => {
-    return calculatePagination(filteredLockers.length, currentPage);
-  }, [filteredLockers.length, currentPage]);
-
-  // 현재 페이지의 락커들
-  const currentPageLockers = useMemo(() => {
-    return filteredLockers.slice(pagination.startIndex, pagination.endIndex);
-  }, [filteredLockers, pagination.startIndex, pagination.endIndex]);
-
-  // 검색어 변경 시 첫 페이지로 이동
+  // 검색어, 필터, 정렬 변경 시 첫 페이지로 이동하면서 새로고침
   useEffect(() => {
-    setCurrentPage(1);
+    if (!isFirstLoad.current) {
+      console.log('🔄 검색/필터 변경 감지:', { searchTerm, filter, sortBy });
+      setCurrentPage(1);
+      loadLockers(1);
+    }
   }, [searchTerm, filter, sortBy]);
+
+  // 페이지네이션 계산 (서버 사이드)
+  const pagination = useMemo(() => {
+    const totalPages = Math.ceil(totalItems / PAGINATION_CONFIG.ITEMS_PER_PAGE);
+    return {
+      totalPages,
+      startIndex: (currentPage - 1) * PAGINATION_CONFIG.ITEMS_PER_PAGE,
+      endIndex: Math.min(currentPage * PAGINATION_CONFIG.ITEMS_PER_PAGE, totalItems),
+      hasNextPage: currentPage < totalPages,
+      hasPrevPage: currentPage > 1
+    };
+  }, [totalItems, currentPage]);
+
+  // 현재 페이지의 락커들 (서버에서 이미 필터링되어 옴)
+  const currentPageLockers = useMemo(() => {
+    return sortLockersAdvanced(lockers, sortBy);
+  }, [lockers, sortBy]);
 
   // 이벤트 핸들러들
   const handleSearchChange = (term: string) => {
@@ -104,6 +157,7 @@ const Lockers: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    loadLockers(page); // 새 페이지 데이터 로드
   };
 
   const handleAddLocker = () => {
@@ -134,7 +188,7 @@ const Lockers: React.FC = () => {
         const response = await deleteLocker(id);
         if (response.success) {
           showToast('success', '락커가 삭제되었습니다.');
-          await loadLockers();
+          await loadLockers(currentPage); // 현재 페이지 유지
         } else {
           showToast('error', '락커 삭제에 실패했습니다.');
         }
@@ -168,7 +222,7 @@ const Lockers: React.FC = () => {
       }
 
       if (success) {
-        await loadLockers();
+        await loadLockers(currentPage); // 현재 페이지 유지
       }
 
       return success;
@@ -198,7 +252,8 @@ const Lockers: React.FC = () => {
       }
 
       if (successCount > 0) {
-        await loadLockers();
+        await loadLockers(1); // 벌크 추가 후에는 첫 페이지로 이동
+        setCurrentPage(1);
       }
 
       if (failCount === 0) {
@@ -241,8 +296,8 @@ const Lockers: React.FC = () => {
         layoutDirection={layoutDirection}
         onLayoutChange={handleLayoutChange}
         onAddClick={handleAddLocker}
-        totalCount={lockers.length}
-        filteredCount={filteredLockers.length}
+        totalCount={totalItems}
+        filteredCount={totalItems}
       />
 
       {/* 락커 그리드 */}
@@ -258,7 +313,7 @@ const Lockers: React.FC = () => {
         currentPage={currentPage}
         totalPages={pagination.totalPages}
         onPageChange={handlePageChange}
-        totalItems={filteredLockers.length}
+        totalItems={totalItems}
         itemsPerPage={PAGINATION_CONFIG.ITEMS_PER_PAGE}
       />
 

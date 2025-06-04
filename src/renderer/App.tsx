@@ -8,6 +8,7 @@ import Settings from '../pages/Settings';
 import Lockers from '../pages/Lockers';
 import Staff from '../pages/Staff';
 import Statistics from '../pages/Statistics';
+import ConsultationDashboard from '../pages/ConsultationDashboard';
 import PageTransition from '../components/common/PageTransition';
 
 // 페이지 enum
@@ -18,6 +19,7 @@ enum Page {
   Payment = '결제 관리',
   Lockers = '락카 관리',
   Staff = '직원 관리',
+  Consultation = '상담일지',
   Statistics = '통계 관리',
   Settings = '설정',
 }
@@ -49,6 +51,8 @@ const App: React.FC = () => {
         return <Lockers />;
       case Page.Staff:
         return <Staff />;
+      case Page.Consultation:
+        return <ConsultationDashboard />;
       case Page.Statistics:
         return <Statistics />;
       case Page.Settings:

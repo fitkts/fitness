@@ -15,15 +15,31 @@ const LockerPagination: React.FC<LockerPaginationProps> = ({
   totalPages,
   onPageChange,
   totalItems = 0,
-  itemsPerPage = 12
+  itemsPerPage = 50
 }) => {
   const visiblePages = getVisiblePageNumbers(currentPage, totalPages);
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
+  // 디버깅 정보 출력
+  console.log('🔍 페이지네이션 디버깅:', {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    startItem,
+    endItem,
+    visiblePages,
+    shouldShow: totalPages > 1
+  });
+
   // 페이지가 1개 이하면 페이지네이션 숨김
   if (totalPages <= 1) {
-    return null;
+    return (
+      <div className="text-center py-4 text-sm text-gray-500">
+        전체 {totalItems}개 락커 표시 중 (페이지네이션 불필요)
+      </div>
+    );
   }
 
   return (
