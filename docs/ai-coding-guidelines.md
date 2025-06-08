@@ -1,8 +1,3 @@
----
-description: 
-globs: 
-alwaysApply: true
----
 # 🤖 AI 코딩 통합 가이드라인
 
 ## 📌 문서 목적
@@ -209,6 +204,7 @@ const useStore = create<StoreState>((set, get) => ({
 - [ ] 유틸리티 함수가 순수 함수인가?
 
 ---
+
 ## 🧪 TDD(테스트 주도 개발) 원칙
 
 ### **TDD란?**

@@ -20,6 +20,7 @@ export const defaultStaff: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'> = {
   phone: '',
   email: '',
   hireDate: new Date().toISOString().split('T')[0],
+  birthDate: '', // 생년월일 기본값 추가
   status: StaffStatus.ACTIVE,
   permissions: defaultPermissions,
   notes: '',

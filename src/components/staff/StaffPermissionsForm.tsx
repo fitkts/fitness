@@ -30,7 +30,7 @@ const StaffPermissionsForm: React.FC<StaffPermissionsFormProps> = ({
   ];
 
   return (
-    <div className="space-y-4">
+    <div data-testid="permissions-container" className="space-y-4" style={{ display: 'none' }}>
       <div className="flex justify-between items-center border-b pb-2">
         <h3 className="text-lg font-medium text-gray-700">권한 설정</h3>
         {!isViewMode && (

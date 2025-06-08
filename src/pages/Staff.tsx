@@ -141,9 +141,26 @@ const Staff: React.FC = () => {
   // 저장/삭제
   const handleSaveStaff = async (staff: Staff): Promise<boolean> => {
     try {
+      // 디버깅: 저장할 직원 데이터 로그
+      console.log('🔍 [Staff.tsx] handleSaveStaff 받은 데이터:', {
+        name: staff.name,
+        birthDate: staff.birthDate,
+        birthDateType: typeof staff.birthDate,
+        id: staff.id,
+        isEdit: !!staff.id,
+        fullData: staff,
+      });
+
       let success = false;
       if (staff.id) {
         const { id, ...updateFields } = staff;
+        
+        console.log('🔍 [Staff.tsx] updateStaff 호출 데이터:', {
+          id,
+          updateFields,
+          birthDate: updateFields.birthDate,
+        });
+        
         const response = await updateStaff(id, updateFields);
         success = response.success;
         if (success) {
@@ -154,6 +171,11 @@ const Staff: React.FC = () => {
           showToast('error', '직원 정보 수정에 실패했습니다.');
         }
       } else {
+        console.log('🔍 [Staff.tsx] addStaff 호출 데이터:', {
+          staff,
+          birthDate: staff.birthDate,
+        });
+        
         const response = await addStaff(staff);
         success = response.success;
         if (success) {
@@ -164,8 +186,12 @@ const Staff: React.FC = () => {
           showToast('error', '직원 추가에 실패했습니다.');
         }
       }
+      
+      console.log('🔍 [Staff.tsx] 저장 결과:', { success });
+      
       return success;
     } catch (error) {
+      console.error('🔍 [Staff.tsx] 저장 중 오류:', error);
       showToast('error', '직원 정보 저장 중 오류가 발생했습니다.');
       return false;
     }
@@ -431,6 +457,23 @@ const Staff: React.FC = () => {
                 </th>
                 <th
                   className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => requestSort('birthDate')}
+                >
+                  <div className="flex items-center">
+                    생년월일
+                    {sortConfig.key === 'birthDate' && (
+                      <span className="ml-1">
+                        {sortConfig.direction === 'ascending' ? (
+                          <ChevronUp className="text-blue-500" size={14} />
+                        ) : sortConfig.direction === 'descending' ? (
+                          <ChevronDown className="text-blue-500" size={14} />
+                        ) : null}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="py-2 px-2 sm:py-2.5 sm:px-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => requestSort('status')}
                 >
                   <div className="flex items-center">
@@ -461,12 +504,7 @@ const Staff: React.FC = () => {
                   >
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap font-medium text-gray-900 group-hover:text-blue-600">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User size={20} className="text-gray-500" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
+                        <div>
                           <div className="text-sm font-medium text-gray-900">
                             {staff.name}
                           </div>
@@ -481,6 +519,9 @@ const Staff: React.FC = () => {
                     </td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
                       {staff.phone}
+                    </td>
+                    <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap text-gray-700">
+                      {staff.birthDate || '-'}
                     </td>
                     <td className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
                       <span
@@ -535,7 +576,7 @@ const Staff: React.FC = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="py-8 px-4 text-center text-gray-500"
                   >
                     <div className="flex flex-col items-center justify-center">

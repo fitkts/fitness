@@ -104,6 +104,51 @@ describe('직원 관리 페이지', () => {
     expect(screen.queryByText('직원 정보가 없습니다.')).not.toBeInTheDocument();
   });
 
+  test('직원 리스트 테이블에 생년월일 컬럼이 표시되어야 함', async () => {
+    const mockStaffWithBirthDate = [
+      {
+        ...mockStaffList[0],
+        birthDate: '1990-05-15'
+      },
+      {
+        ...mockStaffList[1], 
+        birthDate: '1985-12-10'
+      }
+    ];
+
+    mockGetAllStaff.mockResolvedValueOnce({ success: true, data: mockStaffWithBirthDate });
+
+    renderStaffPage();
+
+    // 테이블 헤더에 생년월일 컬럼이 있는지 확인
+    expect(await screen.findByText('생년월일')).toBeInTheDocument();
+
+    // 첫 번째 직원의 생년월일이 표시되는지 확인
+    expect(await screen.findByText('1990-05-15')).toBeInTheDocument();
+    
+    // 두 번째 직원의 생년월일이 표시되는지 확인
+    expect(await screen.findByText('1985-12-10')).toBeInTheDocument();
+  });
+
+  test('생년월일이 없는 직원은 "-"로 표시되어야 함', async () => {
+    const mockStaffWithoutBirthDate = [
+      {
+        ...mockStaffList[0],
+        birthDate: undefined
+      }
+    ];
+
+    mockGetAllStaff.mockResolvedValueOnce({ success: true, data: mockStaffWithoutBirthDate });
+
+    renderStaffPage();
+
+    // 헤더는 있어야 함
+    expect(await screen.findByText('생년월일')).toBeInTheDocument();
+    
+    // 생년월일이 없는 경우 "-"로 표시
+    expect(await screen.findByText('-')).toBeInTheDocument();
+  });
+
   test('직원 추가: 모달 열고 저장 시 addStaff 호출 및 목록 새로고침', async () => {
     mockGetAllStaff.mockResolvedValueOnce({ success: true, data: mockStaffList }); // 초기 로드
     const newStaffId = 3;

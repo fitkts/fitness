@@ -31,6 +31,7 @@ export const staffSchema = z.object({
     .optional()
     .or(z.literal('')),
   hireDate: z.string().min(1, { message: '입사일은 필수입니다' }),
+  birthDate: z.string().optional(), // 생년월일 추가 (선택사항)
   status: z.nativeEnum(StaffStatus, {
     errorMap: () => ({ message: '유효한 상태를 선택해주세요' }),
   }),

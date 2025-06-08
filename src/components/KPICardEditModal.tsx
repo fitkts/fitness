@@ -11,6 +11,7 @@ interface KPICardEditModalProps {
   onToggleCard: (cardId: string) => void;
   onToggleAllCards: (enabled: boolean) => void;
   onToggleCategoryCards: (category: string, enabled: boolean) => void;
+  onRestoreDefaults?: () => void;
 }
 
 const KPICardEditModal: React.FC<KPICardEditModalProps> = ({
@@ -21,7 +22,8 @@ const KPICardEditModal: React.FC<KPICardEditModalProps> = ({
   onSave,
   onToggleCard,
   onToggleAllCards,
-  onToggleCategoryCards
+  onToggleCategoryCards,
+  onRestoreDefaults
 }) => {
   if (!isOpen) return null;
 
@@ -50,6 +52,14 @@ const KPICardEditModal: React.FC<KPICardEditModalProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {onRestoreDefaults && (
+                <button
+                  onClick={onRestoreDefaults}
+                  className="px-3 py-1.5 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded-md transition-colors"
+                >
+                  기본값 복원
+                </button>
+              )}
               <button
                 onClick={() => onToggleAllCards(false)}
                 className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
@@ -66,7 +76,7 @@ const KPICardEditModal: React.FC<KPICardEditModalProps> = ({
           </div>
 
           {/* 카테고리별 카드 목록 */}
-          {['매출', '회원', '운영', '성과'].map(category => {
+          {['매출', '회원', '운영', '성과', '직원'].map(category => {
             const categoryCards = kpiCards.filter(card => card.category === category);
             const enabledCategoryCards = categoryCards.filter(card => card.enabled);
             

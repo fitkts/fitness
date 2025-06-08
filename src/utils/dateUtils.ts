@@ -1,34 +1,48 @@
 import { QuickDateRange } from '../types/statistics';
 import { formatDateString } from './formatters';
 
-// 날짜 범위 계산
+// 안전한 날짜 범위 계산 (로컬 시간대 기준)
 export const getDateRange = (type: string, offset: number = 0) => {
   const now = new Date();
-  let start = new Date(now);
-  let end = new Date(now);
+  let start: Date;
+  let end: Date;
 
   switch (type) {
     case 'today':
-      start.setDate(now.getDate() + offset);
-      end.setDate(now.getDate() + offset);
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
       break;
+      
     case 'week':
       const dayOfWeek = now.getDay();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - dayOfWeek + (offset * 7));
+      // 이번 주 월요일 계산 (일요일을 0으로 가정)
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset + (offset * 7));
       start = startOfWeek;
-      end = new Date(startOfWeek);
-      end.setDate(startOfWeek.getDate() + 6);
+      end = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6);
       break;
+      
     case 'month':
-      start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-      end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+      // 월별 계산 시 연도 경계 고려
+      const targetYear = now.getFullYear();
+      const targetMonth = now.getMonth() + offset;
+      
+      // 첫째 날
+      start = new Date(targetYear, targetMonth, 1);
+      
+      // 마지막 날 (다음 달 0일 = 이번 달 마지막 날)
+      end = new Date(targetYear, targetMonth + 1, 0);
       break;
+      
     case 'year':
-      start = new Date(now.getFullYear() + offset, 0, 1);
-      end = new Date(now.getFullYear() + offset, 11, 31);
+      const year = now.getFullYear() + offset;
+      start = new Date(year, 0, 1);  // 1월 1일
+      end = new Date(year, 11, 31);  // 12월 31일
       break;
+      
     default:
+      start = new Date(now);
+      end = new Date(now);
       break;
   }
 

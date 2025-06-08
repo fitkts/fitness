@@ -100,6 +100,15 @@ const StaffModal: React.FC<StaffModalProps> = ({
         dataToSave.status = StaffStatus.ACTIVE;
       }
 
+      // 디버깅: 저장할 데이터 로그
+      console.log('🔍 [StaffModal] 저장할 데이터:', {
+        name: dataToSave.name,
+        birthDate: dataToSave.birthDate,
+        birthDateType: typeof dataToSave.birthDate,
+        id: dataToSave.id,
+        isEdit: !!dataToSave.id,
+      });
+
       const success = await onSave(dataToSave as Staff);
 
       if (success) {

@@ -315,6 +315,15 @@ export async function setupDatabase(): Promise<void> {
           )
         `);
 
+        // staff 테이블에 birth_date 컬럼 추가 (존재하지 않을 경우)
+        try {
+          db.exec(`SELECT birth_date FROM staff LIMIT 1;`);
+          electronLog.info('staff 테이블에 birth_date 컬럼이 이미 존재합니다.');
+        } catch (error) {
+          electronLog.info('staff 테이블에 birth_date 컬럼 추가 중...');
+          db.exec(`ALTER TABLE staff ADD COLUMN birth_date INTEGER;`);
+        }
+
         // 락커 테이블 생성 (기본 구조)
         db.exec(`
           CREATE TABLE IF NOT EXISTS lockers (

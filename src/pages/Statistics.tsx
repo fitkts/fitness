@@ -37,12 +37,20 @@ const Statistics: React.FC = () => {
   const [staffData, setStaffData] = useState<Staff[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
 
-  // 필터 상태
+  // 필터 상태 (안전한 날짜 계산)
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   
-  const [startDate, setStartDate] = useState<string>(firstDayOfMonth.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState<string>(today.toISOString().split('T')[0]);
+  // formatDateString을 사용하여 시간대 문제 해결
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const [startDate, setStartDate] = useState<string>(formatLocalDate(firstDayOfMonth));
+  const [endDate, setEndDate] = useState<string>(formatLocalDate(today));
   const [viewType, setViewType] = useState<ViewType>('monthly');
   const [statusFilter, setStatusFilter] = useState<PaymentStatusFilter>('전체');
 
@@ -104,6 +112,13 @@ const Statistics: React.FC = () => {
   const handleSaveCardConfig = () => {
     saveKPICardsConfig(kpiCards);
     closeEditModal();
+  };
+
+  // 기본 설정 복원 함수 추가
+  const handleRestoreDefaults = () => {
+    setKpiCards(defaultKPICards);
+    saveKPICardsConfig(defaultKPICards);
+    showToast('success', 'KPI 카드 설정이 기본값으로 복원되었습니다.');
   };
 
   // 모든 카드 선택/해제
@@ -348,6 +363,7 @@ const Statistics: React.FC = () => {
           onToggleCard={toggleKPICard}
           onToggleAllCards={toggleAllCards}
           onToggleCategoryCards={toggleCategoryCards}
+          onRestoreDefaults={handleRestoreDefaults}
         />
       )}
 
