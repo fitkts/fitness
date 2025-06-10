@@ -11,8 +11,13 @@ import * as memberRepository from '../database/memberRepository';
 import * as staffRepository from '../database/staffRepository';
 import * as lockerRepository from '../database/lockerRepository';
 import * as attendanceRepository from '../database/attendanceRepository';
+import * as consultationRepository from '../database/consultationRepository';
 import { Member, Staff, Locker } from '../models/types';
 import { format } from 'date-fns';
+import {
+  promoteConsultationMember,
+  getConsultationMemberById
+} from '../database/consultationRepository';
 
 // 개발 모드 설정
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -629,11 +634,19 @@ ipcMain.handle('delete-staff', async (_, id: number) => {
 
 // --- 락커 관련 API ---
 
-// 모든 락커 조회
-ipcMain.handle('get-all-lockers', async () => {
+// 모든 락커 조회 (페이지네이션 및 필터링 지원)
+ipcMain.handle('get-all-lockers', async (_, page = 1, pageSize = 50, searchTerm = '', status = 'all') => {
   try {
-    const lockers = await lockerRepository.getAllLockers();
-    return { success: true, data: lockers };
+    electronLog.info('락커 목록 조회 요청:', { page, pageSize, searchTerm, status });
+    const result = await lockerRepository.getAllLockers(page, pageSize, searchTerm, status);
+    electronLog.info('락커 목록 조회 결과:', { 
+      dataCount: result.data.length, 
+      total: result.total,
+      page,
+      expectedStart: (page - 1) * pageSize + 1,
+      expectedEnd: Math.min(page * pageSize, result.total)
+    });
+    return { success: true, data: result };
   } catch (error) {
     electronLog.error('락커 목록 조회 오류:', error);
     return { success: false, error: (error as Error).message };
@@ -686,6 +699,56 @@ ipcMain.handle('delete-locker', async (_, id: number) => {
     return { success };
   } catch (error) {
     electronLog.error('락커 삭제 오류:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// --- 락커 히스토리 관련 API ---
+
+// 락커 히스토리 조회
+ipcMain.handle('get-locker-history', async (_, filter = {}) => {
+  try {
+    const { getLockerHistory } = await import('../database/lockerHistoryRepository');
+    const result = await getLockerHistory(filter);
+    return { success: true, data: result };
+  } catch (error) {
+    electronLog.error('락커 히스토리 조회 오류:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 락커별 히스토리 조회
+ipcMain.handle('get-locker-history-by-id', async (_, lockerId: number) => {
+  try {
+    const { getLockerHistory } = await import('../database/lockerHistoryRepository');
+    const result = await getLockerHistory({ lockerId });
+    return { success: true, data: result.data };
+  } catch (error) {
+    electronLog.error('락커별 히스토리 조회 오류:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 락커 통계 조회
+ipcMain.handle('get-locker-statistics', async () => {
+  try {
+    const { getLockerStatistics } = await import('../database/lockerHistoryRepository');
+    const statistics = await getLockerStatistics();
+    return { success: true, data: statistics };
+  } catch (error) {
+    electronLog.error('락커 통계 조회 오류:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 락커 대시보드 데이터 조회
+ipcMain.handle('get-locker-dashboard-data', async () => {
+  try {
+    const { getLockerDashboardData } = await import('../database/lockerHistoryRepository');
+    const dashboardData = await getLockerDashboardData();
+    return { success: true, data: dashboardData };
+  } catch (error) {
+    electronLog.error('락커 대시보드 데이터 조회 오류:', error);
     return { success: false, error: (error as Error).message };
   }
 });
@@ -953,5 +1016,183 @@ ipcMain.handle('search-members', async (event, searchTerm: string) => {
         : '알 수 없는 오류가 발생했습니다.';
     electronLog.error('[Main Process] Error searching members (IPC):', errorMessage);
     return { success: false, error: errorMessage, data: [] };
+  }
+});
+
+// 상담 기록 생성 핸들러
+ipcMain.handle('add-consultation-record', async (event, recordData: any) => {
+  electronLog.info('[Main Process] Received add-consultation-record request:', recordData);
+  try {
+    // 날짜를 Unix timestamp로 변환
+    const consultationDate = Math.floor(new Date(recordData.consultation_date).getTime() / 1000);
+    const nextAppointment = recordData.next_appointment 
+      ? Math.floor(new Date(recordData.next_appointment).getTime() / 1000)
+      : undefined;
+
+    const consultationRecord = {
+      member_id: recordData.member_id,
+      consultation_date: consultationDate,
+      consultation_type: recordData.consultation_type,
+      consultant_id: recordData.consultant_id,
+      consultant_name: recordData.consultant_name,
+      content: recordData.content,
+      goals_discussed: recordData.goals_discussed || [],
+      recommendations: recordData.recommendations || '',
+      next_appointment: nextAppointment,
+      status: recordData.status || 'completed'
+    };
+
+    const newRecord = consultationRepository.createConsultationRecord(consultationRecord);
+    
+    electronLog.info('[Main Process] Consultation record created successfully:', newRecord.id);
+    return { success: true, data: newRecord };
+  } catch (error) {
+    electronLog.error('[Main Process] Error creating consultation record:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 회원별 상담 기록 조회 핸들러
+ipcMain.handle('get-consultation-records-by-member', async (event, memberId: number) => {
+  electronLog.info('[Main Process] Received get-consultation-records-by-member request for member:', memberId);
+  try {
+    const records = consultationRepository.getConsultationRecordsByMember(memberId);
+    
+    electronLog.info('[Main Process] Consultation records retrieved successfully, count:', records.length);
+    return { success: true, data: records };
+  } catch (error) {
+    electronLog.error('[Main Process] Error retrieving consultation records:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 모든 상담 기록 조회 핸들러
+ipcMain.handle('get-all-consultation-records', async () => {
+  electronLog.info('[Main Process] Received get-all-consultation-records request');
+  try {
+    const records = consultationRepository.getAllConsultationRecords();
+    
+    electronLog.info('[Main Process] All consultation records retrieved successfully, count:', records.length);
+    return { success: true, data: records };
+  } catch (error) {
+    electronLog.error('[Main Process] Error retrieving all consultation records:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// ============== CONSULTATION MEMBERS API ==============
+
+// 모든 상담 회원 조회
+ipcMain.handle('get-all-consultation-members', async () => {
+  electronLog.info('[Main Process] Received get-all-consultation-members request');
+  try {
+    const members = consultationRepository.getAllConsultationMembers();
+    
+    electronLog.info('[Main Process] All consultation members retrieved successfully, count:', members.length);
+    return { success: true, data: members };
+  } catch (error) {
+    electronLog.error('[Main Process] Error retrieving consultation members:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 상담 회원 생성
+ipcMain.handle('add-consultation-member', async (event, memberData: any) => {
+  electronLog.info('[Main Process] Received add-consultation-member request:', memberData);
+  try {
+    // 날짜 문자열을 Unix timestamp로 변환
+    const processedData = {
+      ...memberData,
+      birth_date: memberData.birth_date ? Math.floor(new Date(memberData.birth_date).getTime() / 1000) : undefined,
+      first_visit: memberData.first_visit ? Math.floor(new Date(memberData.first_visit).getTime() / 1000) : undefined,
+      fitness_goals: memberData.fitness_goals ? JSON.stringify(memberData.fitness_goals) : undefined
+    };
+
+    const newMember = consultationRepository.createConsultationMember(processedData);
+    
+    electronLog.info('[Main Process] Consultation member created successfully:', newMember.id);
+    return { success: true, data: newMember };
+  } catch (error) {
+    electronLog.error('[Main Process] Error creating consultation member:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 상담 회원 수정
+ipcMain.handle('update-consultation-member', async (event, id: number, updates: any) => {
+  electronLog.info('[Main Process] Received update-consultation-member request:', { id, updates });
+  try {
+    // 날짜 문자열을 Unix timestamp로 변환
+    const processedUpdates = {
+      ...updates,
+      birth_date: updates.birth_date ? Math.floor(new Date(updates.birth_date).getTime() / 1000) : undefined,
+      first_visit: updates.first_visit ? Math.floor(new Date(updates.first_visit).getTime() / 1000) : undefined,
+      fitness_goals: updates.fitness_goals ? JSON.stringify(updates.fitness_goals) : undefined
+    };
+
+    const success = consultationRepository.updateConsultationMember(id, processedUpdates);
+    
+    electronLog.info('[Main Process] Consultation member updated successfully:', { id, success });
+    return { success: true, updated: success };
+  } catch (error) {
+    electronLog.error('[Main Process] Error updating consultation member:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 상담 회원 삭제
+ipcMain.handle('delete-consultation-member', async (event, id: number) => {
+  electronLog.info('[Main Process] Received delete-consultation-member request:', id);
+  try {
+    const success = consultationRepository.deleteConsultationMember(id);
+    
+    electronLog.info('[Main Process] Consultation member deleted successfully:', { id, success });
+    return { success: true, deleted: success };
+  } catch (error) {
+    electronLog.error('[Main Process] Error deleting consultation member:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// 상담 회원 단일 조회
+ipcMain.handle('get-consultation-member-by-id', async (event, id: number) => {
+  electronLog.info('상담 회원 단일 조회 요청:', id);
+  try {
+    const result = getConsultationMemberById(id);
+    
+    electronLog.info('상담 회원 단일 조회 성공');
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    electronLog.error('상담 회원 단일 조회 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '상담 회원 조회 중 알 수 없는 오류가 발생했습니다.'
+    };
+  }
+});
+
+// ============== 회원 승격 관련 IPC ==============
+
+// 회원 승격 처리
+ipcMain.handle('promote-consultation-member', async (event, promotionData) => {
+  try {
+    electronLog.info('회원 승격 요청:', promotionData);
+    
+    const result = promoteConsultationMember(promotionData);
+    
+    electronLog.info('회원 승격 성공:', result);
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    electronLog.error('회원 승격 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '회원 승격 중 알 수 없는 오류가 발생했습니다.'
+    };
   }
 });

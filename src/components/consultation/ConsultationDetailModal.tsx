@@ -1,375 +1,627 @@
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
+  Edit, 
+  Save, 
+  X, 
   Phone, 
+  Mail, 
   Calendar, 
-  Clock, 
-  Plus, 
-  Edit3, 
-  FileText,
-  Target,
   Heart,
-  MessageCircle,
+  Target,
+  FileText,
+  AlertTriangle,
   CheckCircle,
-  AlertCircle
+  Star,
+  UserCheck,
+  Clock,
+  MapPin
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import { 
+  ConsultationDetailModalProps, 
   ConsultationMember,
-  ConsultationRecord,
-  ConsultationFormData
+  MemberEditFormData
 } from '../../types/consultation';
 import { 
-  CONSULTATION_TYPE_OPTIONS,
+  GENDER_OPTIONS,
+  CONSULTATION_STATUS_OPTIONS,
+  FITNESS_GOALS_OPTIONS,
   STATUS_BADGE_STYLES
 } from '../../config/consultationConfig';
 import { 
-  formatDate, 
-  formatPhoneNumber, 
-  formatAge, 
-  formatConsultationStatus,
-  formatRelativeTime,
-  formatGoals
-} from '../../utils/consultationFormatters';
-
-interface ConsultationDetailModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  member: ConsultationMember | null;
-  consultationRecords: ConsultationRecord[];
-  onAddConsultation: () => Promise<void> | void;
-  onEditConsultation: (id: number, data: ConsultationFormData) => Promise<void>;
-  loading?: boolean;
-}
+  validateMemberEdit,
+  convertToUpdateData,
+  convertToFormData,
+  formatPhoneNumber as formatPhoneInput
+} from '../../utils/consultationValidation';
+import { formatDate, formatRelativeTime, formatPhoneNumber } from '../../utils/consultationFormatters';
 
 const ConsultationDetailModal: React.FC<ConsultationDetailModalProps> = ({
   isOpen,
   onClose,
-  member,
-  consultationRecords,
-  onAddConsultation,
-  onEditConsultation,
-  loading = false
+  consultationMemberId,
+  onUpdate,
+  onPromote
 }) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'records'>('info');
-  const [isAddingConsultation, setIsAddingConsultation] = useState(false);
+  const [member, setMember] = useState<ConsultationMember | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState<MemberEditFormData>({
+    name: '',
+    phone: '',
+    email: '',
+    gender: '',
+    birth_date: '',
+    consultation_status: '',
+    health_conditions: '',
+    fitness_goals: [],
+    notes: '',
+    staff_id: undefined
+  });
+  const [staffOptions, setStaffOptions] = useState<Array<{id: number, name: string, position: string}>>([]);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  if (!member) return null;
+  // 회원 정보 조회
+  useEffect(() => {
+    if (isOpen && consultationMemberId) {
+      loadMemberDetail();
+      loadStaffOptions();
+    }
+  }, [isOpen, consultationMemberId]);
 
-  // 상담 상태별 배지 렌더링
+  const loadMemberDetail = async () => {
+    if (!consultationMemberId) return;
+
+    setIsLoading(true);
+    try {
+      const response = await window.api.getConsultationMemberById(consultationMemberId);
+      if (response.success) {
+        setMember(response.data);
+        setEditFormData(convertToFormData(response.data));
+      } else {
+        console.error('API 에러:', response.error);
+      }
+    } catch (error) {
+      console.error('회원 정보 조회 실패:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStaffOptions = async () => {
+    try {
+      const response = await window.api.getAllStaff();
+      if (response.success) {
+        setStaffOptions(response.data || []);
+      }
+    } catch (error) {
+      console.error('직원 데이터 로드 실패:', error);
+    }
+  };
+
+  // 수정 모드 토글
+  const toggleEditMode = () => {
+    if (isEditing) {
+      // 취소 시 원래 데이터로 복원
+      if (member) {
+        setEditFormData(convertToFormData(member));
+      }
+      setErrors([]);
+    }
+    setIsEditing(!isEditing);
+  };
+
+  // 폼 데이터 변경 핸들러
+  const handleFormChange = (field: keyof MemberEditFormData, value: any) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // 에러 초기화
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  // 운동 목표 토글
+  const toggleFitnessGoal = (goal: string) => {
+    const currentGoals = editFormData.fitness_goals;
+    const isSelected = currentGoals.includes(goal);
+    
+    if (isSelected) {
+      handleFormChange('fitness_goals', currentGoals.filter(g => g !== goal));
+    } else {
+      handleFormChange('fitness_goals', [...currentGoals, goal]);
+    }
+  };
+
+  // 저장 핸들러
+  const handleSave = async () => {
+    if (!member) return;
+
+    // 유효성 검사
+    const validationErrors = validateMemberEdit(editFormData);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updateData = convertToUpdateData(member.id!, editFormData);
+      const response = await window.api.updateConsultationMember(updateData);
+      
+      if (response.success) {
+        setMember(response.data);
+        setIsEditing(false);
+        setErrors([]);
+        onUpdate();
+      } else {
+        setErrors([response.error || '저장에 실패했습니다.']);
+      }
+    } catch (error) {
+      console.error('저장 실패:', error);
+      setErrors(['저장 중 오류가 발생했습니다.']);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 승격 핸들러
+  const handlePromote = () => {
+    if (member && onPromote) {
+      onPromote(member);
+    }
+  };
+
+  // 상담 상태 배지 렌더링
   const renderStatusBadge = (status?: string) => {
     if (!status) return <span className="text-gray-400">-</span>;
     
+    const config = CONSULTATION_STATUS_OPTIONS.find(opt => opt.value === status);
     const badgeStyle = STATUS_BADGE_STYLES[status as keyof typeof STATUS_BADGE_STYLES];
     
     return (
       <span 
-        className="px-2 py-1 rounded-full text-xs font-medium"
+        className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1"
         style={badgeStyle}
       >
-        {formatConsultationStatus(status)}
+        <CheckCircle className="w-4 h-4" />
+        {config?.label || status}
       </span>
     );
   };
 
-  // 상담 기록 상태별 아이콘
-  const getRecordStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'scheduled':
-        return <Clock className="w-4 h-4 text-blue-500" />;
-      case 'cancelled':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'no_show':
-        return <AlertCircle className="w-4 h-4 text-gray-500" />;
-      default:
-        return <FileText className="w-4 h-4 text-gray-400" />;
-    }
+  // 전화번호 입력 포맷팅
+  const handlePhoneChange = (value: string) => {
+    const formatted = formatPhoneInput(value);
+    handleFormChange('phone', formatted);
   };
 
-  // 최근 상담 기록 (최대 5개)
-  const recentRecords = [...consultationRecords]
-    .sort((a, b) => b.consultation_date - a.consultation_date)
-    .slice(0, 5);
+  if (!isOpen || !consultationMemberId) return null;
 
-  const modalFooter = (
-    <>
-      <button
-        type="button"
-        onClick={onClose}
-        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-      >
-        닫기
-      </button>
-      <button
-        type="button"
-        onClick={() => setIsAddingConsultation(true)}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
-      >
-        <Plus size={16} />
-        상담 기록 추가
-      </button>
-    </>
+  const title = (
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-blue-100 rounded-lg">
+          <User className="w-6 h-6 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900">
+            {isEditing ? '회원 정보 수정' : '상담 회원 상세 정보'}
+          </h3>
+          {member && (
+            <p className="text-sm text-gray-500">
+              {member.name} • ID: {member.id}
+            </p>
+          )}
+        </div>
+      </div>
+      {!isEditing && member && (
+        <div className="flex items-center gap-2">
+          {renderStatusBadge(member.consultation_status)}
+        </div>
+      )}
+    </div>
+  );
+
+  const footer = (
+    <div className="flex justify-between w-full">
+      <div className="flex gap-2">
+        {/* 승격 버튼 */}
+        {!isEditing && member && !member.is_promoted && onPromote && (
+          <button
+            data-testid="promote-button"
+            onClick={handlePromote}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Star className="w-4 h-4" />
+            정식 회원으로 승격
+          </button>
+        )}
+      </div>
+      
+      <div className="flex gap-2">
+        {isEditing ? (
+          <>
+            <button
+              onClick={toggleEditMode}
+              disabled={isSaving}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              data-testid="save-button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? '저장 중...' : '저장'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              data-testid="edit-button"
+              onClick={toggleEditMode}
+              className="flex items-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+              수정
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              닫기
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 
   return (
-    <>
+    <div data-testid="consultation-detail-modal">
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-lg font-medium text-blue-600">
-                {member.name.charAt(0)}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">{member.name}</h3>
-              <p className="text-sm text-gray-500">상담 상세 정보</p>
-            </div>
-          </div>
-        }
+        title={title}
         size="xl"
-        footer={modalFooter}
+        footer={footer}
       >
-        {/* 탭 메뉴 */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            onClick={() => setActiveTab('info')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'info'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <User size={16} />
-              회원 정보
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('records')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'records'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <FileText size={16} />
-              상담 기록 ({consultationRecords.length})
-            </div>
-          </button>
-        </div>
-
-        {/* 회원 정보 탭 */}
-        {activeTab === 'info' && (
-          <div className="space-y-6">
-            {/* 기본 정보 */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-lg font-medium text-gray-900 mb-4">기본 정보</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-6">
+          {/* 에러 메시지 */}
+          {errors.length > 0 && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">연락처</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Phone size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-900">{formatPhoneNumber(member.phone)}</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">이메일</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm text-gray-900">{member.email || '-'}</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">성별/나이</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm text-gray-900">
-                      {member.gender || '-'} / {formatAge(member.birth_date)}
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">가입일</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-900">{formatDate(member.join_date)}</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">회원권</label>
-                  <span className="text-sm text-gray-900">{member.membership_type || '-'}</span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">상담 상태</label>
-                  <div className="mt-1">
-                    {renderStatusBadge(member.consultation_status)}
-                  </div>
+                  <h4 className="text-sm font-medium text-red-800">입력 오류</h4>
+                  <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
+                    {errors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* 건강 정보 */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-lg font-medium text-gray-900 mb-4">건강 정보</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Heart size={16} className="text-red-500" />
-                      건강 상태 및 주의사항
-                    </div>
-                  </label>
-                  <div className="bg-white p-3 rounded border text-sm text-gray-900">
-                    {member.health_conditions || '특이사항 없음'}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Target size={16} className="text-blue-500" />
-                      운동 목표
-                    </div>
-                  </label>
-                  <div className="bg-white p-3 rounded border text-sm text-gray-900">
-                    {formatGoals(member.fitness_goals)}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">비상 연락처</label>
-                  <div className="bg-white p-3 rounded border text-sm text-gray-900">
-                    {formatPhoneNumber(member.emergency_contact || '') || '-'}
-                  </div>
-                </div>
-              </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-gray-500">로딩 중...</div>
             </div>
+          ) : member ? (
+            <div className="space-y-6">
+              {/* 기본 정보 섹션 */}
+              <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                <h4 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  기본 정보
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* 이름 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      이름 {isEditing && <span className="text-red-500">*</span>}
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editFormData.name}
+                        onChange={(e) => handleFormChange('name', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900 font-medium">{member.name}</p>
+                    )}
+                  </div>
 
-            {/* 메모 */}
-            {member.notes && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-lg font-medium text-gray-900 mb-4">메모</h4>
-                <div className="bg-white p-3 rounded border text-sm text-gray-900">
-                  {member.notes}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                  {/* 전화번호 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <Phone className="inline w-4 h-4 mr-1" />
+                      전화번호 {isEditing && <span className="text-red-500">*</span>}
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="tel"
+                        value={editFormData.phone}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{formatPhoneNumber(member.phone)}</p>
+                    )}
+                  </div>
 
-        {/* 상담 기록 탭 */}
-        {activeTab === 'records' && (
-          <div className="space-y-4">
-            {recentRecords.length === 0 ? (
-              <div className="text-center py-12">
-                <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">상담 기록이 없습니다</h3>
-                <p className="text-gray-500 mb-4">첫 번째 상담 기록을 작성해보세요.</p>
-                <button
-                  onClick={() => setIsAddingConsultation(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus size={16} />
-                  상담 기록 추가
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentRecords.map((record) => (
-                  <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        {getRecordStatusIcon(record.status)}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">
-                              {CONSULTATION_TYPE_OPTIONS.find(opt => opt.value === record.consultation_type)?.label}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              • {record.consultant_name}
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {formatDate(record.consultation_date, 'time')}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          // TODO: 편집 기능 구현
-                          console.log('Edit record:', record.id);
-                        }}
-                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  {/* 이메일 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <Mail className="inline w-4 h-4 mr-1" />
+                      이메일
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="email"
+                        value={editFormData.email}
+                        onChange={(e) => handleFormChange('email', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{member.email || '-'}</p>
+                    )}
+                  </div>
+
+                  {/* 성별 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">성별</label>
+                    {isEditing ? (
+                      <select
+                        value={editFormData.gender}
+                        onChange={(e) => handleFormChange('gender', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
-                        <Edit3 size={16} />
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">상담 내용:</span>
-                        <p className="text-sm text-gray-900 mt-1">{record.content}</p>
-                      </div>
-                      
-                      {record.goals_discussed.length > 0 && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">논의된 목표:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {record.goals_discussed.map((goal, index) => (
-                              <span 
-                                key={index}
-                                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                              >
-                                {goal}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {record.recommendations && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">권장사항:</span>
-                          <p className="text-sm text-gray-900 mt-1">{record.recommendations}</p>
-                        </div>
-                      )}
-                      
-                      {record.next_appointment && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">다음 상담 예정:</span>
-                          <p className="text-sm text-gray-900 mt-1">
-                            {formatDate(record.next_appointment, 'long')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                        <option value="">선택하세요</option>
+                        {GENDER_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-gray-900">{member.gender || '-'}</p>
+                    )}
                   </div>
-                ))}
+
+                  {/* 생년월일 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <Calendar className="inline w-4 h-4 mr-1" />
+                      생년월일
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={editFormData.birth_date}
+                        onChange={(e) => handleFormChange('birth_date', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">
+                        {member.birth_date ? formatDate(member.birth_date) : '-'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 상담 상태 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      상담 상태
+                    </label>
+                    {isEditing ? (
+                      <select
+                        value={editFormData.consultation_status}
+                        onChange={(e) => handleFormChange('consultation_status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">선택하세요</option>
+                        {CONSULTATION_STATUS_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      renderStatusBadge(member.consultation_status)
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 상담 관리 정보 */}
+              <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                <h4 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-green-600" />
+                  상담 관리 정보
+                </h4>
                 
-                {consultationRecords.length > 5 && (
-                  <div className="text-center py-4">
-                    <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      전체 기록 보기 ({consultationRecords.length}개)
-                    </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* 담당자 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">담당자</label>
+                    {isEditing ? (
+                      <select
+                        value={editFormData.staff_id || ''}
+                        onChange={(e) => handleFormChange('staff_id', e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">담당자를 선택하세요</option>
+                        {staffOptions.map(staff => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.name} ({staff.position})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-gray-900">{member.staff_name || '-'}</p>
+                    )}
+                  </div>
+
+                  {/* 가입일 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <Clock className="inline w-4 h-4 mr-1" />
+                      상담 등록일
+                    </label>
+                    <p className="text-gray-900">
+                      {member.join_date ? formatDate(member.join_date) : '-'}
+                    </p>
+                  </div>
+
+                  {/* 최초 방문일 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <MapPin className="inline w-4 h-4 mr-1" />
+                      최초 방문일
+                    </label>
+                    <p className="text-gray-900">
+                      {member.first_visit ? formatDate(member.first_visit) : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 건강 및 운동 정보 */}
+              <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
+                <h4 className="text-lg font-semibold text-yellow-900 mb-4 flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-yellow-600" />
+                  건강 및 운동 정보
+                </h4>
+                
+                {/* 건강 상태 */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    건강 상태 및 주의사항
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={editFormData.health_conditions}
+                      onChange={(e) => handleFormChange('health_conditions', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="건강 상태, 알레르기, 운동 제한사항 등을 입력하세요"
+                    />
+                  ) : (
+                    <div className="bg-white p-3 rounded border">
+                      {member.health_conditions || '특이사항 없음'}
+                    </div>
+                  )}
+                </div>
+
+                {/* 운동 목표 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Target className="inline w-4 h-4 mr-1" />
+                    운동 목표
+                  </label>
+                  {isEditing ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {FITNESS_GOALS_OPTIONS.map(goal => (
+                        <button
+                          key={goal}
+                          type="button"
+                          onClick={() => toggleFitnessGoal(goal)}
+                          className={`p-2 text-sm rounded-lg border transition-colors text-left ${
+                            editFormData.fitness_goals.includes(goal)
+                              ? 'bg-green-100 border-green-300 text-green-700'
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {goal}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {member.fitness_goals && Array.isArray(member.fitness_goals) && member.fitness_goals.length > 0 ? (
+                        member.fitness_goals.map((goal, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium"
+                          >
+                            {goal}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 italic">설정된 목표가 없습니다.</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 메모 */}
+              <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+                <h4 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                  메모 및 특이사항
+                </h4>
+                
+                {isEditing ? (
+                  <textarea
+                    value={editFormData.notes}
+                    onChange={(e) => handleFormChange('notes', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="기타 특이사항이나 상담 내용을 입력하세요"
+                  />
+                ) : (
+                  <div className="bg-white p-4 rounded border min-h-[100px]">
+                    {member.notes || '메모가 없습니다.'}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
-      </Modal>
 
-      {/* 상담 기록 추가 모달은 별도 컴포넌트로 분리 예정 */}
-    </>
+              {/* 승격 정보 (승격된 경우) */}
+              {member.is_promoted && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                    <Star className="w-5 h-5 text-indigo-600" />
+                    회원 승격 완료
+                  </h4>
+                  <div className="text-sm text-indigo-700">
+                    <p>이 상담 회원은 이미 정식 회원으로 승격되었습니다.</p>
+                    {member.promoted_at && (
+                      <p className="mt-1">
+                        승격일: {formatDate(member.promoted_at)}
+                      </p>
+                    )}
+                    {member.promoted_member_id && (
+                      <p className="mt-1">
+                        정식 회원 ID: {member.promoted_member_id}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">회원 정보를 찾을 수 없습니다.</p>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </div>
   );
 };
 

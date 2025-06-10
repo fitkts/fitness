@@ -20,10 +20,10 @@ const LockerGrid: React.FC<LockerGridProps> = ({
   const getGridClasses = () => {
     if (layoutDirection === 'column') {
       // 열 우선: 세로로 먼저 채우고 가로로 확장
-      return "grid gap-3 auto-cols-max";
+      return "grid gap-2 auto-cols-max";
     }
     // 행 우선: 기본 그리드 (가로로 먼저 채우고 세로로 확장)
-    return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3";
+    return "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2";
   };
 
   const getGridStyle = () => {
@@ -46,7 +46,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
         {Array.from({ length: 16 }).map((_, index) => (
           <div
             key={index}
-            className="p-3 rounded-lg border animate-pulse bg-gray-50"
+            className="p-2 rounded-lg border animate-pulse bg-gray-50"
           >
             <div className="space-y-2">
               <div className="flex justify-between items-start">

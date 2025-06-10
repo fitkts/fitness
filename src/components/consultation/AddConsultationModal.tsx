@@ -7,7 +7,8 @@ import {
   MessageSquare, 
   Lightbulb,
   AlertTriangle,
-  Clock
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import { 
@@ -16,7 +17,9 @@ import {
 } from '../../types/consultation';
 import { 
   CONSULTATION_TYPE_OPTIONS,
-  FITNESS_GOALS_OPTIONS
+  FITNESS_GOALS_OPTIONS,
+  CONSULTATION_RECORD_STATUS_OPTIONS,
+  STAFF_OPTIONS
 } from '../../config/consultationConfig';
 
 interface AddConsultationModalProps {
@@ -40,7 +43,10 @@ const AddConsultationModal: React.FC<AddConsultationModalProps> = ({
     content: '',
     goals_discussed: [],
     recommendations: '',
-    next_appointment: ''
+    next_appointment: '',
+    status: 'completed',
+    consultant_id: undefined,
+    consultant_name: ''
   });
 
   const [errors, setErrors] = useState<string[]>([]);
@@ -56,7 +62,10 @@ const AddConsultationModal: React.FC<AddConsultationModalProps> = ({
         content: '',
         goals_discussed: [],
         recommendations: '',
-        next_appointment: ''
+        next_appointment: '',
+        status: 'completed',
+        consultant_id: undefined,
+        consultant_name: ''
       });
       setErrors([]);
     }
@@ -65,7 +74,7 @@ const AddConsultationModal: React.FC<AddConsultationModalProps> = ({
   // 입력값 변경 핸들러
   const handleInputChange = (
     field: keyof ConsultationFormData,
-    value: string | string[]
+    value: string | string[] | number
   ) => {
     setFormData(prev => ({
       ...prev,
@@ -104,6 +113,10 @@ const AddConsultationModal: React.FC<AddConsultationModalProps> = ({
     
     if (formData.content.trim().length < 10) {
       validationErrors.push('상담 내용은 최소 10자 이상 입력해주세요.');
+    }
+    
+    if (!formData.consultant_id) {
+      validationErrors.push('담당자를 선택해주세요.');
     }
     
     // 다음 상담 날짜 검증
@@ -204,7 +217,7 @@ const AddConsultationModal: React.FC<AddConsultationModalProps> = ({
         <div className="space-y-4">
           <h3 className="text-lg font-medium text-gray-900 border-b pb-2">상담 정보</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* 상담 유형 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -239,6 +252,56 @@ const AddConsultationModal: React.FC<AddConsultationModalProps> = ({
                   required
                 />
               </div>
+            </div>
+
+            {/* 담당자 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <User size={16} className="text-purple-500" />
+                  담당자 <span className="text-red-500">*</span>
+                </div>
+              </label>
+              <select
+                value={formData.consultant_id || ''}
+                onChange={(e) => {
+                  const staffId = Number(e.target.value);
+                  const staff = STAFF_OPTIONS.find(s => s.id === staffId);
+                  handleInputChange('consultant_id', staffId);
+                  handleInputChange('consultant_name', staff?.name || '');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">담당자를 선택하세요</option>
+                {STAFF_OPTIONS.map(staff => (
+                  <option key={staff.id} value={staff.id}>
+                    {staff.name} ({staff.position})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 상담 상태 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={16} className="text-green-500" />
+                  상담 상태 <span className="text-red-500">*</span>
+                </div>
+              </label>
+              <select
+                value={formData.status || 'completed'}
+                onChange={(e) => handleInputChange('status', e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                {CONSULTATION_RECORD_STATUS_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

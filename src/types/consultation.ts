@@ -1,6 +1,6 @@
 // 상담일지 시스템 관련 타입 정의
 
-// 기존 Member 타입 확장
+// 상담 회원 타입 (승격 전 상담 대상자)
 export interface ConsultationMember {
   id?: number;
   name: string;
@@ -8,9 +8,9 @@ export interface ConsultationMember {
   email?: string;
   gender?: '남' | '여';
   birth_date?: number; // Unix timestamp
-  join_date: number; // Unix timestamp
+  join_date: number; // Unix timestamp (상담 회원에서는 생성일)
   first_visit?: number; // Unix timestamp
-  membership_type?: string;
+  membership_type?: string; // 상담 회원은 일반적으로 undefined
   membership_start?: number;
   membership_end?: number;
   last_visit?: number;
@@ -19,11 +19,14 @@ export interface ConsultationMember {
   staff_name?: string;
   created_at?: number;
   updated_at?: number;
-  // 상담 관련 추가 정보
+  // 상담 관련 정보
   consultation_status?: 'pending' | 'in_progress' | 'completed' | 'follow_up';
-  emergency_contact?: string;
   health_conditions?: string;
   fitness_goals?: string[];
+  // 승격 관련 정보
+  is_promoted?: boolean; // 회원으로 승격 여부
+  promoted_at?: number; // 승격일시 (Unix timestamp)
+  promoted_member_id?: number; // 승격 후 생성된 회원 ID
 }
 
 // 상담 기록 타입
@@ -131,11 +134,13 @@ export interface NewMemberFormData {
   email?: string;
   gender?: '남' | '여';
   birth_date?: string; // YYYY-MM-DD 형태
-  emergency_contact?: string;
+  first_visit?: string; // YYYY-MM-DD 형태 - 최초 방문일 추가
   health_conditions?: string;
   fitness_goals?: string[];
   membership_type?: string;
-  staff_id?: number;
+  staff_id?: number; // 담당자 ID
+  staff_name?: string; // 담당자 이름
+  consultation_status?: 'pending' | 'in_progress' | 'completed' | 'follow_up'; // 상담 상태 추가
   notes?: string;
 }
 
@@ -146,6 +151,9 @@ export interface ConsultationFormData {
   goals_discussed: string[];
   recommendations: string;
   next_appointment?: string; // YYYY-MM-DD 형태
+  status?: ConsultationRecord['status'];
+  consultant_id?: number;
+  consultant_name?: string;
 }
 
 // 컴포넌트 Props 타입
@@ -157,6 +165,7 @@ export interface ConsultationTableProps {
   onSortChange: (sort: ConsultationTableSort) => void;
   onMemberSelect: (member: ConsultationMember) => void;
   onAddNewMember: () => void;
+  onViewDetail?: (memberId: number) => void;
   loading?: boolean;
 }
 
@@ -176,6 +185,54 @@ export interface ConsultationDetailProps {
   onAddConsultation: (data: ConsultationFormData) => Promise<void>;
   onSchedulePT: (data: Partial<PersonalTrainingSession>) => Promise<void>;
   loading?: boolean;
+}
+
+// 수정 관련 타입
+export interface ConsultationMemberUpdateData {
+  id: number;
+  name: string;
+  phone: string;
+  email?: string;
+  gender?: '남' | '여';
+  birth_date?: string; // YYYY-MM-DD 형태
+  consultation_status?: 'pending' | 'in_progress' | 'completed' | 'follow_up';
+  health_conditions?: string;
+  fitness_goals?: string[];
+  notes?: string;
+  staff_id?: number;
+}
+
+export interface ConsultationDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  consultationMemberId: number | null;
+  onUpdate: () => void;
+  onPromote?: (member: ConsultationMember) => void;
+}
+
+export interface MemberEditFormData {
+  name: string;
+  phone: string;
+  email: string;
+  gender: '남' | '여' | '';
+  birth_date: string;
+  consultation_status: 'pending' | 'in_progress' | 'completed' | 'follow_up' | '';
+  health_conditions: string;
+  fitness_goals: string[];
+  notes: string;
+  staff_id: number | undefined;
+}
+
+// 승격 관련 타입
+export interface PromotionData {
+  consultationMemberId: number;
+  membershipTypeId: number;
+  membershipType: string;
+  startDate: string;
+  endDate: string;
+  paymentAmount: number;
+  paymentMethod: 'card' | 'cash' | 'transfer';
+  notes?: string;
 }
 
 // 유틸리티 타입

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Mail, Calendar, Heart, Target, AlertTriangle } from 'lucide-react';
+import { User, Phone, Mail, Calendar, Heart, Target, AlertTriangle, UserCheck, ClipboardList } from 'lucide-react';
 import Modal from '../common/Modal';
 import { 
   NewMemberModalProps, 
@@ -8,6 +8,7 @@ import {
 import { 
   GENDER_OPTIONS, 
   FITNESS_GOALS_OPTIONS,
+  CONSULTATION_STATUS_OPTIONS,
   FORM_CONFIG,
   MESSAGES 
 } from '../../config/consultationConfig';
@@ -25,18 +26,21 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
     email: '',
     gender: undefined,
     birth_date: '',
-    emergency_contact: '',
+    first_visit: '',
     health_conditions: '',
     fitness_goals: [],
     membership_type: '',
     staff_id: undefined,
+    staff_name: '',
+    consultation_status: undefined,
     notes: ''
   });
 
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [staffOptions, setStaffOptions] = useState<Array<{id: number, name: string, position: string}>>([]);
 
-  // 모달이 열릴 때 폼 초기화
+  // 모달이 열릴 때 폼 초기화 및 직원 데이터 로드
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -45,16 +49,35 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
         email: '',
         gender: undefined,
         birth_date: '',
-        emergency_contact: '',
+        first_visit: '',
         health_conditions: '',
         fitness_goals: [],
         membership_type: '',
         staff_id: undefined,
+        staff_name: '',
+        consultation_status: undefined,
         notes: ''
       });
       setErrors([]);
+      loadStaffOptions();
     }
   }, [isOpen]);
+
+  // 직원 데이터 로드
+  const loadStaffOptions = async () => {
+    try {
+      const response = await window.api.getAllStaff();
+      if (response.success) {
+        setStaffOptions(response.data || []);
+      } else {
+        console.error('직원 데이터 로드 실패:', response.error);
+        setStaffOptions([]);
+      }
+    } catch (error) {
+      console.error('직원 데이터 로드 실패:', error);
+      setStaffOptions([]);
+    }
+  };
 
   // 입력값 변경 핸들러
   const handleInputChange = (
@@ -67,6 +90,21 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
     }));
     
     // 에러가 있다면 해당 필드 에러 제거
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  // 담당자 선택 핸들러
+  const handleStaffChange = (staffId: string) => {
+    const selectedStaff = staffOptions.find(staff => staff.id === parseInt(staffId));
+    setFormData(prev => ({
+      ...prev,
+      staff_id: staffId ? parseInt(staffId) : undefined,
+      staff_name: selectedStaff ? selectedStaff.name : ''
+    }));
+    
+    // 에러가 있다면 제거
     if (errors.length > 0) {
       setErrors([]);
     }
@@ -99,9 +137,9 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
     try {
       await onSubmit(formData);
       onClose();
-    } catch (error) {
-      setErrors(['회원 등록에 실패했습니다. 다시 시도해주세요.']);
-    } finally {
+            } catch (error) {
+          setErrors(['상담 등록에 실패했습니다. 다시 시도해주세요.']);
+        } finally {
       setIsSubmitting(false);
     }
   };
@@ -130,7 +168,7 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
         disabled={isSubmitting}
         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? '등록 중...' : '회원 등록'}
+        {isSubmitting ? '등록 중...' : '상담 등록'}
       </button>
     </>
   );
@@ -144,7 +182,7 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
           <div className="p-2 bg-blue-100 rounded-lg">
             <User className="w-5 h-5 text-blue-600" />
           </div>
-          신규 회원 등록
+          신규 상담 등록
         </div>
       }
       size="lg"
@@ -261,20 +299,63 @@ const NewMemberModal: React.FC<NewMemberModalProps> = ({
               </div>
             </div>
 
-            {/* 비상 연락처 */}
+            {/* 최초 방문일 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                비상 연락처
+                최초 방문일
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
-                  type="tel"
-                  value={formData.emergency_contact || ''}
-                  onChange={(e) => handleInputChange('emergency_contact', formatPhoneInput(e.target.value))}
+                  type="date"
+                  value={formData.first_visit || ''}
+                  onChange={(e) => handleInputChange('first_visit', e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="010-0000-0000"
                 />
+              </div>
+            </div>
+
+            {/* 담당자 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                담당자
+              </label>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <select
+                  value={formData.staff_id || ''}
+                  onChange={(e) => handleStaffChange(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                >
+                  <option value="">담당자를 선택하세요</option>
+                  {staffOptions.map(staff => (
+                    <option key={staff.id} value={staff.id}>
+                      {staff.name} ({staff.position})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 상담 상태 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                상담 상태
+              </label>
+              <div className="relative">
+                <ClipboardList className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <select
+                  value={formData.consultation_status || ''}
+                  onChange={(e) => handleInputChange('consultation_status', e.target.value as any)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                >
+                  <option value="">상담 상태를 선택하세요</option>
+                  {CONSULTATION_STATUS_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

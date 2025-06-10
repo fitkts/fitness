@@ -3,133 +3,106 @@
 /**
  * Unix timestamp를 날짜 문자열로 변환
  */
-export const formatDate = (timestamp: number, format: 'short' | 'long' | 'time' = 'short'): string => {
+export const formatDate = (timestamp?: number): string => {
   if (!timestamp) return '-';
   
-  const date = new Date(timestamp * 1000);
-  
-  switch (format) {
-    case 'short':
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
-    case 'long':
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long'
-      });
-    case 'time':
-      return date.toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    default:
-      return date.toLocaleDateString('ko-KR');
+  try {
+    // timestamp가 초 단위인지 밀리초 단위인지 확인
+    const date = timestamp > 9999999999 
+      ? new Date(timestamp) 
+      : new Date(timestamp * 1000);
+    
+    if (isNaN(date.getTime())) return '-';
+    
+    return date.toISOString().split('T')[0];
+  } catch {
+    return '-';
   }
 };
 
 /**
- * 상대적 시간 표시 (예: "3일 전", "2시간 후")
+ * 상대적 시간 표시 (예: "3일 전", "1주일 전")
  */
-export const formatRelativeTime = (timestamp: number): string => {
+export const formatRelativeTime = (timestamp?: number): string => {
   if (!timestamp) return '-';
   
-  const now = Date.now();
-  const targetTime = timestamp * 1000;
-  const diff = targetTime - now;
-  const absDiff = Math.abs(diff);
-  
-  const minute = 60 * 1000;
-  const hour = minute * 60;
-  const day = hour * 24;
-  const week = day * 7;
-  const month = day * 30;
-  const year = day * 365;
-  
-  const isInPast = diff < 0;
-  const suffix = isInPast ? ' 전' : ' 후';
-  
-  if (absDiff < minute) {
-    return '방금';
-  } else if (absDiff < hour) {
-    const minutes = Math.floor(absDiff / minute);
-    return `${minutes}분${suffix}`;
-  } else if (absDiff < day) {
-    const hours = Math.floor(absDiff / hour);
-    return `${hours}시간${suffix}`;
-  } else if (absDiff < week) {
-    const days = Math.floor(absDiff / day);
-    return `${days}일${suffix}`;
-  } else if (absDiff < month) {
-    const weeks = Math.floor(absDiff / week);
-    return `${weeks}주${suffix}`;
-  } else if (absDiff < year) {
-    const months = Math.floor(absDiff / month);
-    return `${months}개월${suffix}`;
-  } else {
-    const years = Math.floor(absDiff / year);
-    return `${years}년${suffix}`;
+  try {
+    const date = timestamp > 9999999999 
+      ? new Date(timestamp) 
+      : new Date(timestamp * 1000);
+    
+    if (isNaN(date.getTime())) return '-';
+    
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return '오늘';
+    } else if (diffDays === 1) {
+      return '어제';
+    } else if (diffDays < 7) {
+      return `${diffDays}일 전`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks}주일 전`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months}개월 전`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      return `${years}년 전`;
+    }
+  } catch {
+    return '-';
   }
 };
 
 /**
- * 전화번호 포맷팅
+ * 전화번호 포맷팅 (표시용)
  */
-export const formatPhoneNumber = (phone: string): string => {
+export const formatPhoneNumber = (phone?: string): string => {
   if (!phone) return '-';
   
-  // 숫자만 추출
-  const numbers = phone.replace(/[^\d]/g, '');
-  
-  // 휴대폰 번호 (010-xxxx-xxxx)
-  if (numbers.length === 11 && numbers.startsWith('010')) {
+  const numbers = phone.replace(/\D/g, '');
+  if (numbers.length === 11) {
     return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
   }
-  
-  // 일반 전화번호 (02-xxxx-xxxx, 031-xxx-xxxx 등)
-  if (numbers.length === 10) {
-    return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`;
-  }
-  
-  if (numbers.length === 11 && !numbers.startsWith('010')) {
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
-  }
-  
-  // 기본 포맷
   return phone;
 };
 
 /**
- * 나이 계산 및 포맷팅
+ * 나이 계산
  */
-export const formatAge = (birthTimestamp?: number): string => {
+export const calculateAge = (birthTimestamp?: number): string => {
   if (!birthTimestamp) return '-';
   
-  const birthDate = new Date(birthTimestamp * 1000);
-  const today = new Date();
-  
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
+  try {
+    const birthDate = birthTimestamp > 9999999999 
+      ? new Date(birthTimestamp) 
+      : new Date(birthTimestamp * 1000);
+    
+    if (isNaN(birthDate.getTime())) return '-';
+    
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return `${age}세`;
+  } catch {
+    return '-';
   }
-  
-  return `${age}세`;
 };
 
 /**
  * 운동 시간 포맷팅 (분 -> 시간:분)
  */
-export const formatDuration = (minutes: number): string => {
-  if (!minutes || minutes === 0) return '-';
+export const formatDuration = (minutes?: number): string => {
+  if (typeof minutes !== 'number' || minutes <= 0) return '-';
   
   if (minutes < 60) {
     return `${minutes}분`;
@@ -148,13 +121,11 @@ export const formatDuration = (minutes: number): string => {
 /**
  * 요일 배열을 문자열로 포맷팅
  */
-export const formatDaysOfWeek = (days: number[]): string => {
+export const formatDaysOfWeek = (days?: number[]): string => {
   if (!days || days.length === 0) return '-';
   
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const sortedDays = [...days].sort();
-  
-  return sortedDays.map(day => dayNames[day]).join(', ');
+  return days.map(day => dayNames[day]).join(', ');
 };
 
 /**
@@ -176,14 +147,14 @@ export const formatIntensityLevel = (level: number): string => {
  * 상담 상태를 한글로 포맷팅
  */
 export const formatConsultationStatus = (status?: string): string => {
-  const statusMap = {
+  const statusMap: Record<string, string> = {
     'pending': '대기 중',
     'in_progress': '진행 중',
     'completed': '완료',
     'follow_up': '추가 상담 필요'
   };
   
-  return statusMap[status as keyof typeof statusMap] || '-';
+  return statusMap[status || ''] || status || '-';
 };
 
 /**
@@ -346,5 +317,146 @@ export const formatLastVisit = (timestamp?: number): { text: string; status: 're
     return { text, status: 'warning' };
   } else {
     return { text, status: 'danger' };
+  }
+};
+
+// 상담 관련 포맷팅 유틸리티 함수들
+
+// 운동 목표 배열을 문자열로 변환
+export const formatFitnessGoals = (goals?: string[] | string): string => {
+  if (!goals) return '-';
+  
+  if (Array.isArray(goals)) {
+    return goals.length > 0 ? goals.join(', ') : '-';
+  }
+  
+  if (typeof goals === 'string') {
+    try {
+      const parsed = JSON.parse(goals);
+      return Array.isArray(parsed) ? parsed.join(', ') : goals;
+    } catch {
+      return goals;
+    }
+  }
+  
+  return '-';
+};
+
+// 성별을 아이콘과 함께 표시
+export const formatGender = (gender?: string): string => {
+  if (gender === '남') return '👨 남성';
+  if (gender === '여') return '👩 여성';
+  return '-';
+};
+
+// 회원권 기간 포맷팅
+export const formatMembershipPeriod = (startTimestamp?: number, endTimestamp?: number): string => {
+  if (!startTimestamp || !endTimestamp) return '-';
+  
+  const startDate = formatDate(startTimestamp);
+  const endDate = formatDate(endTimestamp);
+  
+  if (startDate === '-' || endDate === '-') return '-';
+  
+  return `${startDate} ~ ${endDate}`;
+};
+
+// 금액 포맷팅 (천 단위 콤마)
+export const formatCurrency = (amount?: number): string => {
+  if (typeof amount !== 'number') return '-';
+  return `${amount.toLocaleString()}원`;
+};
+
+// 시간 포맷팅 (HH:MM)
+export const formatTime = (timestamp?: number): string => {
+  if (!timestamp || timestamp === 0) return '-';
+  
+  try {
+    const date = timestamp > 1000000000000 ? new Date(timestamp) : new Date(timestamp * 1000);
+    if (isNaN(date.getTime())) return '-';
+    
+    return date.toLocaleTimeString('ko-KR', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  } catch {
+    return '-';
+  }
+};
+
+// 날짜와 시간 함께 포맷팅
+export const formatDateTime = (timestamp?: number): string => {
+  if (!timestamp || timestamp === 0) return '-';
+  
+  try {
+    const date = timestamp > 1000000000000 ? new Date(timestamp) : new Date(timestamp * 1000);
+    if (isNaN(date.getTime())) return '-';
+    
+    return date.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch {
+    return '-';
+  }
+};
+
+// 운동 강도를 이모지와 함께 표시
+export const formatIntensity = (level?: number): string => {
+  const intensityMap: Record<number, string> = {
+    1: '😌 매우 쉬움',
+    2: '🙂 쉬움',
+    3: '😐 보통',
+    4: '😅 어려움',
+    5: '😰 매우 어려움'
+  };
+  
+  return intensityMap[level || 0] || '-';
+};
+
+// 텍스트 길이 제한 (말줄임표 추가)
+export const truncateText = (text?: string, maxLength: number = 50): string => {
+  if (!text) return '-';
+  
+  if (text.length <= maxLength) return text;
+  
+  return `${text.slice(0, maxLength)}...`;
+};
+
+// 빈 값 체크 후 기본값 반환
+export const formatWithDefault = (value?: string | number, defaultValue: string = '-'): string => {
+  if (value === null || value === undefined || value === '') return defaultValue;
+  return String(value);
+};
+
+// 회원 가입 경과 일수
+export const formatDaysSinceJoin = (joinTimestamp?: number): string => {
+  if (!joinTimestamp) return '-';
+  
+  try {
+    const joinDate = joinTimestamp > 9999999999 
+      ? new Date(joinTimestamp) 
+      : new Date(joinTimestamp * 1000);
+    
+    if (isNaN(joinDate.getTime())) return '-';
+    
+    const today = new Date();
+    const diffMs = today.getTime() - joinDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return '오늘 가입';
+    } else if (diffDays === 1) {
+      return '어제 가입';
+    } else {
+      return `가입 ${diffDays}일차`;
+    }
+  } catch {
+    return '-';
   }
 }; 

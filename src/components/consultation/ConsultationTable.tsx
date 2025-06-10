@@ -38,6 +38,7 @@ const ConsultationTable: React.FC<ConsultationTableProps> = ({
   onSortChange,
   onMemberSelect,
   onAddNewMember,
+  onViewDetail,
   loading = false
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -138,13 +139,13 @@ const ConsultationTable: React.FC<ConsultationTableProps> = ({
               필터
             </button>
             
-            {/* 신규 회원 추가 버튼 */}
+            {/* 신규 상담 등록 버튼 */}
             <button
               onClick={onAddNewMember}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <UserPlus size={16} />
-              신규 회원 등록
+              신규 상담 등록
             </button>
           </div>
         </div>
@@ -250,9 +251,9 @@ const ConsultationTable: React.FC<ConsultationTableProps> = ({
             {loading ? (
               // 로딩 스켈레톤
               Array.from({ length: 5 }).map((_, index) => (
-                <tr key={index}>
+                <tr key={`skeleton-${index}`}>
                   {CONSULTATION_TABLE_COLUMNS.map(column => (
-                    <td key={column.key} className="px-6 py-4">
+                    <td key={`skeleton-${index}-${column.key}`} className="px-6 py-4">
                       <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
                     </td>
                   ))}
@@ -272,7 +273,7 @@ const ConsultationTable: React.FC<ConsultationTableProps> = ({
                       onClick={onAddNewMember}
                       className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
                     >
-                      첫 번째 회원을 등록해보세요
+                      첫 번째 상담을 등록해보세요
                     </button>
                   </div>
                 </td>
@@ -283,7 +284,15 @@ const ConsultationTable: React.FC<ConsultationTableProps> = ({
                 <tr 
                   key={member.id}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => onMemberSelect(member)}
+                  onClick={() => {
+                    console.log('테이블 행 클릭됨:', member.id, member.name);
+                    if (onViewDetail) {
+                      console.log('onViewDetail 호출 중...');
+                      onViewDetail(member.id!);
+                    } else {
+                      console.log('onViewDetail이 없음');
+                    }
+                  }}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -331,15 +340,33 @@ const ConsultationTable: React.FC<ConsultationTableProps> = ({
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onMemberSelect(member);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 transition-colors"
-                    >
-                      상세보기
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {onViewDetail && (
+                        <button
+                          onClick={(e) => {
+                            console.log('상세보기 버튼 클릭됨:', member.id, member.name);
+                            e.stopPropagation();
+                            onViewDetail(member.id!);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          title="상세보기"
+                        >
+                          상세보기
+                        </button>
+                      )}
+                      {!member.is_promoted && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMemberSelect(member);
+                          }}
+                          className="text-green-600 hover:text-green-900 transition-colors ml-2"
+                          title="정식 회원으로 승격"
+                        >
+                          승격
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

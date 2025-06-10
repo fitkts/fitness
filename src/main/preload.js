@@ -34,13 +34,30 @@ contextBridge.exposeInMainWorld('api', {
   addStaff: (staff) => ipcRenderer.invoke('add-staff', staff),
   updateStaff: (id, staff) => ipcRenderer.invoke('update-staff', id, staff),
   deleteStaff: (id) => ipcRenderer.invoke('delete-staff', id),
-  getAllLockers: () => ipcRenderer.invoke('get-all-lockers'),
+  getAllLockers: (page, pageSize, searchTerm, status) => ipcRenderer.invoke('get-all-lockers', page, pageSize, searchTerm, status),
   getLockerById: (id) => ipcRenderer.invoke('get-locker-by-id', id),
   addLocker: (locker) => ipcRenderer.invoke('add-locker', locker),
   updateLocker: (id, locker) => ipcRenderer.invoke('update-locker', id, locker),
   deleteLocker: (id) => ipcRenderer.invoke('delete-locker', id),
+  // 락커 히스토리 및 통계 관련
+  getLockerHistory: (filter) => ipcRenderer.invoke('get-locker-history', filter),
+  getLockerHistoryById: (lockerId) => ipcRenderer.invoke('get-locker-history-by-id', lockerId),
+  getLockerStatistics: () => ipcRenderer.invoke('get-locker-statistics'),
+  getLockerDashboardData: () => ipcRenderer.invoke('get-locker-dashboard-data'),
   importMembersFromExcel: (data) => ipcRenderer.invoke('import-members-excel', data),
   getAttendanceByDate: (date) => ipcRenderer.invoke('get-attendance-by-date', date),
   getMembersWithPagination: (page, pageSize, options) => ipcRenderer.invoke('get-members-pagination', page, pageSize, options),
+  // 상담 기록 관련
+  addConsultationRecord: (recordData) => ipcRenderer.invoke('add-consultation-record', recordData),
+  getConsultationRecordsByMember: (memberId) => ipcRenderer.invoke('get-consultation-records-by-member', memberId),
+  getAllConsultationRecords: () => ipcRenderer.invoke('get-all-consultation-records'),
+  // 상담 회원 관련
+  getAllConsultationMembers: () => ipcRenderer.invoke('get-all-consultation-members'),
+  addConsultationMember: (memberData) => ipcRenderer.invoke('add-consultation-member', memberData),
+  updateConsultationMember: (id, updates) => ipcRenderer.invoke('update-consultation-member', id, updates),
+  deleteConsultationMember: (id) => ipcRenderer.invoke('delete-consultation-member', id),
+  getConsultationMemberById: (id) => ipcRenderer.invoke('get-consultation-member-by-id', id),
+  // 회원 승격 관련 API
+  promoteConsultationMember: (promotionData) => ipcRenderer.invoke('promote-consultation-member', promotionData),
   // 다른 IPC 통신 함수들도 필요에 따라 여기에 추가할 수 있습니다.
 }); 

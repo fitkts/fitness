@@ -344,6 +344,15 @@ export async function setupDatabase(): Promise<void> {
         `);
         electronLog.info('락커 테이블 (lockers) 스키마 확인/생성/수정 완료.');
 
+        // 락커 히스토리 테이블 및 통계 뷰 생성
+        try {
+          const { addLockerHistoryTable, addLockerStatisticsView } = await import('./migrations/002_add_locker_history');
+          addLockerHistoryTable(db);
+          addLockerStatisticsView(db);
+        } catch (error) {
+          electronLog.error('락커 히스토리 마이그레이션 실행 오류:', error);
+        }
+
         // lockers 테이블에 size 컬럼 추가 (존재하지 않을 경우)
         try {
           db.exec(`SELECT size FROM lockers LIMIT 1;`);
@@ -371,6 +380,59 @@ export async function setupDatabase(): Promise<void> {
           db.exec(`ALTER TABLE lockers ADD COLUMN fee_options TEXT;`);
         }
         
+        // 상담 기록 테이블 생성
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS consultation_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER NOT NULL,
+            consultation_date INTEGER NOT NULL,
+            consultation_type TEXT NOT NULL,
+            consultant_id INTEGER NOT NULL,
+            consultant_name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            goals_discussed TEXT, -- JSON 문자열로 목표 배열 저장
+            recommendations TEXT,
+            next_appointment INTEGER,
+            status TEXT NOT NULL DEFAULT 'completed',
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            updated_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+            FOREIGN KEY (consultant_id) REFERENCES staff(id) ON DELETE RESTRICT
+          )
+        `);
+        electronLog.info('상담 기록 테이블 (consultation_records) 생성 완료.');
+
+        // 상담 회원 테이블 생성 (회원 승격 전 상담 대상자)
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS consultation_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT,
+            email TEXT,
+            gender TEXT,
+            birth_date INTEGER,
+            first_visit INTEGER, -- 최초 방문일
+            health_conditions TEXT, -- 건강 상태
+            fitness_goals TEXT, -- JSON 문자열로 목표 배열 저장
+            staff_id INTEGER, -- 담당 직원 ID
+            staff_name TEXT, -- 담당 직원 이름  
+            consultation_status TEXT NOT NULL DEFAULT 'pending', -- 상담 상태
+            notes TEXT,
+            is_promoted INTEGER DEFAULT 0, -- 회원 승격 여부 (0: 미승격, 1: 승격)
+            promoted_at INTEGER, -- 승격일시
+            promoted_member_id INTEGER, -- 승격 후 생성된 회원 ID
+            created_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            updated_at INTEGER DEFAULT (cast(strftime('%s', 'now') as integer)),
+            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL,
+            FOREIGN KEY (promoted_member_id) REFERENCES members(id) ON DELETE SET NULL
+          )
+        `);
+        electronLog.info('상담 회원 테이블 (consultation_members) 생성 완료.');
+
+        // consultation_records 테이블 member_id 외래키를 consultation_members도 참조하도록 수정
+        // (기존에는 members만 참조했지만, 이제 consultation_members도 참조 가능하도록)
+        // SQLite에서는 외래키 제약 조건 수정이 어려우므로, 애플리케이션 레벨에서 처리
+
         // 다른 staff, settings 등의 테이블 생성/수정 로직이 있다면 그 이후에...
         electronLog.info('데이터베이스 스키마 설정 완료.');
       } catch (tableError) {

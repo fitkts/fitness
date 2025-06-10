@@ -72,6 +72,23 @@ export const PT_STATUS_OPTIONS = [
   { value: 'no_show' as PTStatus, label: '노쇼', color: 'gray' }
 ];
 
+// 상담 기록 상태 옵션
+export const CONSULTATION_RECORD_STATUS_OPTIONS = [
+  { value: 'scheduled', label: '예약됨', color: 'blue' },
+  { value: 'completed', label: '완료', color: 'green' },
+  { value: 'cancelled', label: '취소됨', color: 'red' },
+  { value: 'no_show', label: '노쇼', color: 'gray' }
+];
+
+// 직원 목록 (임시 데이터 - 실제로는 API에서 가져와야 함)
+export const STAFF_OPTIONS = [
+  { id: 1, name: '이트레이너', position: '헬스 트레이너' },
+  { id: 2, name: '김트레이너', position: '요가 강사' },
+  { id: 3, name: '박트레이너', position: '필라테스 강사' },
+  { id: 4, name: '최트레이너', position: '재활 트레이너' },
+  { id: 5, name: '정트레이너', position: '크로스핏 코치' }
+];
+
 // 운동 목표 옵션
 export const FITNESS_GOALS_OPTIONS = [
   '체중 감량',

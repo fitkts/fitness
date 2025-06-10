@@ -44,28 +44,27 @@ const Lockers: React.FC = () => {
   const loadLockers = async (page: number = 1) => {
     try {
       setIsLoading(true);
-      // 서버 사이드 페이지네이션 사용
-      const requestParams = {
+      
+      console.log('🚀 락커 데이터 요청 시작:', {
         page,
         pageSize: PAGINATION_CONFIG.ITEMS_PER_PAGE,
-        searchTerm: searchTerm || '',
-        filter: filter === 'all' ? 'all' : filter as any
-      };
-      
-      console.log('🚀 락커 데이터 요청 시작:', requestParams);
+        searchTerm,
+        filter,
+        expectedRange: `${(page - 1) * PAGINATION_CONFIG.ITEMS_PER_PAGE + 1}-${page * PAGINATION_CONFIG.ITEMS_PER_PAGE}`
+      });
       
       const response = await getAllLockers(
-        requestParams.page,
-        requestParams.pageSize,
-        requestParams.searchTerm,
-        requestParams.filter
+        page,
+        PAGINATION_CONFIG.ITEMS_PER_PAGE,
+        searchTerm || '',
+        filter === 'all' ? 'all' : filter as any
       );
       
       console.log('📡 서버 응답:', {
         success: response?.success,
         dataLength: response?.data?.data?.length || 0,
         total: response?.data?.total || 0,
-        actualResponse: response
+        page
       });
       
       if (response && response.success && response.data) {
@@ -77,11 +76,11 @@ const Lockers: React.FC = () => {
           receivedCount: lockersData.length,
           totalFromServer: total,
           totalPages: Math.ceil(total / PAGINATION_CONFIG.ITEMS_PER_PAGE),
-          lockersPreview: lockersData.slice(0, 3).map(l => ({ 
-            id: l.id, 
-            number: l.number, 
-            status: l.status 
-          })),
+          firstLocker: lockersData[0] ? { id: lockersData[0].id, number: lockersData[0].number } : null,
+          lastLocker: lockersData[lockersData.length - 1] ? { 
+            id: lockersData[lockersData.length - 1].id, 
+            number: lockersData[lockersData.length - 1].number 
+          } : null,
           searchActive: !!searchTerm,
           filterActive: filter !== 'all'
         });

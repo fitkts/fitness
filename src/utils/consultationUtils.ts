@@ -121,26 +121,28 @@ export const sortMembers = (
 /**
  * 신규 회원 폼 데이터를 ConsultationMember 형식으로 변환
  */
-export const transformNewMemberData = (formData: NewMemberFormData): Partial<ConsultationMember> => {
+export const transformNewMemberData = (formData: NewMemberFormData): any => {
   const now = Math.floor(Date.now() / 1000);
   
+  // Member API에 맞는 형식으로 변환
   return {
     name: formData.name.trim(),
     phone: formData.phone.replace(/[^\d-]/g, ''), // 숫자와 하이픈만 유지
     email: formData.email?.trim() || undefined,
     gender: formData.gender,
-    birth_date: formData.birth_date ? 
-      Math.floor(new Date(formData.birth_date).getTime() / 1000) : undefined,
-    join_date: now,
-    membership_type: formData.membership_type,
-    staff_id: formData.staff_id,
+    birthDate: formData.birth_date || undefined, // YYYY-MM-DD 형식 유지
+    joinDate: new Date().toISOString().split('T')[0], // 오늘 날짜
+    membershipType: formData.membership_type,
+    staffId: formData.staff_id,
+    staffName: formData.staff_name,
     notes: formData.notes?.trim() || undefined,
-    consultation_status: 'pending',
-    emergency_contact: formData.emergency_contact?.trim() || undefined,
-    health_conditions: formData.health_conditions?.trim() || undefined,
-    fitness_goals: formData.fitness_goals || [],
-    created_at: now,
-    updated_at: now
+    // 추가 정보들은 별도로 처리할 수 있도록 메타데이터로 전달
+    metadata: {
+      first_visit: formData.first_visit,
+      consultation_status: formData.consultation_status || 'pending',
+      health_conditions: formData.health_conditions?.trim() || undefined,
+      fitness_goals: formData.fitness_goals || []
+    }
   };
 };
 
@@ -323,6 +325,16 @@ export const validateMemberData = (data: NewMemberFormData): string[] => {
     const age = today.getFullYear() - birthDate.getFullYear();
     if (age > 120) {
       errors.push('올바른 생년월일을 입력해주세요.');
+    }
+  }
+
+  // 최초 방문일 검증
+  if (data.first_visit) {
+    const firstVisitDate = new Date(data.first_visit);
+    const today = new Date();
+    
+    if (firstVisitDate > today) {
+      errors.push('최초 방문일은 오늘보다 이전 날짜여야 합니다.');
     }
   }
   
