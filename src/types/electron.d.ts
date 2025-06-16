@@ -1,4 +1,5 @@
 import { SettingsData, AttendanceRecord, Member, DashboardStats } from './index'; // Member, DashboardStats 임포트 추가
+import { LockerPaymentData } from './lockerPayment';
 
 declare global {
   interface Window {
@@ -39,6 +40,51 @@ declare global {
       ) => Promise<{ success: boolean; data?: Member[]; error?: string }>;
       // 대시보드 통계 API
       getDashboardStats: () => Promise<DashboardStats>; 
+      
+      // 락커 결제 관련 API
+      processLockerPayment: (paymentData: LockerPaymentData) => Promise<{
+        success: boolean;
+        data?: {
+          paymentId: string;
+          lockerId: string;
+          amount: number;
+          newEndDate?: string;
+        };
+        error?: string;
+      }>;
+      getLockerPaymentHistory: (lockerId: string) => Promise<{
+        success: boolean;
+        data?: Array<{
+          id: string;
+          lockerId: string;
+          amount: number;
+          paymentDate: string;
+          months: number;
+          paymentMethod: string;
+        }>;
+        error?: string;
+      }>;
+      updateLockerUsagePeriod: (data: {
+        lockerId: string;
+        newEndDate: string;
+        isExtension: boolean;
+      }) => Promise<{
+        success: boolean;
+        data?: {
+          lockerId: string;
+          endDate: string;
+        };
+        error?: string;
+      }>;
+      cancelLockerPayment: (paymentId: string, reason: string) => Promise<{
+        success: boolean;
+        data?: {
+          paymentId: string;
+          refundAmount: number;
+          cancelDate: string;
+        };
+        error?: string;
+      }>;
       // 여기에 다른 IPC API들도 추가할 수 있습니다.
     };
   }

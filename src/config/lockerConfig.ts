@@ -46,6 +46,31 @@ export const LOCKER_STATUS_STYLES = {
   }
 } as const;
 
+// 월 사용료 설정
+export const MONTHLY_FEE_CONFIG = {
+  DEFAULT: 50000,
+  MIN: 10000,
+  MAX: 200000,
+  STEP: 5000,
+  CURRENCY: '원'
+} as const;
+
+// 락커 크기별 추천 요금
+export const RECOMMENDED_FEES_BY_SIZE = {
+  small: 45000,
+  medium: 50000,
+  large: 60000
+} as const;
+
+// 락커 요금 옵션 설정
+export const FEE_PRESET_OPTIONS = [
+  { label: '기본 요금 (소형)', value: 45000 },
+  { label: '기본 요금 (중형)', value: 50000 },
+  { label: '기본 요금 (대형)', value: 60000 },
+  { label: '프리미엄 요금', value: 80000 },
+  { label: '할인 요금', value: 35000 }
+] as const;
+
 // 버튼 액션 타입
 export type LockerAction = 'view' | 'edit' | 'delete';
 

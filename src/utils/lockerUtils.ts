@@ -1,5 +1,8 @@
 import { Locker } from '../models/types';
 import { PAGINATION_CONFIG } from '../config/lockerConfig';
+import { MONTHLY_FEE_CONFIG, RECOMMENDED_FEES_BY_SIZE } from '../config/lockerConfig';
+import { LockerFeeValidation, LockerFeeCalculation, MemberLockerInfo, LockerStatusInfo } from '../types/locker';
+import { LockerSize } from '../models/types';
 
 /**
  * 락커 목록을 필터링합니다
@@ -165,4 +168,146 @@ export const sortLockersAdvanced = (lockers: Locker[], sortBy: string): Locker[]
         return normalizeLockerNumber(a.number || '').localeCompare(normalizeLockerNumber(b.number || ''));
     }
   });
+};
+
+/**
+ * 월 사용료 유효성 검증
+ */
+export const validateMonthlyFee = (fee: number): LockerFeeValidation => {
+  const { MIN, MAX } = MONTHLY_FEE_CONFIG;
+  
+  if (fee < MIN) {
+    return {
+      isValid: false,
+      error: `월 사용료는 ${MIN.toLocaleString()}원 이상이어야 합니다`,
+      min: MIN,
+      max: MAX
+    };
+  }
+  
+  if (fee > MAX) {
+    return {
+      isValid: false,
+      error: `월 사용료는 ${MAX.toLocaleString()}원 이하이어야 합니다`,
+      min: MIN,
+      max: MAX
+    };
+  }
+  
+  return {
+    isValid: true,
+    min: MIN,
+    max: MAX
+  };
+};
+
+/**
+ * 락커 크기에 따른 추천 요금 반환
+ */
+export const getRecommendedFeeBySize = (size: LockerSize): number => {
+  return RECOMMENDED_FEES_BY_SIZE[size] || MONTHLY_FEE_CONFIG.DEFAULT;
+};
+
+/**
+ * 락커 사용료 계산 (할인 적용)
+ */
+export const calculateLockerFee = (
+  monthlyFee: number,
+  months: number,
+  discountRate: number = 0
+): LockerFeeCalculation => {
+  const baseAmount = monthlyFee * months;
+  const discountAmount = Math.floor(baseAmount * (discountRate / 100));
+  const finalAmount = baseAmount - discountAmount;
+  
+  return {
+    monthlyFee,
+    totalMonths: months,
+    baseAmount,
+    discountAmount,
+    finalAmount
+  };
+};
+
+/**
+ * 숫자를 원화 형식으로 포맷팅
+ */
+export const formatCurrency = (amount: number): string => {
+  return `${amount.toLocaleString()}원`;
+};
+
+/**
+ * 문자열을 숫자로 변환 (숫자가 아닌 문자 제거)
+ */
+export const parseNumberFromString = (value: string): number => {
+  const numericValue = value.replace(/[^\d]/g, '');
+  return parseInt(numericValue, 10) || 0;
+};
+
+/**
+ * 락커 상태 확인 (만료일 기준)
+ */
+export const getLockerStatus = (endDate: string): LockerStatusInfo => {
+  const today = new Date();
+  const end = new Date(endDate);
+  const diffTime = end.getTime() - today.getTime();
+  const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (daysRemaining < 0) {
+    return {
+      status: 'expired',
+      message: '사용 기간 만료',
+      daysRemaining: 0,
+      isActionRequired: true
+    };
+  }
+  
+  if (daysRemaining <= 7) {
+    return {
+      status: 'expiring_soon',
+      message: `${daysRemaining}일 후 만료`,
+      daysRemaining,
+      isActionRequired: true
+    };
+  }
+  
+  return {
+    status: 'active',
+    message: `${daysRemaining}일 남음`,
+    daysRemaining,
+    isActionRequired: false
+  };
+};
+
+/**
+ * 회원 락커 정보 변환 (간단 표시용)
+ */
+export const convertToMemberLockerInfo = (locker: any): MemberLockerInfo | null => {
+  if (!locker) return null;
+  
+  const statusInfo = getLockerStatus(locker.endDate);
+  
+  return {
+    id: locker.id,
+    number: locker.number,
+    location: locker.location,
+    size: locker.size,
+    startDate: locker.startDate,
+    endDate: locker.endDate,
+    monthlyFee: locker.monthlyFee || MONTHLY_FEE_CONFIG.DEFAULT,
+    status: statusInfo.status,
+    daysRemaining: statusInfo.daysRemaining
+  };
+};
+
+/**
+ * 날짜 형식 변환 (YYYY-MM-DD → YYYY년 MM월 DD일)
+ */
+export const formatDateToKorean = (dateString: string): string => {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  
+  return `${year}년 ${month}월 ${day}일`;
 }; 

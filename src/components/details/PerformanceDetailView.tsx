@@ -52,7 +52,7 @@ const PerformanceDetailView: React.FC<PerformanceDetailViewProps> = ({
     const renewalAnalysis = (() => {
       const totalMembers = membersData.length;
       const activeMembers = membersData.filter(member => 
-        member.membershipEndDate && new Date(member.membershipEndDate) > now
+        member.membershipEnd && new Date(member.membershipEnd) > now
       ).length;
 
       // 시뮬레이션 데이터로 갱신 분석

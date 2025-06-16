@@ -195,6 +195,8 @@ export type MemberFilter = {
   search?: string;
   status?: 'active' | 'expired' | 'all';
   membershipType?: string;
+  staffName?: string;
+  gender?: string;
   sortKey?: string;
   sortDirection?: 'ascending' | 'descending' | null;
 };

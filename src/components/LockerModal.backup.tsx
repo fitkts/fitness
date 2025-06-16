@@ -1,0 +1,513 @@
+import React, { useState, useEffect } from 'react';
+import Modal from './common/Modal';
+import { Locker, Member, LockerSize } from '../models/types';
+import { useToast } from '../contexts/ToastContext';
+import { Search, X } from 'lucide-react';
+import { validateLocker, validateDates, validateLockerStatus } from '../utils/validation';
+import { getCurrentDate, addMonthsToDate, calculateMonthsDifference } from '../utils/lockerPaymentUtils';
+import { validateMonthlyFee, calculateLockerFee, formatCurrency, parseNumberFromString, getRecommendedFeeBySize } from '../utils/lockerUtils';
+import { MONTHLY_FEE_CONFIG, FEE_PRESET_OPTIONS } from '../config/lockerConfig';
+
+interface LockerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (locker: Locker) => Promise<boolean>;
+  locker?: Locker | null;
+  isViewMode?: boolean;
+}
+
+const defaultLocker: Locker = {
+  number: '',
+  status: 'available',
+  size: LockerSize.SMALL,
+  location: '',
+  feeOptions: [{ durationDays: 30, price: 0 }],
+  memberId: undefined,
+  memberName: undefined,
+  startDate: undefined,
+  endDate: undefined,
+  notes: '',
+};
+
+const LockerModal: React.FC<LockerModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  locker,
+  isViewMode = false,
+}) => {
+  const [formData, setFormData] = useState<Locker>(() => locker ? { ...defaultLocker, ...locker } : { ...defaultLocker });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [currentIsViewMode, setCurrentIsViewMode] = useState(isViewMode);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<Member[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('현금');
+  const [monthlyFee, setMonthlyFee] = useState<number>(MONTHLY_FEE_CONFIG.DEFAULT);
+  const [feeError, setFeeError] = useState('');
+
+  const { showToast } = useToast();
+
+  // 신규 추가 모드인지 확인
+  const isAddMode = !locker;
+
+  useEffect(() => {
+    const initialData = locker ? { ...defaultLocker, ...locker, feeOptions: locker.feeOptions && locker.feeOptions.length > 0 ? locker.feeOptions : [{ durationDays: 30, price: 0 }] } : { ...defaultLocker };
+    setFormData(initialData);
+    setCurrentIsViewMode(!!locker && isViewMode);
+
+    // 월 사용료 초기화 (락커 크기에 따른 추천 요금 또는 기존 요금 적용)
+    const initialFee = (locker as any)?.monthlyFee || 
+      (initialData.size ? getRecommendedFeeBySize(initialData.size) : MONTHLY_FEE_CONFIG.DEFAULT);
+    setMonthlyFee(initialFee);
+
+    if (locker && locker.memberId && locker.memberName) {
+      setSelectedMember({ id: locker.memberId, name: locker.memberName, joinDate: '' } as Member);
+    } else {
+      setSelectedMember(null);
+    }
+
+    setSearchTerm('');
+    setSearchResults([]);
+    setErrors({});
+    setFeeError('');
+  }, [locker, isOpen, isViewMode]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // 락커 크기 변경 시 추천 요금 자동 적용
+    if (name === 'size' && value) {
+      const recommendedFee = getRecommendedFeeBySize(value as LockerSize);
+      setMonthlyFee(recommendedFee);
+    }
+
+    if (name === 'notes' && value.length > 500) {
+      setErrors(prev => ({ ...prev, notes: '비고는 500자 이내로 입력해주세요' }));
+    } else if (name === 'notes') {
+      setErrors(prev => { const { notes, ...rest } = prev; return rest; });
+    }
+  };
+
+  // 월 사용료 변경 핸들러
+  const handleMonthlyFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseNumberFromString(e.target.value);
+    setMonthlyFee(value);
+
+    // 유효성 검증
+    const validation = validateMonthlyFee(value);
+    if (!validation.isValid) {
+      setFeeError(validation.error || '');
+    } else {
+      setFeeError('');
+    }
+  };
+
+  // 요금 프리셋 선택 핸들러
+  const handleFeePresetSelect = (fee: number) => {
+    setMonthlyFee(fee);
+    setFeeError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const validationResult = validateLocker(formData);
+    if (!validationResult.isValid && validationResult.errors) {
+      setErrors(validationResult.errors);
+      return;
+    }
+
+    if (formData.status === 'occupied') {
+      const dateValidation = validateDates(formData.startDate, formData.endDate);
+      if (!dateValidation.isValid) {
+        setErrors(prev => ({ ...prev, startDate: dateValidation.error, endDate: dateValidation.error }));
+        return;
+      }
+    }
+
+    const statusValidation = validateLockerStatus(
+      formData.status,
+      formData.memberId,
+      formData.startDate,
+      formData.endDate
+    );
+    if (!statusValidation.isValid) {
+      setErrors(prev => ({ ...prev, status: statusValidation.error }));
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      // monthlyFee를 포함해서 저장
+      const dataToSave = { ...formData, monthlyFee };
+      const success = await onSave(dataToSave);
+      if (success) {
+        onClose();
+      }
+    } catch (error) {
+      console.error('락커 저장 오류:', error);
+      showToast('error', '저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSearch = async (term: string) => {
+    setSearchTerm(term);
+    if (term.length < 1) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    try {
+      setIsSearching(true);
+      if (window.api && window.api.searchMembers) {
+        const response = await window.api.searchMembers(term);
+        if (response.success && response.data) {
+          setSearchResults(response.data);
+        } else {
+          setSearchResults([]);
+          if (response.error) { showToast('error', `회원 검색 실패: ${response.error}`); }
+        }
+      } else {
+        showToast('error', '회원 검색 API를 사용할 수 없습니다.');
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('회원 검색 오류:', error);
+      showToast('error', '회원 검색 중 오류가 발생했습니다.');
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectMember = (member: Member) => {
+    setSelectedMember(member);
+    setFormData((prev) => ({ ...prev, memberId: member.id, memberName: member.name }));
+    setSearchResults([]);
+    setSearchTerm('');
+  };
+
+  const handleClearMember = () => {
+    setSelectedMember(null);
+    setFormData((prev) => ({ ...prev, memberId: undefined, memberName: undefined }));
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={currentIsViewMode ? '락커 상세 정보' : formData?.id ? '락커 정보 수정' : '신규 락커 등록'}
+      size="lg"
+    >
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* 1. 기본 정보 섹션 */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">🏠 기본 정보</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="number" className="block text-sm font-medium text-gray-700 mb-1">
+              락커 번호 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="number"
+              id="number"
+              value={formData.number || ''}
+              onChange={handleChange}
+              disabled={currentIsViewMode}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+              required
+            />
+            {errors.number && <p className="text-xs text-red-500 mt-1">{errors.number}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+              상태 <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="status"
+              id="status"
+              value={formData.status}
+              onChange={handleChange}
+              disabled={currentIsViewMode}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+            >
+              <option value="available">사용 가능</option>
+              <option value="occupied">사용 중</option>
+              <option value="maintenance">수리 중</option>
+            </select>
+            {errors.status && <p className="text-xs text-red-500 mt-1">{errors.status}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="size" className="block text-sm font-medium text-gray-700 mb-1">
+              크기
+            </label>
+            <select
+              name="size"
+              id="size"
+              value={formData.size || ''}
+              onChange={handleChange}
+              disabled={currentIsViewMode}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+            >
+              <option value="">크기 선택</option>
+              {Object.values(LockerSize).map((sizeValue) => (
+                <option key={sizeValue} value={sizeValue}>
+                  {sizeValue === LockerSize.SMALL ? '소형' : sizeValue === LockerSize.MEDIUM ? '중형' : '대형'}
+                </option>
+              ))}
+            </select>
+            {errors.size && <p className="text-xs text-red-500 mt-1">{errors.size}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+              위치
+            </label>
+            <input
+              type="text"
+              name="location"
+              id="location"
+              value={formData.location || ''}
+              onChange={handleChange}
+              disabled={currentIsViewMode}
+              placeholder="예: 1층 A구역, 2층 창가쪽"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
+            />
+            {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
+          </div>
+
+          </div>
+        </div>
+
+        {/* 2. 회원 정보 섹션 (사용 중 상태일 때만 표시) */}
+        {formData.status === 'occupied' && (
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">👤 회원 정보</h3>
+            
+            {!currentIsViewMode ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  회원 검색
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    placeholder="회원명 또는 전화번호로 검색..."
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <Search
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={18}
+                  />
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="mt-2 border rounded-md shadow-sm max-h-48 overflow-y-auto">
+                    {searchResults.map((member) => (
+                      <div
+                        key={member.id}
+                        onClick={() => handleSelectMember(member)}
+                        className="p-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-sm text-gray-500">{member.phone}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedMember && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{selectedMember.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {selectedMember.phone}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearMember}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-white border border-gray-300 rounded-md">
+                <p className="font-medium text-gray-900">{formData.memberName}</p>
+                <p className="text-sm text-gray-500">회원 ID: {formData.memberId}</p>
+              </div>
+            )}
+
+            {/* 사용 기간 및 결제 (사용 중 상태일 때만) */}
+            {!currentIsViewMode && (
+              <div className="space-y-4">
+                {/* 기간 선택 - 월 단위 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    사용 기간 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {[1, 3, 6, 12].map((months) => (
+                      <button
+                        key={months}
+                        type="button"
+                        onClick={() => {
+                          const startDate = formData.startDate || getCurrentDate();
+                          const endDate = addMonthsToDate(startDate, months);
+                          setFormData(prev => ({ ...prev, startDate, endDate }));
+                        }}
+                        className="p-2 text-sm border rounded-lg hover:bg-blue-50 transition-colors"
+                        disabled={currentIsViewMode}
+                      >
+                        {months}개월
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* 상세 날짜 설정 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">시작일</label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${errors.startDate ? 'border-red-500' : 'border-gray-300'}`}
+                        disabled={currentIsViewMode}
+                        required
+                      />
+                      {errors.startDate && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.startDate}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">종료일</label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${errors.endDate ? 'border-red-500' : 'border-gray-300'}`}
+                        disabled={currentIsViewMode}
+                        required
+                      />
+                      {errors.endDate && (
+                        <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 결제 정보 */}
+                {!currentIsViewMode && formData.startDate && formData.endDate && (
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">💳 결제 정보</h4>
+                    
+                    {/* 결제 계산 */}
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">사용 기간:</span>
+                        <span className="font-medium">
+                          {calculateMonthsDifference(formData.startDate, formData.endDate)}개월
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">월 사용료:</span>
+                        <span className="font-medium">{formatCurrency(monthlyFee)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="font-semibold">총 결제 금액:</span>
+                        <span className="font-bold text-blue-600">
+                          {formatCurrency(calculateMonthsDifference(formData.startDate, formData.endDate) * monthlyFee)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 결제 방법 선택 */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">결제 방법</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['현금', '카드', '계좌이체', '기타'].map((method) => (
+                          <button
+                            key={method}
+                            type="button"
+                            onClick={() => setPaymentMethod(method)}
+                            className={`p-2 text-xs border rounded transition-colors ${
+                              paymentMethod === method
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {method}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 비고 */}
+        <div className="pt-4 border-t border-gray-200">
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+            비고
+          </label>
+          <textarea
+            name="notes"
+            value={formData.notes || ''}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            rows={3}
+            disabled={currentIsViewMode}
+          />
+          {errors.notes && <p className="text-xs text-red-500 mt-1">{errors.notes}</p>}
+        </div>
+
+        {/* 버튼 영역 */}
+        <div className="pt-6 border-t border-gray-200 flex items-center justify-end space-x-3">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            취소
+          </button>
+          {!currentIsViewMode && (
+            <button 
+              type="submit" 
+              disabled={isSubmitting} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {isSubmitting ? '저장 중...' : (formData?.id ? '수정 완료' : '락커 등록')}
+            </button>
+          )}
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+export default LockerModal;

@@ -53,7 +53,7 @@ const MemberDetailView: React.FC<MemberDetailViewProps> = ({
     // 전체 회원 분류
     const totalMembers = membersData.length;
     const activeMembers = membersData.filter(member => 
-      member.membershipEndDate && new Date(member.membershipEndDate) > now
+      member.membershipEnd && new Date(member.membershipEnd) > now
     ).length;
     
     // 선택 기간 내 신규 가입 회원
@@ -64,8 +64,8 @@ const MemberDetailView: React.FC<MemberDetailViewProps> = ({
 
     // 회원권 만료 임박 회원 (30일 이내)
     const expiringMembers = membersData.filter(member => {
-      if (!member.membershipEndDate) return false;
-      const endDate = new Date(member.membershipEndDate);
+      if (!member.membershipEnd) return false;
+      const endDate = new Date(member.membershipEnd);
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       return endDate > now && endDate <= thirtyDaysFromNow;
     }).length;

@@ -22,6 +22,40 @@ jest.mock('react-dom', () => ({
 const mockOnSave = jest.fn().mockResolvedValue(true);
 const mockOnClose = jest.fn();
 
+// Mock 데이터
+const mockMemberWithLocker: Member = {
+  id: 1,
+  name: '김철수',
+  phone: '010-1234-5678',
+  email: 'test@example.com',
+  membershipType: '3개월권',
+  joinDate: '2025-01-01',
+  notes: '테스트 회원'
+};
+
+// Mock API 응답
+const mockLockerResponse = {
+  success: true,
+  data: {
+    id: 1,
+    number: '001',
+    status: 'occupied',
+    size: 'small',
+    location: '1층 A구역',
+    startDate: '2025-01-01',
+    endDate: '2025-04-01',
+    monthlyFee: 50000
+  }
+};
+
+// window.api 모킹
+global.window = {
+  ...global.window,
+  api: {
+    getLockerByMemberId: jest.fn().mockResolvedValue(mockLockerResponse)
+  }
+};
+
 describe('MemberModal', () => {
   beforeEach(() => {
     // root 요소 추가
@@ -357,5 +391,75 @@ describe('MemberModal', () => {
     // onSwitchToEdit 콜백이 호출되었는지 확인
     expect(mockOnSwitchToEdit).toHaveBeenCalledTimes(1);
     expect(mockOnSave).not.toHaveBeenCalled(); // 저장 버튼은 없으므로 onSave는 호출되지 않음
+  });
+
+  test('회원의 락커 정보가 표시되어야 한다', async () => {
+    render(
+      <MemberModal
+        isOpen={true}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        member={mockMemberWithLocker}
+        isViewMode={true}
+      />
+    );
+
+    // 락커 정보 로딩 대기
+    await waitFor(() => {
+      expect(screen.getByText('락커 정보')).toBeInTheDocument();
+    });
+
+    // 락커 번호 확인
+    expect(screen.getByText('001번')).toBeInTheDocument();
+    
+    // 락커 위치 확인
+    expect(screen.getByText('1층 A구역')).toBeInTheDocument();
+    
+    // 사용 기간 확인
+    expect(screen.getByText(/2025-01-01 ~ 2025-04-01/)).toBeInTheDocument();
+  });
+
+  test('락커를 사용하지 않는 회원의 경우 "사용 중인 락커 없음" 메시지가 표시되어야 한다', async () => {
+    // 락커 없음 응답 모킹
+    window.api.getLockerByMemberId.mockResolvedValueOnce({
+      success: true,
+      data: null
+    });
+
+    render(
+      <MemberModal
+        isOpen={true}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        member={mockMemberWithLocker}
+        isViewMode={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('사용 중인 락커 없음')).toBeInTheDocument();
+    });
+  });
+
+  test('락커 정보 로딩 실패 시 에러 메시지가 표시되어야 한다', async () => {
+    // API 오류 응답 모킹
+    window.api.getLockerByMemberId.mockResolvedValueOnce({
+      success: false,
+      error: '락커 정보 조회 실패'
+    });
+
+    render(
+      <MemberModal
+        isOpen={true}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        member={mockMemberWithLocker}
+        isViewMode={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('락커 정보를 불러올 수 없습니다')).toBeInTheDocument();
+    });
   });
 });

@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Filter, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ViewType, PaymentStatusFilter, QuickDateRange } from '../types/statistics';
+import { ViewType, PaymentStatusFilter } from '../types/statistics';
+import { createDynamicQuickDateRanges } from '../utils/dynamicDateUtils';
 
 interface FilterPanelProps {
   startDate: string;
   endDate: string;
   viewType: ViewType;
   statusFilter: PaymentStatusFilter;
-  quickDateRanges: QuickDateRange[];
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   onViewTypeChange: (viewType: ViewType) => void;
@@ -20,13 +20,17 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   endDate,
   viewType,
   statusFilter,
-  quickDateRanges,
   onStartDateChange,
   onEndDateChange,
   onViewTypeChange,
   onStatusFilterChange,
   onQuickDateRange
 }) => {
+  // 현재 선택된 날짜를 기준으로 동적 빠른 날짜 범위 생성
+  const quickDateRanges = useMemo(() => {
+    return createDynamicQuickDateRanges(startDate);
+  }, [startDate]);
+
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
       <div className="flex items-center mb-4">

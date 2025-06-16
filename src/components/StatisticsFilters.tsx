@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ViewType, PaymentStatusFilter } from '../types/statistics';
-import { createQuickDateRanges } from '../utils/dateUtils';
+import { createDynamicQuickDateRanges } from '../utils/dynamicDateUtils';
 
 interface StatisticsFiltersProps {
   startDate: string;
@@ -26,7 +26,10 @@ const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({
   onStatusFilterChange,
   onQuickDateRange
 }) => {
-  const quickDateRanges = createQuickDateRanges();
+  // 현재 선택된 날짜를 기준으로 동적 빠른 날짜 범위 생성
+  const quickDateRanges = useMemo(() => {
+    return createDynamicQuickDateRanges(startDate);
+  }, [startDate]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
