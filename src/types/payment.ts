@@ -82,15 +82,14 @@ export interface PaymentSummary {
 // 결제 필터 타입
 export interface PaymentFilter {
   search?: string;
+  status?: 'all' | '완료' | '취소' | '환불' | '대기';
+  membershipType?: string;
+  paymentMethod?: 'all' | '현금' | '카드' | '계좌이체' | '기타';
+  staffName?: string;
   startDate?: string;
   endDate?: string;
-  status?: PaymentStatus | 'all';
-  membershipType?: string;
-  paymentMethod?: PaymentMethod | 'all';
   minAmount?: number;
   maxAmount?: number;
-  sortKey?: keyof Payment;
-  sortDirection?: 'ascending' | 'descending' | null;
 }
 
 // 간소화된 결제 옵션 타입 (UI에서 사용)
@@ -104,4 +103,46 @@ export interface MembershipTypeOption {
   name: string;
   price: number;
   durationMonths: number;
+}
+
+export interface MembershipTypeFilter {
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minDuration?: number;
+  maxDuration?: number;
+}
+
+export interface PaymentStatistics {
+  totalPayments: number;
+  totalAmount: number;
+  completedPayments: number;
+  completedAmount: number;
+  canceledPayments: number;
+  canceledAmount: number;
+  refundedPayments: number;
+  refundedAmount: number;
+  averageAmount: number;
+  topMembershipTypes: Array<{
+    name: string;
+    count: number;
+    amount: number;
+  }>;
+  monthlyTrend: Array<{
+    month: string;
+    count: number;
+    amount: number;
+  }>;
+}
+
+export interface PaymentDateRange {
+  startDate: string;
+  endDate: string;
+  label: string;
+}
+
+export interface PaymentAmountRange {
+  min: number;
+  max: number;
+  label: string;
 }

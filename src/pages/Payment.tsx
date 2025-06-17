@@ -15,11 +15,15 @@ import {
   Download,
   ListChecks,
   Settings2,
+  BarChart3,
 } from 'lucide-react';
 import NewPaymentModal from '../components/payment/NewPaymentModal';
 import MembershipTypeModal from '../components/payment/MembershipTypeModal';
 import PaymentTable from '../components/payment/PaymentTable';
 import MembershipTypeList from '../components/payment/MembershipTypeList';
+import PaymentSearchFilter from '../components/payment/PaymentSearchFilter';
+import MembershipTypeSearchFilter from '../components/payment/MembershipTypeSearchFilter';
+import PaymentStatistics from '../components/payment/PaymentStatistics';
 import {
   getAllMembers,
   getAllPayments,
@@ -30,27 +34,18 @@ import {
 } from '../database/ipcService';
 import { useToast } from '../contexts/ToastContext';
 import { Member, Payment, MembershipType, Staff } from '../models/types';
+import { MembershipTypeFilter } from '../types/payment';
 import { MemberOption } from '../components/payment/NewMemberSearchInput';
+import { 
+  filterPayments, 
+  filterMembershipTypes, 
+  calculatePaymentStatistics,
+  formatDate,
+  formatCurrency,
+  PaymentFilter
+} from '../utils/paymentUtils';
 
-const formatDate = (dateString: string | undefined | null): string => {
-  if (!dateString) return 'N/A';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '유효하지 않은 날짜';
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  } catch (e) {
-    return '날짜 변환 오류';
-  }
-};
-
-const formatCurrency = (value: number | undefined | null): string => {
-  if (value === undefined || value === null) return 'N/A';
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(value);
-};
+// 포맷팅 함수들은 utils로 이동했으므로 삭제
 
 const ITEMS_PER_PAGE = 10; // 페이지당 항목 수
 
@@ -73,7 +68,7 @@ const PaymentPage: React.FC = () => {
   const [selectedMembershipType, setSelectedMembershipType] = useState<MembershipType | null>(null);
   const [isMembershipTypeViewMode, setIsMembershipTypeViewMode] = useState<boolean>(false);
   
-  const [activeTab, setActiveTab] = useState<'payments' | 'membershipTypes'>('payments');
+  const [activeTab, setActiveTab] = useState<'payments' | 'membershipTypes' | 'statistics'>('payments');
 
   const [paymentSortConfig, setPaymentSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: 'paymentDate', direction: 'descending' });
   const [membershipTypeSortConfig, setMembershipTypeSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: 'name', direction: 'ascending' });
@@ -81,6 +76,73 @@ const PaymentPage: React.FC = () => {
   // 페이지네이션 상태 추가
   const [paymentsCurrentPage, setPaymentsCurrentPage] = useState<number>(1);
   const [membershipTypesCurrentPage, setMembershipTypesCurrentPage] = useState<number>(1);
+
+  // 필터 상태 추가
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>({
+    search: '',
+    status: 'all',
+    membershipType: 'all',
+    paymentMethod: 'all',
+    staffName: 'all',
+    startDate: '',
+    endDate: '',
+    minAmount: undefined,
+    maxAmount: undefined,
+  });
+
+  const [membershipTypeFilter, setMembershipTypeFilter] = useState<MembershipTypeFilter>({
+    search: '',
+    minPrice: undefined,
+    maxPrice: undefined,
+    minDuration: undefined,
+    maxDuration: undefined,
+  });
+
+  // 필터링된 데이터 계산
+  const filteredPayments = useMemo(() => {
+    return filterPayments(payments, paymentFilter);
+  }, [payments, paymentFilter]);
+
+  const filteredMembershipTypes = useMemo(() => {
+    return filterMembershipTypes(membershipTypes, membershipTypeFilter);
+  }, [membershipTypes, membershipTypeFilter]);
+
+  // 통계 데이터 계산
+  const paymentStatistics = useMemo(() => {
+    return calculatePaymentStatistics(filteredPayments);
+  }, [filteredPayments]);
+
+  // 이용권 종류 목록 (필터용)
+  const membershipTypeNames = useMemo(() => {
+    return [...new Set(payments.map(p => p.membershipType).filter(Boolean))];
+  }, [payments]);
+
+  // 필터 초기화 함수들
+  const resetPaymentFilter = useCallback(() => {
+    setPaymentFilter({
+      search: '',
+      status: 'all',
+      membershipType: 'all',
+      paymentMethod: 'all',
+      staffName: 'all',
+      startDate: '',
+      endDate: '',
+      minAmount: undefined,
+      maxAmount: undefined,
+    });
+    setPaymentsCurrentPage(1);
+  }, []);
+
+  const resetMembershipTypeFilter = useCallback(() => {
+    setMembershipTypeFilter({
+      search: '',
+      minPrice: undefined,
+      maxPrice: undefined,
+      minDuration: undefined,
+      maxDuration: undefined,
+    });
+    setMembershipTypesCurrentPage(1);
+  }, []);
 
   const requestPaymentSort = (key: string) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -198,7 +260,7 @@ const PaymentPage: React.FC = () => {
   };
 
   const sortedPayments = useMemo(() => {
-    let sortableItems = [...payments];
+    let sortableItems = [...filteredPayments];
     if (paymentSortConfig.key !== null) {
       sortableItems.sort((a, b) => {
         const valA = (a as any)[paymentSortConfig.key!];
@@ -213,10 +275,10 @@ const PaymentPage: React.FC = () => {
       });
     }
     return sortableItems;
-  }, [payments, paymentSortConfig]);
+  }, [filteredPayments, paymentSortConfig]);
 
   const sortedMembershipTypes = useMemo(() => {
-    let sortableItems = [...membershipTypes];
+    let sortableItems = [...filteredMembershipTypes];
     if (membershipTypeSortConfig.key !== null) {
       sortableItems.sort((a, b) => {
         const valA = (a as any)[membershipTypeSortConfig.key!];
@@ -231,7 +293,7 @@ const PaymentPage: React.FC = () => {
       });
     }
     return sortableItems;
-  }, [membershipTypes, membershipTypeSortConfig]);
+  }, [filteredMembershipTypes, membershipTypeSortConfig]);
 
   // 페이지네이션된 데이터
   const paginatedPayments = useMemo(() => {
@@ -387,114 +449,200 @@ const PaymentPage: React.FC = () => {
           >
             <Settings2 size={16} className="inline mr-2" /> 이용권 관리 ({sortedMembershipTypes.length})
           </button>
+          <button
+            onClick={() => setActiveTab('statistics')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'statistics'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+          >
+            <BarChart3 size={16} className="inline mr-2" /> 통계 분석 ({filteredPayments.length})
+          </button>
         </nav>
       </div>
 
-      {activeTab === 'payments' && (
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">결제 내역</h2>
-          {paginatedPayments.length === 0 && sortedPayments.length > 0 && (
-             <div className="text-center py-10">
-                <p className="text-gray-500">현재 페이지에 표시할 결제 내역이 없습니다.</p>
-             </div>
-          )}
-          {sortedPayments.length === 0 ? (
-            <div className="text-center py-10">
-              <DollarSign size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500">등록된 결제 내역이 없습니다.</p>
-              <p className="text-sm text-gray-400 mt-1">
-                '새 결제 등록' 버튼을 클릭하여 결제를 추가하세요.
-              </p>
-            </div>
-          ) : (
-            <>
-              <PaymentTable
-                payments={paginatedPayments} // 정렬 후 페이지네이션된 데이터 전달
-                membershipTypes={membershipTypes}
-                sortConfig={paymentSortConfig}
-                requestSort={requestPaymentSort}
-                formatDate={formatDate}
-                formatCurrency={formatCurrency}
-                onViewPayment={(payment) => handleOpenPaymentModal(payment, true)}
-                onEditPayment={(payment) => handleOpenPaymentModal(payment, false)}
-                onDeletePayment={async (paymentId) => {
-                  if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
-                    try {
-                      const result = await deletePayment(paymentId);
-                      if (result.success) {
-                        showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
-                        loadData(); 
-                        setPaymentsCurrentPage(1); // 삭제 후 첫 페이지로
-                      } else {
-                        showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
-                      }
-                    } catch (error: any) {
-                      showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
+      {/* 통계 탭 */}
+      {activeTab === 'statistics' && (
+        <div className="space-y-6">
+          <PaymentStatistics 
+            statistics={paymentStatistics} 
+            isLoading={isLoading} 
+          />
+          
+          {/* 결제 필터와 결과 */}
+          <PaymentSearchFilter
+            filter={paymentFilter}
+            onFilterChange={setPaymentFilter}
+            onReset={resetPaymentFilter}
+            membershipTypes={membershipTypeNames}
+            staffList={staffList}
+          />
+          
+          {/* 필터링된 결제 목록 (간략 버전) */}
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">필터링된 결제 내역</h2>
+            <PaymentTable
+              payments={paginatedPayments}
+              membershipTypes={membershipTypes}
+              sortConfig={paymentSortConfig}
+              requestSort={requestPaymentSort}
+              formatDate={formatDate}
+              formatCurrency={formatCurrency}
+              onViewPayment={(payment) => handleOpenPaymentModal(payment, true)}
+              onEditPayment={(payment) => handleOpenPaymentModal(payment, false)}
+              onDeletePayment={async (paymentId) => {
+                if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
+                  try {
+                    const result = await deletePayment(paymentId);
+                    if (result.success) {
+                      showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
+                      loadData(); 
+                      setPaymentsCurrentPage(1);
+                    } else {
+                      showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
                     }
+                  } catch (error: any) {
+                    showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
                   }
-                }}
-              />
-              <PaginationControls
-                currentPage={paymentsCurrentPage}
-                totalPages={totalPaymentPages}
-                onPageChange={handlePaymentPageChange}
-                itemCount={sortedPayments.length}
-              />
-            </>
-          )}
+                }
+              }}
+            />
+            <PaginationControls
+              currentPage={paymentsCurrentPage}
+              totalPages={totalPaymentPages}
+              onPageChange={handlePaymentPageChange}
+              itemCount={sortedPayments.length}
+            />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'payments' && (
+        <div className="space-y-6">
+          {/* 결제 검색 필터 */}
+          <PaymentSearchFilter
+            filter={paymentFilter}
+            onFilterChange={setPaymentFilter}
+            onReset={resetPaymentFilter}
+            membershipTypes={membershipTypeNames}
+            staffList={staffList}
+          />
+          
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">결제 내역</h2>
+            {paginatedPayments.length === 0 && sortedPayments.length > 0 && (
+               <div className="text-center py-10">
+                  <p className="text-gray-500">현재 페이지에 표시할 결제 내역이 없습니다.</p>
+               </div>
+            )}
+            {sortedPayments.length === 0 ? (
+              <div className="text-center py-10">
+                <DollarSign size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">등록된 결제 내역이 없습니다.</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  '새 결제 등록' 버튼을 클릭하여 결제를 추가하세요.
+                </p>
+              </div>
+            ) : (
+              <>
+                <PaymentTable
+                  payments={paginatedPayments}
+                  membershipTypes={membershipTypes}
+                  sortConfig={paymentSortConfig}
+                  requestSort={requestPaymentSort}
+                  formatDate={formatDate}
+                  formatCurrency={formatCurrency}
+                  onViewPayment={(payment) => handleOpenPaymentModal(payment, true)}
+                  onEditPayment={(payment) => handleOpenPaymentModal(payment, false)}
+                  onDeletePayment={async (paymentId) => {
+                    if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
+                      try {
+                        const result = await deletePayment(paymentId);
+                        if (result.success) {
+                          showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
+                          loadData(); 
+                          setPaymentsCurrentPage(1);
+                        } else {
+                          showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
+                        }
+                      } catch (error: any) {
+                        showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
+                      }
+                    }
+                  }}
+                />
+                <PaginationControls
+                  currentPage={paymentsCurrentPage}
+                  totalPages={totalPaymentPages}
+                  onPageChange={handlePaymentPageChange}
+                  itemCount={sortedPayments.length}
+                />
+              </>
+            )}
+          </div>
         </div>
       )}
 
       {activeTab === 'membershipTypes' && (
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">이용권 관리</h2>
-          {paginatedMembershipTypes.length === 0 && sortedMembershipTypes.length > 0 && (
-             <div className="text-center py-10">
-                <p className="text-gray-500">현재 페이지에 표시할 이용권 종류가 없습니다.</p>
-             </div>
-          )}
-          {sortedMembershipTypes.length === 0 ? (
-            <div className="text-center py-10">
-              <CreditCard size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500">등록된 이용권 종류가 없습니다.</p>
-              <p className="text-sm text-gray-400 mt-1">
-                '새 이용권 추가' 버튼을 클릭하여 이용권을 추가하세요.
-              </p>
-            </div>
-          ) : (
-            <>
-              <MembershipTypeList
-                membershipTypes={paginatedMembershipTypes} // 정렬 후 페이지네이션된 데이터 전달
-                sortConfig={membershipTypeSortConfig}
-                requestSort={requestMembershipTypeSort}
-                formatCurrency={formatCurrency}
-                onViewType={(type) => handleOpenMembershipTypeModal(type, true)}
-                onEditType={(type) => handleOpenMembershipTypeModal(type, false)}
-                onDeleteType={async (typeId) => {
-                  if (window.confirm('정말로 이 이용권 종류를 삭제하시겠습니까? 이 작업은 연결된 결제 내역에 영향을 줄 수 있습니다.')) {
-                    try {
-                      const result = await deleteMembershipType(typeId);
-                      if (result.success) {
-                        showToast('success', '이용권 종류가 성공적으로 삭제되었습니다.');
-                        loadData();
-                        setMembershipTypesCurrentPage(1); // 삭제 후 첫 페이지로
-                      } else {
-                        showToast('error', `이용권 종류 삭제 실패: ${result.error || '알 수 없는 오류'}`);
+        <div className="space-y-6">
+          {/* 이용권 검색 필터 */}
+          <MembershipTypeSearchFilter
+            filter={membershipTypeFilter}
+            onFilterChange={setMembershipTypeFilter}
+            onReset={resetMembershipTypeFilter}
+          />
+          
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">이용권 관리</h2>
+            {paginatedMembershipTypes.length === 0 && sortedMembershipTypes.length > 0 && (
+               <div className="text-center py-10">
+                  <p className="text-gray-500">현재 페이지에 표시할 이용권 종류가 없습니다.</p>
+               </div>
+            )}
+            {sortedMembershipTypes.length === 0 ? (
+              <div className="text-center py-10">
+                <CreditCard size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">등록된 이용권 종류가 없습니다.</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  '새 이용권 추가' 버튼을 클릭하여 이용권을 추가하세요.
+                </p>
+              </div>
+            ) : (
+              <>
+                <MembershipTypeList
+                  membershipTypes={paginatedMembershipTypes}
+                  sortConfig={membershipTypeSortConfig}
+                  requestSort={requestMembershipTypeSort}
+                  formatCurrency={formatCurrency}
+                  onViewType={(type) => handleOpenMembershipTypeModal(type, true)}
+                  onEditType={(type) => handleOpenMembershipTypeModal(type, false)}
+                  onDeleteType={async (typeId) => {
+                    if (window.confirm('정말로 이 이용권 종류를 삭제하시겠습니까? 이 작업은 연결된 결제 내역에 영향을 줄 수 있습니다.')) {
+                      try {
+                        const result = await deleteMembershipType(typeId);
+                        if (result.success) {
+                          showToast('success', '이용권 종류가 성공적으로 삭제되었습니다.');
+                          loadData();
+                          setMembershipTypesCurrentPage(1);
+                        } else {
+                          showToast('error', `이용권 종류 삭제 실패: ${result.error || '알 수 없는 오류'}`);
+                        }
+                      } catch (error: any) {
+                        showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
                       }
-                    } catch (error: any) {
-                      showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
                     }
-                  }
-                }}
-              />
-              <PaginationControls
-                currentPage={membershipTypesCurrentPage}
-                totalPages={totalMembershipTypePages}
-                onPageChange={handleMembershipTypePageChange}
-                itemCount={sortedMembershipTypes.length}
-              />
-            </>
-          )}
+                  }}
+                />
+                <PaginationControls
+                  currentPage={membershipTypesCurrentPage}
+                  totalPages={totalMembershipTypePages}
+                  onPageChange={handleMembershipTypePageChange}
+                  itemCount={sortedMembershipTypes.length}
+                />
+              </>
+            )}
+          </div>
         </div>
       )}
 
