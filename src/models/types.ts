@@ -14,6 +14,18 @@ const validateLockerNumber = (number: string): boolean => {
   return num >= 1 && num <= 9999; // 범위를 더 넓게 조정
 };
 
+// 이용권 카테고리 enum 추가
+export enum MembershipCategory {
+  MONTHLY = 'monthly',  // 월간 회원권
+  PT = 'pt'            // PT 회원권
+}
+
+// PT 유형 enum 추가
+export enum PTType {
+  SESSION_BASED = 'session_based', // 횟수제 (예: PT 10회권)
+  TERM_BASED = 'term_based'        // 기간제 (예: PT 1개월 무제한)
+}
+
 // 회원 스키마
 export const memberSchema = z.object({
   id: z.number().optional(),
@@ -63,20 +75,68 @@ export const paymentSchema = z.object({
   createdAt: z.string().optional(),
 });
 
-// 이용권(MembershipType) 스키마
+// 향상된 이용권(MembershipType) 스키마
 export const membershipTypeSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, { message: '이용권 이름은 필수입니다' }),
-  durationMonths: z
-    .number()
-    .min(1, { message: '기간(개월)은 1 이상이어야 합니다' }),
   price: z.number().min(0, { message: '가격은 0 이상이어야 합니다' }),
+  
+  // 새로 추가된 필드들
+  membershipCategory: z.nativeEnum(MembershipCategory, { 
+    errorMap: () => ({ message: '이용권 카테고리를 선택해주세요' }) 
+  }).optional().default(MembershipCategory.MONTHLY),
+  
+  ptType: z.nativeEnum(PTType, { 
+    errorMap: () => ({ message: 'PT 유형을 선택해주세요' }) 
+  }).optional().nullable(),
+  
+  // 기존 필드들
+  durationMonths: z.number().min(1, { 
+    message: '기간(개월)은 1 이상이어야 합니다' 
+  }).optional().default(1),
+  
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  maxUses: z.number().optional(),
+  maxUses: z.number().optional().nullable(),
   availableFacilities: z.array(z.string()).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+}).refine((data) => {
+  // 월간 회원권은 기간이 필수
+  if (data.membershipCategory === MembershipCategory.MONTHLY) {
+    return data.durationMonths && data.durationMonths >= 1;
+  }
+  return true;
+}, {
+  message: '월간 회원권은 기간이 필수입니다',
+  path: ['durationMonths']
+}).refine((data) => {
+  // PT 회원권은 ptType이 필수
+  if (data.membershipCategory === MembershipCategory.PT) {
+    return data.ptType !== null && data.ptType !== undefined;
+  }
+  return true;
+}, {
+  message: 'PT 회원권은 PT 유형이 필수입니다',
+  path: ['ptType']
+}).refine((data) => {
+  // 횟수제 PT는 maxUses가 필수
+  if (data.membershipCategory === MembershipCategory.PT && data.ptType === PTType.SESSION_BASED) {
+    return data.maxUses && data.maxUses >= 1;
+  }
+  return true;
+}, {
+  message: '횟수제 PT는 세션 수가 필수입니다',
+  path: ['maxUses']
+}).refine((data) => {
+  // 기간제 PT는 durationMonths가 필수
+  if (data.membershipCategory === MembershipCategory.PT && data.ptType === PTType.TERM_BASED) {
+    return data.durationMonths && data.durationMonths >= 1;
+  }
+  return true;
+}, {
+  message: '기간제 PT는 기간이 필수입니다',
+  path: ['durationMonths']
 });
 
 // StaffStatus enum 정의 추가
@@ -190,6 +250,41 @@ export type MembershipType = z.infer<typeof membershipTypeSchema>;
 export type Staff = z.infer<typeof staffSchema>;
 export type Locker = z.infer<typeof lockerSchema>;
 
+// 이용권 폼 데이터 타입 (UI에서 사용)
+export interface MembershipTypeFormData {
+  name: string;
+  price: number;
+  membershipCategory: MembershipCategory;
+  ptType?: PTType | null;
+  durationMonths?: number;
+  maxUses?: number | null;
+  description?: string;
+  isActive: boolean;
+}
+
+// 기존 데이터와의 호환성을 위한 변환 함수들
+export const convertToEnhanced = (legacy: any): MembershipType => {
+  // 기존 데이터에서 카테고리 추론
+  const membershipCategory = legacy.maxUses && legacy.maxUses > 0 
+    ? MembershipCategory.PT 
+    : MembershipCategory.MONTHLY;
+  
+  // PT 유형 추론 (횟수가 있으면 횟수제, 없으면 기간제)
+  const ptType = membershipCategory === MembershipCategory.PT
+    ? (legacy.maxUses ? PTType.SESSION_BASED : PTType.TERM_BASED)
+    : null;
+
+  return {
+    ...legacy,
+    membershipCategory,
+    ptType,
+    durationMonths: legacy.durationMonths || 1,
+    maxUses: membershipCategory === MembershipCategory.PT && ptType === PTType.SESSION_BASED 
+      ? legacy.maxUses 
+      : null
+  };
+};
+
 // 회원 필터링을 위한 타입
 export type MemberFilter = {
   search?: string;
@@ -201,7 +296,6 @@ export type MemberFilter = {
   sortDirection?: 'ascending' | 'descending' | null;
 };
 
-// 차트 데이터 타입
 export interface ChartData {
   labels: string[];
   datasets: {
@@ -214,7 +308,6 @@ export interface ChartData {
   }[];
 }
 
-// 엑셀 가져오기 옵션
 export interface ImportOptions {
   hasHeaders: boolean;
   sheet: string | number;

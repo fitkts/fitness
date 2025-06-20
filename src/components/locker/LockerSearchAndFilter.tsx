@@ -50,7 +50,10 @@ const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
   const activeFilterCount = getActiveFilterCount();
 
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 sticky top-4 z-20"
+      data-testid="locker-search-filter-main-container"
+    >
       {/* 헤더 섹션 */}
       <div className="flex items-center justify-between">
         <div>
@@ -78,7 +81,10 @@ const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
       </div>
 
       {/* 검색 및 필터 섹션 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 overflow-hidden">
+      <div 
+        className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden"
+        data-testid="locker-search-filter-container"
+      >
         {/* 헤더 */}
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center justify-between">

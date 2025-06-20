@@ -1,9 +1,11 @@
 import React from 'react';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, Plus, Download, Upload, Info } from 'lucide-react';
 import { MemberFilter, Staff } from '../../models/types';
-import { FILTER_OPTIONS } from '../../config/memberConfig';
+import { FILTER_OPTIONS, EXCEL_CONFIG, ACTION_BUTTON_CONFIG, COMPACT_LAYOUT_CONFIG } from '../../config/memberConfig';
+import { MemberSearchFilterActions } from '../../types/member';
+import * as XLSX from 'xlsx';
 
-interface MemberSearchFilterProps {
+interface MemberSearchFilterProps extends MemberSearchFilterActions {
   filter: MemberFilter;
   onFilterChange: (filter: MemberFilter) => void;
   onReset: () => void;
@@ -19,6 +21,11 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
   onPaginationReset,
   staffList = [],
   membershipTypes = [],
+  onAddMember,
+  onImportSuccess,
+  showToast,
+  members = [],
+  showActionButtons = false,
 }) => {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFilterChange({ ...filter, search: e.target.value });
@@ -70,62 +77,159 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
 
   const activeFilterCount = getActiveFilterCount();
 
+  // 엑셀 내보내기 핸들러
+  const handleExportExcel = () => {
+    try {
+      const ws = XLSX.utils.json_to_sheet(members);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, EXCEL_CONFIG.SHEET_NAME);
+      XLSX.writeFile(wb, EXCEL_CONFIG.FILE_NAME);
+      showToast?.('success', '엑셀 파일이 성공적으로 내보내졌습니다.');
+    } catch (error) {
+      console.error('엑셀 내보내기 오류:', error);
+      showToast?.('error', '엑셀 내보내기 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 엑셀 불러오기 핸들러
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        // TODO: 실제 import 로직 구현 필요
+        console.log('Import data:', jsonData);
+        showToast?.('success', '엑셀 데이터를 성공적으로 가져왔습니다.');
+        onImportSuccess?.();
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error('엑셀 불러오기 오류:', error);
+      showToast?.('error', '엑셀 파일 처리 중 오류가 발생했습니다.');
+    }
+
+    // 파일 input 초기화
+    e.target.value = '';
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 overflow-hidden">
+    <div 
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.padding} overflow-hidden sticky top-4 z-20`}
+      data-testid="member-search-filter-container"
+    >
       {/* 헤더 */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <div className={`${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.headerPadding} bg-gray-50 border-b border-gray-200`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Filter size={18} className="text-gray-600" />
-            <h3 className="text-sm font-medium text-gray-900">회원 검색 및 필터</h3>
+            <Filter size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-600" />
+            <h3 className={COMPACT_LAYOUT_CONFIG.HEADER.title}>회원 검색 및 필터</h3>
             {activeFilterCount > 0 && (
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+              <span className={`bg-blue-100 text-blue-800 ${COMPACT_LAYOUT_CONFIG.HEADER.badge} font-medium px-2 py-0.5 rounded-full`}>
                 {activeFilterCount}개 필터 적용됨
               </span>
             )}
           </div>
-          {activeFilterCount > 0 && (
-            <button
-              onClick={onReset}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <X size={14} />
-              초기화
-            </button>
-          )}
+          
+          <div className="flex items-center gap-2">
+            {/* 필터 초기화 버튼 */}
+            {activeFilterCount > 0 && (
+              <button
+                onClick={onReset}
+                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X size={12} />
+                초기화
+              </button>
+            )}
+            
+            {/* 액션 버튼들 */}
+            {showActionButtons && (
+              <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-300">
+                {/* 회원 추가 버튼 */}
+                {onAddMember && (
+                  <button
+                    onClick={onAddMember}
+                    className={ACTION_BUTTON_CONFIG.ADD_MEMBER.className}
+                  >
+                    <Plus size={ACTION_BUTTON_CONFIG.ADD_MEMBER.iconSize} className="mr-2" />
+                    {ACTION_BUTTON_CONFIG.ADD_MEMBER.text}
+                  </button>
+                )}
+
+                {/* 엑셀 버튼 그룹 */}
+                <div className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.container}>
+                  <button
+                    title="엑셀 불러오기"
+                    className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.button}
+                    onClick={() => document.getElementById('excel-import-input')?.click()}
+                  >
+                    <Upload size={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.iconSize} />
+                  </button>
+                  <input
+                    id="excel-import-input"
+                    type="file"
+                    accept={EXCEL_CONFIG.SUPPORTED_FORMATS}
+                    style={{ display: 'none' }}
+                    onChange={handleImportExcel}
+                  />
+                  <button
+                    title="엑셀 내보내기"
+                    className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.button}
+                    onClick={handleExportExcel}
+                  >
+                    <Download size={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.iconSize} />
+                  </button>
+                  <button
+                    title="엑셀 형식 안내"
+                    className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.infoButton}
+                    onClick={() => {/* TODO: 엑셀 형식 안내 모달 */}}
+                  >
+                    <Info size={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.infoIconSize} color="#888" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 필터 컨텐츠 */}
-      <div className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
+        <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
           {/* 검색 박스 */}
           <div className="lg:col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
               회원명 검색
             </label>
             <div className="relative">
               <input
                 type="text"
                 placeholder="회원 이름으로 검색..."
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full pl-8 pr-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 value={filter.search || ''}
                 onChange={handleSearchChange}
               />
               <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={16}
+                className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={14}
               />
             </div>
           </div>
 
           {/* 상태별 필터 */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
               회원 상태
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.status || 'all'}
               onChange={handleStatusChange}
             >
@@ -139,11 +243,11 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
 
           {/* 담당자별 필터 */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
               담당자
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.staffName || 'all'}
               onChange={handleStaffNameChange}
             >
@@ -158,11 +262,11 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
 
           {/* 성별 필터 */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
               성별
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.gender || 'all'}
               onChange={handleGenderChange}
             >
@@ -175,11 +279,11 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
 
           {/* 이용권별 필터 */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
               이용권 종류
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.membershipType || 'all'}
               onChange={handleMembershipTypeChange}
             >

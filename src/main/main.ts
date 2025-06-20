@@ -18,6 +18,7 @@ import {
   promoteConsultationMember,
   getConsultationMemberById
 } from '../database/consultationRepository';
+import { registerUnifiedMemberHandlers, unregisterUnifiedMemberHandlers } from '../ipc/unifiedMemberHandlers';
 
 // 개발 모드 설정
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -137,6 +138,17 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // 통합 회원 관리 IPC 핸들러 등록
+  registerUnifiedMemberHandlers();
+  electronLog.info('통합 회원 관리 IPC 핸들러 등록 완료');
+
+  // 동 백업 정 (매일 정행)
+  cron.schedule('0 0 * * *', () => {
+    createBackup(backupDir)
+      .then(() => electronLog.info('동 백업 료'))
+      .catch((err) => electronLog.error('동 백업 패:', err));
+  });
 }
 
 // Electron초기 마치성
@@ -198,13 +210,6 @@ app.whenReady().then(async () => {
     }
 
     createWindow();
-
-    // 동 백업 정 (매일 정행)
-    cron.schedule('0 0 * * *', () => {
-      createBackup(backupDir)
-        .then(() => electronLog.info('동 백업 료'))
-        .catch((err) => electronLog.error('동 백업 패:', err));
-    });
 
     app.on('activate', () => {
       // macOS서창이 모두 종료? ?음
@@ -1122,12 +1127,23 @@ ipcMain.handle('add-consultation-member', async (event, memberData: any) => {
 ipcMain.handle('update-consultation-member', async (event, id: number, updates: any) => {
   electronLog.info('[Main Process] Received update-consultation-member request:', { id, updates });
   try {
-    // 날짜 문자열을 Unix timestamp로 변환
+    // updates가 유효한지 먼저 체크
+    if (!updates || typeof updates !== 'object') {
+      throw new Error('유효하지 않은 업데이트 데이터입니다.');
+    }
+
+    // 날짜 문자열을 Unix timestamp로 변환 (null 체크 강화)
     const processedUpdates = {
       ...updates,
-      birth_date: updates.birth_date ? Math.floor(new Date(updates.birth_date).getTime() / 1000) : undefined,
-      first_visit: updates.first_visit ? Math.floor(new Date(updates.first_visit).getTime() / 1000) : undefined,
-      fitness_goals: updates.fitness_goals ? JSON.stringify(updates.fitness_goals) : undefined
+      birth_date: (updates.birth_date && updates.birth_date !== null) 
+        ? Math.floor(new Date(updates.birth_date).getTime() / 1000) 
+        : undefined,
+      first_visit: (updates.first_visit && updates.first_visit !== null) 
+        ? Math.floor(new Date(updates.first_visit).getTime() / 1000) 
+        : undefined,
+      fitness_goals: (updates.fitness_goals && updates.fitness_goals !== null) 
+        ? JSON.stringify(updates.fitness_goals) 
+        : undefined
     };
 
     const success = consultationRepository.updateConsultationMember(id, processedUpdates);
@@ -1196,3 +1212,12 @@ ipcMain.handle('promote-consultation-member', async (event, promotionData) => {
     };
   }
 });
+
+// ============== 통합 회원 관리 IPC 핸들러 등록 ==============
+electronLog.info('통합 회원 관리 IPC 핸들러 등록 시작');
+try {
+  registerUnifiedMemberHandlers();
+  electronLog.info('통합 회원 관리 IPC 핸들러 등록 완료');
+} catch (error) {
+  electronLog.error('통합 회원 관리 IPC 핸들러 등록 실패:', error);
+}

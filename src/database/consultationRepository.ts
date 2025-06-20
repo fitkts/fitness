@@ -411,7 +411,7 @@ export function promoteConsultationMember(
       // 1. 상담 회원 정보 조회
       const consultationMember = db.prepare(`
         SELECT * FROM consultation_members 
-        WHERE id = ? AND consultation_status = 'completed' AND is_promoted = false
+        WHERE id = ? AND consultation_status = 'completed' AND is_promoted = 0
       `).get(promotionData.consultationMemberId) as ConsultationMemberData;
 
       if (!consultationMember) {

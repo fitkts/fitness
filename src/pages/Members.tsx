@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
 import { Member, MemberFilter } from '../models/types';
 import { SortConfig, PaginationConfig } from '../types/member';
 import { PAGINATION_CONFIG } from '../config/memberConfig';
@@ -18,7 +17,6 @@ import MemberModal from '../components/MemberModal';
 import MemberSearchFilter from '../components/member/MemberSearchFilter';
 import MemberStatistics from '../components/member/MemberStatistics';
 import MemberTableWithPagination from '../components/member/MemberTableWithPagination';
-import MemberExcelActions from '../components/member/MemberExcelActions';
 
 const Members: React.FC = () => {
   // Zustand 스토어 상태 및 액션
@@ -251,20 +249,6 @@ const Members: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-800">회원 관리</h1>
-        <div className="flex items-center gap-2">
-          <MemberExcelActions 
-            members={members}
-            onImportSuccess={fetchMembers}
-            showToast={showToast}
-          />
-          <button
-            onClick={handleAddMember}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-md flex items-center transition-colors"
-          >
-            <Plus size={16} className="mr-2" />
-            회원 추가
-          </button>
-        </div>
       </div>
 
       <MemberSearchFilter
@@ -274,6 +258,11 @@ const Members: React.FC = () => {
         onPaginationReset={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}
         staffList={staffList}
         membershipTypes={membershipTypes}
+        showActionButtons={true}
+        onAddMember={handleAddMember}
+        onImportSuccess={fetchMembers}
+        showToast={showToast}
+        members={members}
       />
 
       <MemberStatistics statistics={statistics} />

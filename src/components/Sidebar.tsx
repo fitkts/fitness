@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         return <Calendar size={20} />;
       case '결제 관리':
         return <CreditCard size={20} />;
-      case '락카 관리':
+      case '락커 관리':
         return <Key size={20} />;
       case '직원 관리':
         return <Briefcase size={20} />;
@@ -69,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div
       className={`fixed top-0 left-0 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out
-        ${isCollapsed ? 'min-w-[4rem] max-w-[4rem]' : 'min-w-[12rem] max-w-[20rem]'} 
+        ${isCollapsed ? 'w-16' : 'w-52'} 
         ${isMobile ? 'z-50' : 'z-30'}
         flex flex-col`}
     >
@@ -87,13 +87,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         {!isCollapsed && (
           <h1 className="text-xl font-bold text-primary-600 whitespace-nowrap">
-            피트니스 매니저
+            Aware Fit
           </h1>
         )}
       </div>
 
       {/* 메뉴 항목 */}
-      <nav className="flex-1 mt-6 px-2 overflow-y-auto">
+      <nav className="flex-1 mt-6 px-3 overflow-y-auto">
         <div className="space-y-1">
           {pages.map((page) => (
             <button
@@ -123,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {!isCollapsed && (
         <div className="px-4 py-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 whitespace-nowrap">
-            피트니스 매니저 v1.0.0
+            Aware Fit v1.0.0
           </p>
         </div>
       )}

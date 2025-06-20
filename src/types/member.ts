@@ -30,4 +30,15 @@ export interface PaginationConfig {
   showAll: boolean;
 }
 
-export type MemberStatus = 'active' | 'expired'; 
+export type MemberStatus = 'active' | 'expired';
+
+// MemberSearchFilter 액션 버튼 관련 타입 추가
+import type { Member } from '../models/types';
+
+export interface MemberSearchFilterActions {
+  onAddMember?: () => void;
+  onImportSuccess?: () => void;
+  showToast?: (type: 'success' | 'error' | 'info', message: string) => void;
+  members?: Member[];
+  showActionButtons?: boolean;
+} 

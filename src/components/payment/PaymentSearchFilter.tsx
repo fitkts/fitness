@@ -121,7 +121,10 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
   const activeFilterCount = getActiveFilterCount();
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 overflow-hidden">
+    <div 
+      className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 overflow-hidden sticky top-4 z-20"
+      data-testid="payment-search-filter-container"
+    >
       {/* 헤더 */}
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center justify-between">

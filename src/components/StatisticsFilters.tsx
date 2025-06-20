@@ -32,7 +32,10 @@ const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({
   }, [startDate]);
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+    <div 
+      className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 sticky top-4 z-20"
+      data-testid="statistics-filter-container"
+    >
       <div className="flex items-center mb-4">
         <Filter size={20} className="text-gray-600 mr-2" />
         <h2 className="text-lg font-semibold text-gray-800">필터 설정</h2>

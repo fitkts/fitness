@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MembershipType } from '../../models/types';
+import { MembershipType, MembershipCategory, PTType, MembershipTypeFormData } from '../../models/types';
 import { useToast } from '../../contexts/ToastContext';
 import { addMembershipType, updateMembershipType } from '../../database/ipcService';
 
-interface MembershipTypeFormData extends Partial<Omit<MembershipType, 'id' | 'createdAt' | 'updatedAt'>> {
-  // id, createdAt, updatedAt 등은 DB에서 자동 생성되거나 서버에서 처리
-  // maxUses 필드는 MembershipType에 이미 optional number로 존재
+interface MembershipTypeFormData_UI extends Partial<Omit<MembershipType, 'id' | 'createdAt' | 'updatedAt'>> {
+  // 향상된 필드들
+  membershipCategory: MembershipCategory;
+  ptType?: PTType | null;
 }
 
 interface MembershipTypeFormProps {
@@ -24,12 +25,14 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
   setSubmitLoading,
 }) => {
   const { showToast } = useToast();
-  const [formData, setFormData] = useState<MembershipTypeFormData>({
+  const [formData, setFormData] = useState<MembershipTypeFormData_UI>({
     name: '',
     price: 0,
+    membershipCategory: MembershipCategory.MONTHLY,
+    ptType: null,
     durationMonths: 1,
     description: '',
-    maxUses: null, // maxSessions에서 maxUses로 변경
+    maxUses: null,
     isActive: true,
   });
 
@@ -38,23 +41,45 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
       setFormData({
         name: initialMembershipType.name || '',
         price: initialMembershipType.price || 0,
+        membershipCategory: initialMembershipType.membershipCategory || MembershipCategory.MONTHLY,
+        ptType: initialMembershipType.ptType || null,
         durationMonths: initialMembershipType.durationMonths || 1,
         description: initialMembershipType.description || '',
-        maxUses: initialMembershipType.maxUses === undefined ? null : initialMembershipType.maxUses, // maxSessions에서 maxUses로 변경, undefined 처리
+        maxUses: initialMembershipType.maxUses === undefined ? null : initialMembershipType.maxUses,
         isActive: initialMembershipType.isActive === undefined ? true : initialMembershipType.isActive,
       });
     } else {
-      // 새 이용권 시 폼 초기화 (기본값 설정)
       setFormData({
         name: '',
         price: 0,
+        membershipCategory: MembershipCategory.MONTHLY,
+        ptType: null,
         durationMonths: 1,
         description: '',
-        maxUses: null, // maxSessions에서 maxUses로 변경
+        maxUses: null,
         isActive: true,
       });
     }
   }, [initialMembershipType]);
+
+  const handleCategoryChange = (category: MembershipCategory) => {
+    setFormData(prev => ({
+      ...prev,
+      membershipCategory: category,
+      ptType: category === MembershipCategory.PT ? PTType.SESSION_BASED : null,
+      durationMonths: category === MembershipCategory.MONTHLY ? 1 : undefined,
+      maxUses: category === MembershipCategory.PT ? 10 : null,
+    }));
+  };
+
+  const handlePTTypeChange = (ptType: PTType) => {
+    setFormData(prev => ({
+      ...prev,
+      ptType,
+      durationMonths: ptType === PTType.TERM_BASED ? 1 : prev.durationMonths,
+      maxUses: ptType === PTType.SESSION_BASED ? (prev.maxUses || 10) : null,
+    }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -64,9 +89,9 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
       processedValue = (e.target as HTMLInputElement).checked;
     } else if (type === 'number') {
       processedValue = value === '' ? null : parseFloat(value);
-      if (name === 'durationMonths' && processedValue !== null && processedValue < 1) processedValue = 1; // 최소 1개월
-      if (name === 'price' && processedValue !== null && processedValue < 0) processedValue = 0; // 최소 0원
-      if (name === 'maxUses' && processedValue !== null && processedValue < 0) processedValue = null; // maxSessions에서 maxUses로 변경
+      if (name === 'durationMonths' && processedValue !== null && processedValue < 1) processedValue = 1;
+      if (name === 'price' && processedValue !== null && processedValue < 0) processedValue = 0;
+      if (name === 'maxUses' && processedValue !== null && processedValue < 0) processedValue = null;
     }   
     setFormData(prev => ({ ...prev, [name]: processedValue }));
   };
@@ -85,15 +110,41 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
       setSubmitLoading(false);
       return;
     }
-    if (formData.durationMonths == null || formData.durationMonths < 1) {
-      showToast('error', '기간은 최소 1개월 이상이어야 합니다.');
-      setSubmitLoading(false);
-      return;
+
+    // 카테고리별 검증
+    if (formData.membershipCategory === MembershipCategory.MONTHLY) {
+      if (formData.durationMonths == null || formData.durationMonths < 1) {
+        showToast('error', '기간은 최소 1개월 이상이어야 합니다.');
+        setSubmitLoading(false);
+        return;
+      }
+    }
+
+    if (formData.membershipCategory === MembershipCategory.PT) {
+      if (!formData.ptType) {
+        showToast('error', 'PT 유형을 선택해주세요.');
+        setSubmitLoading(false);
+        return;
+      }
+      
+      if (formData.ptType === PTType.SESSION_BASED && (!formData.maxUses || formData.maxUses < 1)) {
+        showToast('error', 'PT 세션 수를 입력해주세요.');
+        setSubmitLoading(false);
+        return;
+      }
+      
+      if (formData.ptType === PTType.TERM_BASED && (!formData.durationMonths || formData.durationMonths < 1)) {
+        showToast('error', '기간은 최소 1개월 이상이어야 합니다.');
+        setSubmitLoading(false);
+        return;
+      }
     }
 
     const typeDataToSave: Omit<MembershipType, 'id' | 'createdAt' | 'updatedAt'> = {
       name: formData.name,
       price: formData.price,
+      membershipCategory: formData.membershipCategory,
+      ptType: formData.ptType,
       durationMonths: formData.durationMonths,
       description: formData.description,
       maxUses: formData.maxUses,
@@ -130,6 +181,112 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
 
   return (
     <form id={formId} className="space-y-4" onSubmit={handleSubmit}>
+      {/* 이용권 카테고리 선택 */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700">
+          이용권 카테고리 <span className="text-red-500">*</span>
+        </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className={`relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+            formData.membershipCategory === MembershipCategory.MONTHLY
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-gray-200 hover:border-gray-300'
+          } ${inputDisabled ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <input
+              type="radio"
+              name="membershipCategory"
+              value={MembershipCategory.MONTHLY}
+              checked={formData.membershipCategory === MembershipCategory.MONTHLY}
+              onChange={(e) => handleCategoryChange(e.target.value as MembershipCategory)}
+              disabled={inputDisabled}
+              className="sr-only"
+            />
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">📅</span>
+              <div>
+                <div className="font-medium text-gray-900">월간 회원권</div>
+                <div className="text-sm text-gray-500">정기적인 헬스장 이용</div>
+              </div>
+            </div>
+          </label>
+
+          <label className={`relative flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+            formData.membershipCategory === MembershipCategory.PT
+              ? 'border-violet-500 bg-violet-50'
+              : 'border-gray-200 hover:border-gray-300'
+          } ${inputDisabled ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <input
+              type="radio"
+              name="membershipCategory"
+              value={MembershipCategory.PT}
+              checked={formData.membershipCategory === MembershipCategory.PT}
+              onChange={(e) => handleCategoryChange(e.target.value as MembershipCategory)}
+              disabled={inputDisabled}
+              className="sr-only"
+            />
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">💪</span>
+              <div>
+                <div className="font-medium text-gray-900">PT 회원권</div>
+                <div className="text-sm text-gray-500">개인 트레이닝 전용</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* PT 유형 선택 (PT 회원권인 경우만 표시) */}
+      {formData.membershipCategory === MembershipCategory.PT && (
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            PT 유형 <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className={`relative flex items-start p-3 border-2 rounded-lg cursor-pointer transition-all ${
+              formData.ptType === PTType.SESSION_BASED
+                ? 'border-violet-500 bg-violet-50'
+                : 'border-gray-200 hover:border-gray-300'
+            } ${inputDisabled ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input
+                type="radio"
+                name="ptType"
+                value={PTType.SESSION_BASED}
+                checked={formData.ptType === PTType.SESSION_BASED}
+                onChange={(e) => handlePTTypeChange(e.target.value as PTType)}
+                disabled={inputDisabled}
+                className="sr-only"
+              />
+              <div>
+                <div className="font-medium text-gray-900">횟수제</div>
+                <div className="text-sm text-gray-500 mt-1">정해진 횟수만큼 PT 이용</div>
+                <div className="text-xs text-gray-400 mt-1">예: PT 10회권, PT 20회권</div>
+              </div>
+            </label>
+
+            <label className={`relative flex items-start p-3 border-2 rounded-lg cursor-pointer transition-all ${
+              formData.ptType === PTType.TERM_BASED
+                ? 'border-violet-500 bg-violet-50'
+                : 'border-gray-200 hover:border-gray-300'
+            } ${inputDisabled ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input
+                type="radio"
+                name="ptType"
+                value={PTType.TERM_BASED}
+                checked={formData.ptType === PTType.TERM_BASED}
+                onChange={(e) => handlePTTypeChange(e.target.value as PTType)}
+                disabled={inputDisabled}
+                className="sr-only"
+              />
+              <div>
+                <div className="font-medium text-gray-900">기간제</div>
+                <div className="text-sm text-gray-500 mt-1">정해진 기간 동안 PT 무제한</div>
+                <div className="text-xs text-gray-400 mt-1">예: PT 1개월 무제한</div>
+              </div>
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* 이용권 이름 */}
       <div className="space-y-1">
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -139,7 +296,7 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
           id="name"
           type="text"
           name="name"
-          placeholder="예: 헬스 3개월"
+          placeholder="예: 헬스 3개월, PT 10회권"
           className={commonInputClass}
           value={formData.name || ''}
           onChange={handleChange}
@@ -148,24 +305,27 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
         />
       </div>
 
-      {/* 가격 및 기간 (가로 배치) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-            가격 (원) <span className="text-red-500">*</span>
-          </label>
-          <input
-            id="price"
-            type="number"
-            name="price"
-            placeholder="0"
-            className={commonInputClass}
-            value={formData.price ?? ''} // null 또는 undefined 시 빈 문자열
-            onChange={handleChange}
-            disabled={inputDisabled}
-            min={0}
-          />
-        </div>
+      {/* 가격 */}
+      <div className="space-y-1">
+        <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+          가격 (원) <span className="text-red-500">*</span>
+        </label>
+        <input
+          id="price"
+          type="number"
+          name="price"
+          placeholder="0"
+          className={commonInputClass}
+          value={formData.price ?? ''}
+          onChange={handleChange}
+          disabled={inputDisabled}
+          min={0}
+        />
+      </div>
+
+      {/* 기간 입력 (월간 회원권 또는 기간제 PT) */}
+      {(formData.membershipCategory === MembershipCategory.MONTHLY || 
+        (formData.membershipCategory === MembershipCategory.PT && formData.ptType === PTType.TERM_BASED)) && (
         <div className="space-y-1">
           <label htmlFor="durationMonths" className="block text-sm font-medium text-gray-700">
             기간 (개월) <span className="text-red-500">*</span>
@@ -182,7 +342,27 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
             min={1}
           />
         </div>
-      </div>
+      )}
+
+      {/* 세션 수 입력 (횟수제 PT) */}
+      {formData.membershipCategory === MembershipCategory.PT && formData.ptType === PTType.SESSION_BASED && (
+        <div className="space-y-1">
+          <label htmlFor="maxUses" className="block text-sm font-medium text-gray-700">
+            PT 세션 수 <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="maxUses"
+            type="number"
+            name="maxUses"
+            placeholder="10"
+            className={commonInputClass}
+            value={formData.maxUses === null ? '' : formData.maxUses}
+            onChange={handleChange}
+            disabled={inputDisabled}
+            min={1}
+          />
+        </div>
+      )}
 
       {/* 설명 */}
       <div className="space-y-1">
@@ -193,30 +373,12 @@ const MembershipTypeForm: React.FC<MembershipTypeFormProps> = ({
           id="description"
           name="description"
           rows={3}
-          placeholder="이용권에 대한 간단한 설명 (예: PT 10회 포함)"
+          placeholder="이용권에 대한 간단한 설명"
           className={commonInputClass}
           value={formData.description || ''}
           onChange={handleChange}
           disabled={inputDisabled}
           maxLength={255}
-        />
-      </div>
-
-      {/* 최대 이용 횟수 */}
-      <div className="space-y-1">
-        <label htmlFor="maxUses" className="block text-sm font-medium text-gray-700">
-          최대 이용 횟수 (0 또는 빈칸: 무제한)
-        </label>
-        <input
-          id="maxUses"
-          type="number"
-          name="maxUses"
-          placeholder="0"
-          className={commonInputClass}
-          value={formData.maxUses === null ? '' : formData.maxUses}
-          onChange={handleChange}
-          disabled={inputDisabled}
-          min={0}
         />
       </div>
 

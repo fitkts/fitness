@@ -17,7 +17,7 @@ enum Page {
   Members = '회원 관리',
   Attendance = '출석 관리',
   Payment = '결제 관리',
-  Lockers = '락카 관리',
+  Lockers = '락커 관리',
   Staff = '직원 관리',
   Consultation = '상담일지',
   Statistics = '통계 관리',

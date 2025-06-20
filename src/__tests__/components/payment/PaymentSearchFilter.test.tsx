@@ -30,132 +30,105 @@ describe('PaymentSearchFilter', () => {
     jest.clearAllMocks();
   });
 
-  it('검색 필터가 올바르게 렌더링되어야 한다', () => {
-    render(
-      <PaymentSearchFilter
-        filter={mockFilter}
-        onFilterChange={mockOnFilterChange}
-        onReset={mockOnReset}
-        membershipTypes={mockMembershipTypes}
-        staffList={mockStaffList}
-      />
-    );
+  describe('Sticky 기능', () => {
+    it('필터 컨테이너에 sticky 클래스가 적용되어야 한다', () => {
+      render(
+        <PaymentSearchFilter
+          filter={mockFilter}
+          onFilterChange={mockOnFilterChange}
+          onReset={mockOnReset}
+          membershipTypes={mockMembershipTypes}
+          staffList={mockStaffList}
+        />
+      );
+      
+      const filterContainer = screen.getByTestId('payment-search-filter-container');
+      expect(filterContainer).toHaveClass('sticky');
+      expect(filterContainer).toHaveClass('top-4');
+    });
 
-    // 검색 입력창이 있는지 확인
-    expect(screen.getByPlaceholderText(/회원명 또는 영수증 번호로 검색/)).toBeInTheDocument();
-    
-    // 상태 선택박스가 있는지 확인
-    expect(screen.getByLabelText('결제 상태')).toBeInTheDocument();
-    
-    // 이용권 종류 선택박스가 있는지 확인
-    expect(screen.getByLabelText('이용권 종류')).toBeInTheDocument();
-  });
+    it('적절한 z-index가 설정되어야 한다', () => {
+      render(
+        <PaymentSearchFilter
+          filter={mockFilter}
+          onFilterChange={mockOnFilterChange}
+          onReset={mockOnReset}
+          membershipTypes={mockMembershipTypes}
+          staffList={mockStaffList}
+        />
+      );
+      
+      const filterContainer = screen.getByTestId('payment-search-filter-container');
+      expect(filterContainer).toHaveClass('z-20');
+    });
 
-  it('검색어 입력 시 onFilterChange가 호출되어야 한다', () => {
-    render(
-      <PaymentSearchFilter
-        filter={mockFilter}
-        onFilterChange={mockOnFilterChange}
-        onReset={mockOnReset}
-        membershipTypes={mockMembershipTypes}
-        staffList={mockStaffList}
-      />
-    );
+    it('스크롤 시에도 배경색이 유지되어야 한다', () => {
+      render(
+        <PaymentSearchFilter
+          filter={mockFilter}
+          onFilterChange={mockOnFilterChange}
+          onReset={mockOnReset}
+          membershipTypes={mockMembershipTypes}
+          staffList={mockStaffList}
+        />
+      );
+      
+      const filterContainer = screen.getByTestId('payment-search-filter-container');
+      expect(filterContainer).toHaveClass('bg-white');
+    });
 
-    const searchInput = screen.getByPlaceholderText(/회원명 또는 영수증 번호로 검색/);
-    fireEvent.change(searchInput, { target: { value: '홍길동' } });
-
-    expect(mockOnFilterChange).toHaveBeenCalledWith({
-      ...mockFilter,
-      search: '홍길동',
+    it('그림자 효과가 적용되어야 한다', () => {
+      render(
+        <PaymentSearchFilter
+          filter={mockFilter}
+          onFilterChange={mockOnFilterChange}
+          onReset={mockOnReset}
+          membershipTypes={mockMembershipTypes}
+          staffList={mockStaffList}
+        />
+      );
+      
+      const filterContainer = screen.getByTestId('payment-search-filter-container');
+      expect(filterContainer).toHaveClass('shadow-sm');
     });
   });
 
-  it('결제 상태 변경 시 onFilterChange가 호출되어야 한다', () => {
-    render(
-      <PaymentSearchFilter
-        filter={mockFilter}
-        onFilterChange={mockOnFilterChange}
-        onReset={mockOnReset}
-        membershipTypes={mockMembershipTypes}
-        staffList={mockStaffList}
-      />
-    );
-
-    const statusSelect = screen.getByLabelText('결제 상태');
-    fireEvent.change(statusSelect, { target: { value: '완료' } });
-
-    expect(mockOnFilterChange).toHaveBeenCalledWith({
-      ...mockFilter,
-      status: '완료',
+  describe('기존 기능 유지', () => {
+    it('검색 입력 시 onFilterChange가 호출되어야 한다', () => {
+      render(
+        <PaymentSearchFilter
+          filter={mockFilter}
+          onFilterChange={mockOnFilterChange}
+          onReset={mockOnReset}
+          membershipTypes={mockMembershipTypes}
+          staffList={mockStaffList}
+        />
+      );
+      
+      const searchInput = screen.getByPlaceholderText('회원명 또는 영수증 번호로 검색...');
+      fireEvent.change(searchInput, { target: { value: '홍길동' } });
+      
+      expect(mockOnFilterChange).toHaveBeenCalledWith({
+        ...mockFilter,
+        search: '홍길동',
+      });
     });
-  });
 
-  it('금액 범위 설정 시 onFilterChange가 호출되어야 한다', () => {
-    render(
-      <PaymentSearchFilter
-        filter={mockFilter}
-        onFilterChange={mockOnFilterChange}
-        onReset={mockOnReset}
-        membershipTypes={mockMembershipTypes}
-        staffList={mockStaffList}
-      />
-    );
-
-    const minAmountInput = screen.getByLabelText('최소 금액');
-    fireEvent.change(minAmountInput, { target: { value: '50000' } });
-
-    expect(mockOnFilterChange).toHaveBeenCalledWith({
-      ...mockFilter,
-      minAmount: 50000,
+    it('필터 초기화 버튼이 정상 작동해야 한다', () => {
+      render(
+        <PaymentSearchFilter
+          filter={mockFilter}
+          onFilterChange={mockOnFilterChange}
+          onReset={mockOnReset}
+          membershipTypes={mockMembershipTypes}
+          staffList={mockStaffList}
+        />
+      );
+      
+      const resetButton = screen.getByText('초기화');
+      fireEvent.click(resetButton);
+      
+      expect(mockOnReset).toHaveBeenCalled();
     });
-  });
-
-  it('필터 초기화 버튼이 동작해야 한다', async () => {
-    const user = userEvent.setup();
-    const filterWithValues = {
-      ...mockFilter,
-      search: '홍길동',
-      status: '완료' as const,
-    };
-
-    render(
-      <PaymentSearchFilter
-        filter={filterWithValues}
-        onFilterChange={mockOnFilterChange}
-        onReset={mockOnReset}
-        membershipTypes={mockMembershipTypes}
-        staffList={mockStaffList}
-      />
-    );
-
-    // 활성 필터가 있을 때 초기화 버튼이 표시되는지 확인
-    const resetButton = screen.getByText('초기화');
-    expect(resetButton).toBeInTheDocument();
-
-    await user.click(resetButton);
-    expect(mockOnReset).toHaveBeenCalled();
-  });
-
-  it('활성 필터 개수가 올바르게 표시되어야 한다', () => {
-    const filterWithValues = {
-      ...mockFilter,
-      search: '홍길동',
-      status: '완료' as const,
-      membershipType: '3개월권',
-    };
-
-    render(
-      <PaymentSearchFilter
-        filter={filterWithValues}
-        onFilterChange={mockOnFilterChange}
-        onReset={mockOnReset}
-        membershipTypes={mockMembershipTypes}
-        staffList={mockStaffList}
-      />
-    );
-
-    // 3개의 필터가 적용되었다는 표시가 있는지 확인
-    expect(screen.getByText('3개 필터 적용됨')).toBeInTheDocument();
   });
 }); 

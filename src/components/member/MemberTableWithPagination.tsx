@@ -13,7 +13,7 @@ import {
 import { Member } from '../../models/types';
 import { SortConfig, PaginationConfig } from '../../types/member';
 import { formatDate, getMembershipStatus, calculatePagination } from '../../utils/memberUtils';
-import { PAGINATION_CONFIG } from '../../config/memberConfig';
+import { PAGINATION_CONFIG, TABLE_COMPACT_CONFIG } from '../../config/memberConfig';
 
 interface MemberTableWithPaginationProps {
   members: Member[];
@@ -106,12 +106,12 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       {/* 헤더 */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <div className={`px-4 ${TABLE_COMPACT_CONFIG.HEADER.containerPadding} bg-gray-50 border-b border-gray-200`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users size={18} className="text-gray-600" />
+            <Users size={TABLE_COMPACT_CONFIG.HEADER.iconSize} className="text-gray-600" />
             <h3 className="text-sm font-medium text-gray-900">회원 목록</h3>
-            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+            <span className={`bg-blue-100 text-blue-800 ${TABLE_COMPACT_CONFIG.HEADER.badgeTextSize} font-medium px-2 py-0.5 rounded-full`}>
               총 {totalItems}명
             </span>
           </div>
@@ -149,14 +149,14 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
 
       {/* 로딩 상태 */}
       {isLoading ? (
-        <div className="p-12 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <div className={`${TABLE_COMPACT_CONFIG.LOADING.containerPadding} text-center`}>
+          <div className={`animate-spin rounded-full ${TABLE_COMPACT_CONFIG.LOADING.spinnerSize} border-b-2 border-blue-600 mx-auto mb-4`}></div>
           <p className="text-gray-500">회원 목록을 불러오는 중...</p>
         </div>
       ) : totalItems === 0 ? (
         /* 빈 상태 */
-        <div className="p-12 text-center">
-          <Database size={48} className="text-gray-300 mx-auto mb-4" />
+        <div className={`${TABLE_COMPACT_CONFIG.EMPTY_STATE.containerPadding} text-center`}>
+          <Database size={TABLE_COMPACT_CONFIG.EMPTY_STATE.iconSize} className="text-gray-300 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-gray-900 mb-2">회원 정보가 없습니다</h4>
           <p className="text-gray-500 mb-4">
             회원을 추가하려면 상단의 '회원 추가' 버튼을 클릭하세요.
@@ -181,7 +181,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                   ].map((column) => (
                     <th
                       key={column.key}
-                      className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                      className={`${TABLE_COMPACT_CONFIG.HEADER.cellPadding} text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
                         column.sortable !== false
                           ? 'cursor-pointer hover:bg-gray-100 transition-colors'
                           : ''
@@ -205,10 +205,10 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                     className="hover:bg-blue-50 transition-colors duration-150 cursor-pointer group"
                     onClick={() => onView(member)}
                   >
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap`}>
                       <div className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                          <span className="text-sm font-medium text-blue-600">
+                        <div className={`${TABLE_COMPACT_CONFIG.CELL.avatarSize} rounded-full bg-blue-100 flex items-center justify-center mr-3`}>
+                          <span className={`${TABLE_COMPACT_CONFIG.CELL.avatarTextSize} font-medium text-blue-600`}>
                             {member.name?.charAt(0) || '?'}
                           </span>
                         </div>
@@ -217,25 +217,25 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap ${TABLE_COMPACT_CONFIG.CELL.textSize} text-gray-700`}>
                       {member.gender || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap ${TABLE_COMPACT_CONFIG.CELL.textSize} text-gray-700`}>
                       {member.phone || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap ${TABLE_COMPACT_CONFIG.CELL.textSize} text-gray-700`}>
                       {member.membershipType || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap ${TABLE_COMPACT_CONFIG.CELL.textSize} text-gray-700`}>
                       {formatDate(member.membershipEnd)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap ${TABLE_COMPACT_CONFIG.CELL.textSize} text-gray-700`}>
                       {member.staffName || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap`}>
                       {getStatusBadge(member.membershipEnd)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <td className={`${TABLE_COMPACT_CONFIG.CELL.padding} whitespace-nowrap text-center`}>
                       <div
                         className="flex justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => e.stopPropagation()}
@@ -248,7 +248,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                           className="p-1 text-blue-500 hover:text-blue-700 transition-colors rounded hover:bg-blue-50"
                           title="상세보기"
                         >
-                          <Info size={16} />
+                          <Info size={14} />
                         </button>
                         <button
                           onClick={(e) => {
@@ -258,7 +258,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                           className="p-1 text-yellow-500 hover:text-yellow-700 transition-colors rounded hover:bg-yellow-50"
                           title="수정"
                         >
-                          <Edit size={16} />
+                          <Edit size={14} />
                         </button>
                         <button
                           onClick={(e) => {
@@ -268,7 +268,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                           className="p-1 text-red-500 hover:text-red-700 transition-colors rounded hover:bg-red-50"
                           title="삭제"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -280,7 +280,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
 
           {/* 페이지네이션 (전체보기가 아닐 때만 표시) */}
           {!showAll && totalPages > 1 && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+            <div className={`px-4 ${TABLE_COMPACT_CONFIG.PAGINATION.containerPadding} bg-gray-50 border-t border-gray-200`}>
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-700">
                   <span className="font-medium">
@@ -299,16 +299,16 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={!hasPrevPage}
-                    className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded hover:bg-gray-100"
+                    className={`${TABLE_COMPACT_CONFIG.PAGINATION.buttonPadding} text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded hover:bg-gray-100`}
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={TABLE_COMPACT_CONFIG.PAGINATION.iconSize} />
                   </button>
                   
                   {startPage > 1 && (
                     <>
                       <button
                         onClick={() => handlePageChange(1)}
-                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                        className={`${TABLE_COMPACT_CONFIG.PAGINATION.numberButtonPadding} text-sm border border-gray-300 rounded hover:bg-gray-50`}
                       >
                         1
                       </button>
@@ -322,7 +322,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                     <button
                       key={number}
                       onClick={() => handlePageChange(number)}
-                      className={`px-3 py-1 text-sm border rounded transition-colors ${
+                      className={`${TABLE_COMPACT_CONFIG.PAGINATION.numberButtonPadding} text-sm border rounded transition-colors ${
                         currentPage === number
                           ? 'bg-blue-500 text-white border-blue-500'
                           : 'border-gray-300 hover:bg-gray-50'
@@ -339,7 +339,7 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                       )}
                       <button
                         onClick={() => handlePageChange(totalPages)}
-                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                        className={`${TABLE_COMPACT_CONFIG.PAGINATION.numberButtonPadding} text-sm border border-gray-300 rounded hover:bg-gray-50`}
                       >
                         {totalPages}
                       </button>
@@ -349,9 +349,9 @@ const MemberTableWithPagination: React.FC<MemberTableWithPaginationProps> = ({
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={!hasNextPage}
-                    className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded hover:bg-gray-100"
+                    className={`${TABLE_COMPACT_CONFIG.PAGINATION.buttonPadding} text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded hover:bg-gray-100`}
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={TABLE_COMPACT_CONFIG.PAGINATION.iconSize} />
                   </button>
                 </nav>
               </div>

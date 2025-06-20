@@ -63,4 +63,52 @@ describe('MemberStatistics', () => {
     const skeletons = screen.getAllByTestId('skeleton');
     expect(skeletons).toHaveLength(4);
   });
+
+  describe('컴팩트 레이아웃', () => {
+    it('컨테이너가 작은 마진을 가져야 한다', () => {
+      render(<MemberStatistics statistics={mockStatistics} />);
+      
+      const container = screen.getByText('총 회원수').closest('.bg-white');
+      expect(container).toHaveClass('mb-4'); // 기존 mb-6에서 변경
+    });
+
+    it('통계 카드들이 작은 패딩을 가져야 한다', () => {
+      render(<MemberStatistics statistics={mockStatistics} />);
+      
+      const statCard = screen.getByText('총 회원수').closest('.bg-blue-50');
+      expect(statCard).toHaveClass('p-3'); // 기존 p-4에서 변경
+    });
+
+    it('컨테이너 패딩이 작아야 한다', () => {
+      render(<MemberStatistics statistics={mockStatistics} />);
+      
+      const container = screen.getByText('총 회원수').closest('.bg-white');
+      const gridContainer = container?.querySelector('.grid');
+      expect(gridContainer).toHaveClass('p-3'); // 기존 p-5에서 변경
+    });
+
+    it('그리드 간격이 작아야 한다', () => {
+      render(<MemberStatistics statistics={mockStatistics} />);
+      
+      const container = screen.getByText('총 회원수').closest('.bg-white');
+      const gridContainer = container?.querySelector('.grid');
+      expect(gridContainer).toHaveClass('gap-3'); // 기존 gap-4에서 변경
+    });
+
+    it('숫자 텍스트가 작은 크기를 가져야 한다', () => {
+      render(<MemberStatistics statistics={mockStatistics} />);
+      
+      const numberElement = screen.getByText('100명');
+      expect(numberElement).toHaveClass('text-xl'); // 기존 text-2xl에서 변경
+      expect(numberElement).toHaveClass('font-bold');
+    });
+
+    it('라벨 텍스트가 작은 크기를 가져야 한다', () => {
+      render(<MemberStatistics statistics={mockStatistics} />);
+      
+      const labelElement = screen.getByText('총 회원수');
+      expect(labelElement).toHaveClass('text-xs'); // 기존 text-sm에서 변경
+      expect(labelElement).toHaveClass('font-medium');
+    });
+  });
 }); 

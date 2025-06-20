@@ -1,7 +1,7 @@
 {
   "name": "fitness",
   "version": "1.0.0",
-  "description": "피트니스 회원 관리 프로그램",
+  "description": "Aware Fit - 피트니스 회원 관리 프로그램",
   "main": "dist/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -85,7 +85,7 @@
   },
   "build": {
     "appId": "com.fitness.manager",
-    "productName": "fitness",
+    "productName": "Aware Fit",
     "directories": {
       "output": "build"
     },
