@@ -70,39 +70,39 @@ export const GENDER_SORT_ORDER = {
 export const ACTION_BUTTON_CONFIG = {
   ADD_MEMBER: {
     text: '회원 추가',
-    className: 'bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1.5 px-3 rounded-md flex items-center transition-colors',
-    iconSize: 14,
+    className: 'bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-1 px-2 rounded-md flex items-center transition-colors',
+    iconSize: 12,
   },
   EXCEL_BUTTONS: {
-    container: 'flex gap-1 items-center',
-    button: 'bg-gray-100 border-none rounded p-2 cursor-pointer hover:bg-gray-200',
-    infoButton: 'bg-transparent border-none p-1 cursor-pointer',
-    iconSize: 16,
-    infoIconSize: 15,
+    container: 'flex gap-0.5 items-center',
+    button: 'bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200',
+    infoButton: 'bg-transparent border-none p-0.5 cursor-pointer',
+    iconSize: 14,
+    infoIconSize: 13,
   },
 } as const;
 
 // 컴팩트 레이아웃 설정
 export const COMPACT_LAYOUT_CONFIG = {
   FILTER_CONTAINER: {
-    padding: 'mb-4', // 기존 mb-6에서 줄임
-    headerPadding: 'px-3 py-2', // 기존 px-4 py-3에서 줄임
-    contentPadding: 'p-3', // 기존 p-4에서 줄임
+    padding: '', // 실제 컨테이너 패딩은 컴포넌트에서 직접 관리
+    headerPadding: 'px-3 py-1.5', // 더 컴팩트하게 (기존 px-3 py-2에서 줄임)
+    contentPadding: 'p-2.5', // 더 컴팩트하게 (기존 p-3에서 줄임)
   },
   INPUT_FIELD: {
-    padding: 'py-1.5', // 기존 py-2에서 줄임
-    textSize: 'text-sm',
-    labelSize: 'text-xs', // 기존 text-xs 유지하되 명시적으로 설정
-    labelMargin: 'mb-1', // 라벨 하단 마진
+    padding: 'py-1', // 더 컴팩트하게 (기존 py-1.5에서 줄임)
+    textSize: 'text-xs', // 더 작은 폰트 (기존 text-sm에서 줄임)
+    labelSize: 'text-xs', // 라벨 크기 유지
+    labelMargin: 'mb-0.5', // 더 작은 마진 (기존 mb-1에서 줄임)
   },
   GRID: {
-    gap: 'gap-3', // 기존 gap-4에서 줄임
-    responsive: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6',
+    gap: 'gap-2', // 더 작은 간격 (기존 gap-3에서 줄임)
+    responsive: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6', // 더 조밀한 그리드
   },
   HEADER: {
-    title: 'text-sm font-medium text-gray-900', // 헤더 제목 크기
-    badge: 'text-xs', // 활성 필터 배지 크기
-    icon: 16, // 헤더 아이콘 크기 (기존 18에서 줄임)
+    title: 'text-xs font-medium text-gray-900', // 더 작은 제목 (기존 text-sm에서 줄임)
+    badge: 'text-xs', // 배지 크기 유지
+    icon: 14, // 더 작은 아이콘 (기존 16에서 줄임)
   },
 } as const;
 

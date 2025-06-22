@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, Filter, X, Plus } from 'lucide-react';
-import { FILTER_OPTIONS, SEARCH_CONFIG, SORT_OPTIONS } from '../../config/lockerConfig';
+import { FILTER_OPTIONS, SEARCH_CONFIG, SORT_OPTIONS, COMPACT_LAYOUT_CONFIG, ACTION_BUTTON_CONFIG } from '../../config/lockerConfig';
 
 interface LockerSearchAndFilterProps {
   searchTerm: string;
@@ -11,9 +11,9 @@ interface LockerSearchAndFilterProps {
   onSortChange: (sortBy: string) => void;
   layoutDirection: 'row' | 'column';
   onLayoutChange: (layout: 'row' | 'column') => void;
-  onAddClick: () => void;
-  totalCount?: number;
-  filteredCount?: number;
+  onReset: () => void;
+  onAddLocker?: () => void;
+  showActionButtons?: boolean;
 }
 
 const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
@@ -25,18 +25,10 @@ const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
   onSortChange,
   layoutDirection,
   onLayoutChange,
-  onAddClick,
-  totalCount = 0,
-  filteredCount = 0
+  onReset,
+  onAddLocker,
+  showActionButtons = false
 }) => {
-  // 필터 초기화 함수
-  const handleReset = () => {
-    onSearchChange('');
-    onFilterChange('all');
-    onSortChange('number_asc');
-    onLayoutChange('row');
-  };
-
   // 활성 필터 개수 계산
   const getActiveFilterCount = () => {
     let count = 0;
@@ -51,158 +43,125 @@ const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
 
   return (
     <div 
-      className="space-y-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 sticky top-4 z-20"
-      data-testid="locker-search-filter-main-container"
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.padding} overflow-hidden sticky top-4 z-20`}
+      data-testid="locker-search-filter-container"
     >
-      {/* 헤더 섹션 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">락커 관리</h1>
-          {totalCount > 0 && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm text-gray-600">
-                총 {totalCount}개
+      {/* 헤더 */}
+      <div className={`${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.headerPadding} bg-gray-50 border-b border-gray-200`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Filter size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-600" />
+            <h3 className={COMPACT_LAYOUT_CONFIG.HEADER.title}>락커 검색 및 필터</h3>
+            {activeFilterCount > 0 && (
+              <span className={`bg-blue-100 text-blue-800 ${COMPACT_LAYOUT_CONFIG.HEADER.badge} font-medium px-1.5 py-0.5 rounded-full`}>
+                {activeFilterCount}개
               </span>
-              {filteredCount !== totalCount && (
-                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                  {filteredCount}개 표시 중
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        <button
-          onClick={onAddClick}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        >
-          <Plus size={18} className="mr-2" />
-          락커 추가
-        </button>
-      </div>
-
-      {/* 검색 및 필터 섹션 */}
-      <div 
-        className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden"
-        data-testid="locker-search-filter-container"
-      >
-        {/* 헤더 */}
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Filter size={18} className="text-gray-600" />
-              <h3 className="text-sm font-medium text-gray-900">락커 검색 및 필터</h3>
-              {activeFilterCount > 0 && (
-                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                  {activeFilterCount}개 필터 적용됨
-                </span>
-              )}
-            </div>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            {/* 필터 초기화 버튼 */}
             {activeFilterCount > 0 && (
               <button
-                onClick={handleReset}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={onReset}
+                className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
               >
-                <X size={14} />
+                <X size={10} />
                 초기화
               </button>
             )}
+            
+            {/* 액션 버튼들 */}
+            {showActionButtons && (
+              <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-gray-300">
+                {/* 락커 추가 버튼 */}
+                {onAddLocker && (
+                  <button
+                    onClick={onAddLocker}
+                    className={`${ACTION_BUTTON_CONFIG.base} ${ACTION_BUTTON_CONFIG.primary}`}
+                  >
+                    <Plus size={12} className="mr-1" />
+                    락커 추가
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* 필터 컨텐츠 */}
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 검색 박스 */}
-            <div className="lg:col-span-2">
-              <label htmlFor="search-input" className="block text-xs font-medium text-gray-700 mb-1">
-                락커 번호 검색
-              </label>
-              <div className="relative">
-                <input
-                  id="search-input"
-                  type="text"
-                  placeholder={SEARCH_CONFIG.PLACEHOLDER}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                />
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={16}
-                />
-              </div>
-            </div>
-
-            {/* 상태 필터 */}
-            <div>
-              <label htmlFor="status-filter" className="block text-xs font-medium text-gray-700 mb-1">
-                락커 상태
-              </label>
-              <select
-                id="status-filter"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={filter}
-                onChange={(e) => onFilterChange(e.target.value)}
-              >
-                {FILTER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 정렬 방식 */}
-            <div>
-              <label htmlFor="sort-select" className="block text-xs font-medium text-gray-700 mb-1">
-                정렬 방식
-              </label>
-              <select
-                id="sort-select"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={sortBy}
-                onChange={(e) => onSortChange(e.target.value)}
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+      {/* 필터 컨텐츠 */}
+      <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
+        <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
+          {/* 검색 박스 */}
+          <div>
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+              검색
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="락커번호, 회원명..."
+                className={`w-full pl-7 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+              <Search
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={12}
+              />
             </div>
           </div>
 
-          {/* 레이아웃 설정 - 별도 행으로 분리 */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  표시 방식
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onLayoutChange('row')}
-                    className={`px-3 py-2 text-sm rounded-md transition-colors ${
-                      layoutDirection === 'row'
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
-                    }`}
-                  >
-                    가로 배치
-                  </button>
-                  <button
-                    onClick={() => onLayoutChange('column')}
-                    className={`px-3 py-2 text-sm rounded-md transition-colors ${
-                      layoutDirection === 'column'
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
-                    }`}
-                  >
-                    세로 배치
-                  </button>
-                </div>
-              </div>
-            </div>
+          {/* 상태 필터 */}
+          <div>
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+              상태
+            </label>
+            <select
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              value={filter}
+              onChange={(e) => onFilterChange(e.target.value)}
+            >
+              {FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 정렬 방식 */}
+          <div>
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+              정렬
+            </label>
+            <select
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              value={sortBy}
+              onChange={(e) => onSortChange(e.target.value)}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label.split(' (')[0]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 표시 방식 */}
+          <div>
+            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+              배치
+            </label>
+            <select
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              value={layoutDirection}
+              onChange={(e) => onLayoutChange(e.target.value as 'row' | 'column')}
+            >
+              <option value="row">가로</option>
+              <option value="column">세로</option>
+            </select>
           </div>
         </div>
       </div>

@@ -77,17 +77,17 @@ const OperationDetailView: React.FC<OperationDetailViewProps> = ({
 
     // 락커 분석
     const totalLockers = lockersData.length || 150;
-    const occupiedLockers = lockersData.filter(locker => locker.isOccupied).length || Math.floor(totalLockers * 0.7);
+    const occupiedLockers = lockersData.filter(locker => locker.status === 'occupied').length || Math.floor(totalLockers * 0.7);
     const lockerUtilizationRate = totalLockers > 0 ? (occupiedLockers / totalLockers) * 100 : 0;
 
     // 락커 타입별 이용률
     const lockerTypeUtilization = lockersData.reduce((acc, locker) => {
-      const type = locker.lockerType || '일반';
+      const type = locker.size || 'medium';
       if (!acc[type]) {
         acc[type] = { total: 0, occupied: 0 };
       }
       acc[type].total += 1;
-      if (locker.isOccupied) {
+      if (locker.status === 'occupied') {
         acc[type].occupied += 1;
       }
       return acc;

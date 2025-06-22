@@ -97,6 +97,29 @@ src/
    - 재사용 가능한 순수 함수 작성
 ```
 
+### **⚠️ 하드코딩 제거 템플릿 (실제 Members.tsx 분석 기반)**
+```
+[기능명] 페이지를 디자인 시스템을 활용해서 하드코딩 없이 만들어주세요.
+
+**하드코딩 제거 요구사항:**
+1. 스타일 관련:
+   - ❌ 금지: className="text-3xl font-bold text-gray-800"
+   - ✅ 사용: createPageStructure('페이지명') 함수 활용
+   - ❌ 금지: className="bg-blue-600 hover:bg-blue-700"
+   - ✅ 사용: getButtonStyle('primary') 함수 활용
+
+2. 반복되는 패턴 제거:
+   - 테이블 셀 스타일: getTableCellStyle() 사용
+   - 페이지네이션 버튼: getPaginationButtonStyle() 사용
+   - 상태 배지: getStatusBadgeStyle() 사용
+   - 카드 스타일: createCardStyle() 사용
+
+3. 설정 파일 활용:
+   - 숫자값: 페이지 크기, 간격 등은 config 파일에서 관리
+   - 색상: DESIGN_SYSTEM에서 정의된 색상 팔레트 사용
+   - 타이포그래피: 미리 정의된 텍스트 스타일 사용
+```
+
 ### **데이터베이스 연동 요청 시**
 ```
 [기능명] 페이지를 데이터베이스와 연동해서 만들어주세요.
@@ -169,6 +192,33 @@ const ComponentName: React.FC<Props> = ({ prop1, prop2 }) => {
 export default ComponentName;
 ```
 
+### **⚠️ 실제 발견된 하드코딩 문제 사례**
+```typescript
+// ❌ Members.tsx에서 발견된 나쁜 예시
+<h1 className="text-3xl font-bold text-gray-800">회원 관리</h1>
+<div className="space-y-6">
+
+// ❌ MemberViewDetails.tsx에서 발견된 나쁜 예시
+<div className="w-24 h-24 rounded-full bg-gray-200">
+<h3 className="text-xl font-bold">{formData.name}</h3>
+
+// ❌ MemberTable.tsx에서 발견된 나쁜 예시
+className="py-8 px-4 text-center text-gray-500"
+className="py-2 px-2 sm:py-2.5 sm:px-3"
+
+// ✅ 개선된 예시
+import { createPageStructure, getAvatarStyle, getTableCellStyle } from '../utils/designSystemUtils';
+
+const pageStructure = createPageStructure('회원 관리');
+<h1 className={pageStructure.titleClass}>{pageStructure.title}</h1>
+<div className={pageStructure.containerClass}>
+
+<div className={getAvatarStyle('lg')}>
+<h3 className={getTypographyClass('cardTitle')}>{formData.name}</h3>
+
+<td className={getTableCellStyle()}>
+```
+
 ### **상태 관리 (Zustand)**
 ```typescript
 interface StoreState {
@@ -198,10 +248,24 @@ const useStore = create<StoreState>((set, get) => ({
 
 ### **필수 체크리스트**
 - [ ] 각 파일이 200줄을 넘지 않는가?
-- [ ] 하드코딩된 값이 없는가?
+- [ ] ~~하드코딩된 값이 없는가?~~ → **디자인 시스템 함수 사용**
 - [ ] TypeScript 타입이 명시되었는가?
 - [ ] 컴포넌트가 props만으로 렌더링되는가?
 - [ ] 유틸리티 함수가 순수 함수인가?
+
+### **⚠️ 하드코딩 금지 사항 (실제 발견 사례)**
+```typescript
+// ❌ 절대 금지 - 직접 Tailwind 클래스 하드코딩
+className="text-3xl font-bold text-gray-800"
+className="bg-blue-600 hover:bg-blue-700"
+className="px-4 py-2"
+className="space-y-6"
+
+// ✅ 반드시 사용 - 디자인 시스템 함수
+className={createPageStructure('제목').titleClass}
+className={getButtonStyle('primary')}
+className={getSpacingClass('pageContainer')}
+```
 
 ---
 
@@ -230,6 +294,23 @@ export function sum(a: number, b: number) {
 }
 ```
 
+### **디자인 시스템 TDD 예시**
+```typescript
+// 1. 디자인 시스템 함수 테스트 먼저 작성
+it('createPageStructure는 올바른 클래스를 반환해야 한다', () => {
+  const result = createPageStructure('테스트 페이지');
+  expect(result.titleClass).toContain('text-3xl');
+  expect(result.containerClass).toContain('space-y-6');
+});
+
+// 2. 실제 함수 구현
+export const createPageStructure = (title: string) => ({
+  titleClass: `${DESIGN_SYSTEM.typography.pageTitle} ${DESIGN_SYSTEM.colors.text.primary}`,
+  containerClass: DESIGN_SYSTEM.spacing.pageContainer,
+  title
+});
+```
+
 ### **TDD 장점**
 - 버그를 미리 예방할 수 있습니다.
 - 요구사항이 명확해집니다.
@@ -241,7 +322,7 @@ export function sum(a: number, b: number) {
 
 ## 🚫 피해야 할 안티패턴
 
-### **❌ 나쁜 예시**
+### **❌ 나쁜 예시 (실제 발견 사례)**
 ```typescript
 // 모든 것이 한 파일에 있는 나쁜 예시
 const Dashboard = () => {
@@ -251,6 +332,12 @@ const Dashboard = () => {
   
   // 500줄의 코드...
 };
+
+// 하드코딩된 스타일 반복 사용 (MemberPagination.tsx에서 발견)
+<button className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+
+// 같은 스타일이 여러 컴포넌트에서 중복 (MemberPaymentHistory.tsx에서도 동일)
+<button className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
 ```
 
 ### **✅ 좋은 예시**  
@@ -259,9 +346,19 @@ const Dashboard = () => {
 import { DashboardData } from '../types/dashboard';
 import { CHART_COLORS } from '../config/dashboardConfig';
 import { formatCurrency } from '../utils/formatters';
+import { createPageStructure, getPaginationButtonStyle } from '../utils/designSystemUtils';
 
 const Dashboard = () => {
-  // 상태 관리와 조합 로직만 (150줄 이하)
+  const pageStructure = createPageStructure('대시보드');
+  
+  return (
+    <div className={pageStructure.containerClass}>
+      <h1 className={pageStructure.titleClass}>{pageStructure.title}</h1>
+      <button className={getPaginationButtonStyle(false, false)}>
+        페이지 버튼
+      </button>
+    </div>
+  );
 };
 ```
 
@@ -346,6 +443,36 @@ try {
 2. **데이터베이스**: 연관 테이블과 필드
 3. **UI 요소**: 필요한 컴포넌트들
 4. **제약사항**: 변경하면 안 되는 부분
+5. **⭐ 디자인 시스템**: 하드코딩 없이 디자인 시스템 함수 사용
+
+### **⚠️ 하드코딩 제거 체크리스트 (Members.tsx 분석 기반)**
+```
+다음 항목들을 반드시 확인하고 수정해주세요:
+
+1. 페이지 제목 스타일:
+   - ❌ className="text-3xl font-bold text-gray-800" 
+   - ✅ createPageStructure('페이지명') 사용
+
+2. 컨테이너 간격:
+   - ❌ className="space-y-6"
+   - ✅ DESIGN_SYSTEM.spacing.pageContainer 사용
+
+3. 버튼 스타일:
+   - ❌ className="bg-blue-600 hover:bg-blue-700"
+   - ✅ getButtonStyle('primary') 사용
+
+4. 테이블 관련:
+   - ❌ 반복되는 px-4 py-2, px-6 py-3 등
+   - ✅ getTableCellStyle(), getTableHeaderStyle() 사용
+
+5. 아바타/프로필 이미지:
+   - ❌ className="w-24 h-24 rounded-full"
+   - ✅ getAvatarStyle('lg') 사용
+
+6. 상태 배지:
+   - ❌ 직접 bg-green-100 text-green-800
+   - ✅ getStatusBadgeStyle('active') 사용
+```
 
 ### **선택적 포함 정보**
 1. **성능 요구사항**: 대용량 데이터 처리 등
@@ -354,8 +481,32 @@ try {
 
 ---
 
+## 🔄 리팩터링 가이드
+
+### **Members.tsx 리팩터링 계획**
+```typescript
+// 1단계: 페이지 구조 개선
+// Before:
+<div className="space-y-6">
+  <h1 className="text-3xl font-bold text-gray-800">회원 관리</h1>
+</div>
+
+// After:
+import { createPageStructure } from '../utils/designSystemUtils';
+const pageStructure = createPageStructure('회원 관리');
+<div className={pageStructure.containerClass}>
+  <h1 className={pageStructure.titleClass}>{pageStructure.title}</h1>
+</div>
+
+// 2단계: 컴포넌트별 스타일 함수 적용
+// 3단계: 설정 파일에서 상수값 관리
+// 4단계: 테스트 코드 작성 및 검증
+```
+
+---
+
 **작성일**: 2025년 06월  
 **작성자**: AI Assistant  
-**버전**: 1.0.0
+**버전**: 2.0.0 (하드코딩 제거 및 실제 사례 반영)
 
-> 📝 **참고**: 이 문서는 AI 코딩의 품질과 일관성을 위한 가이드라인입니다. 
+> 📝 **참고**: 이 문서는 AI 코딩의 품질과 일관성을 위한 가이드라인이며, 실제 Members.tsx 분석을 통해 발견된 하드코딩 문제들의 해결방안을 포함합니다.

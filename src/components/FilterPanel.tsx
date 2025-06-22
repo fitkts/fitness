@@ -1,7 +1,17 @@
 import React, { useMemo } from 'react';
-import { Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, ChevronLeft, ChevronRight, X, Settings, RefreshCw } from 'lucide-react';
 import { ViewType, PaymentStatusFilter } from '../types/statistics';
 import { createDynamicQuickDateRanges } from '../utils/dynamicDateUtils';
+import {
+  FILTER_LAYOUT_CONFIG,
+  INPUT_FIELD_CONFIG,
+  QUICK_DATE_CONFIG,
+  DATE_RANGE_CONFIG,
+  VIEW_TYPE_OPTIONS,
+  STATUS_FILTER_OPTIONS,
+  FILTER_LABELS,
+  ACTION_BUTTON_CONFIG,
+} from '../config/statisticsFilterConfig';
 
 interface FilterPanelProps {
   startDate: string;
@@ -13,6 +23,11 @@ interface FilterPanelProps {
   onViewTypeChange: (viewType: ViewType) => void;
   onStatusFilterChange: (status: PaymentStatusFilter) => void;
   onQuickDateRange: (rangeGetter: () => { start: string; end: string }) => void;
+  // 헤더 액션 버튼들
+  onReset?: () => void;
+  onCardEdit?: () => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -24,106 +39,209 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   onEndDateChange,
   onViewTypeChange,
   onStatusFilterChange,
-  onQuickDateRange
+  onQuickDateRange,
+  onReset,
+  onCardEdit,
+  onRefresh,
+  isLoading = false,
 }) => {
-  // 현재 선택된 날짜를 기준으로 동적 빠른 날짜 범위 생성
+  // 동적 날짜 범위 생성
   const quickDateRanges = useMemo(() => {
     return createDynamicQuickDateRanges(startDate);
   }, [startDate]);
 
+  // 활성 필터 개수 계산
+  const getActiveFilterCount = () => {
+    let count = 0;
+    
+    // viewType이 기본값(monthly)이 아닌 경우
+    if (viewType !== 'monthly') count++;
+    
+    // statusFilter가 기본값(전체)이 아닌 경우
+    if (statusFilter !== '전체') count++;
+    
+    // 날짜 범위가 기본값(이번 달 첫째 날 ~ 오늘)이 아닌 경우
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // formatLocalDate 함수 (Statistics 페이지와 동일한 로직)
+    const formatLocalDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const defaultStart = formatLocalDate(firstDayOfMonth);
+    const defaultEnd = formatLocalDate(today);
+    
+    if (startDate !== defaultStart || endDate !== defaultEnd) count++;
+    
+    return count;
+  };
+
+  const activeFilterCount = getActiveFilterCount();
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-      <div className="flex items-center mb-4">
-        <Filter size={20} className="text-gray-600 mr-2" />
-        <h2 className="text-lg font-semibold text-gray-800">필터 설정</h2>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-        {/* 기간 선택 */}
-        <div className="lg:col-span-2">
-          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-            기간 선택
-          </label>
-          <div className="flex flex-col sm:flex-row gap-2 items-center">
-            <input
-              type="date"
-              id="startDate"
-              value={startDate}
-              onChange={(e) => onStartDateChange(e.target.value)}
-              className="w-full sm:w-auto flex-grow border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 text-sm"
+    <div 
+      className={`${FILTER_LAYOUT_CONFIG.CONTAINER.className} ${FILTER_LAYOUT_CONFIG.CONTAINER.padding}`}
+      data-testid="filter-panel-container"
+    >
+      {/* 헤더 */}
+      <div 
+        className={FILTER_LAYOUT_CONFIG.HEADER.className}
+        data-testid="filter-panel-header"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Filter 
+              size={FILTER_LAYOUT_CONFIG.HEADER.icon} 
+              className="text-gray-600" 
+              data-testid="filter-icon"
             />
-            <span className="text-gray-500 hidden sm:inline">~</span>
-            <input
-              type="date"
-              id="endDate"
-              value={endDate}
-              onChange={(e) => onEndDateChange(e.target.value)}
-              className="w-full sm:w-auto flex-grow border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 text-sm"
-            />
+            <h3 className={FILTER_LAYOUT_CONFIG.HEADER.title}>통계 필터</h3>
+            {activeFilterCount > 0 && (
+              <span className={`bg-blue-100 text-blue-800 ${FILTER_LAYOUT_CONFIG.HEADER.badge} font-medium px-1.5 py-0.5 rounded-full`}>
+                {activeFilterCount}개
+              </span>
+            )}
           </div>
           
-          {/* 빠른 날짜 선택 */}
-          <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {quickDateRanges.map(qdr => (
-              <div key={qdr.label} className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
-                <button 
-                  onClick={() => onQuickDateRange(qdr.getPrevRange)}
-                  className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                  title={`이전 ${qdr.type === 'day' ? '일' : qdr.type === 'week' ? '주' : qdr.type === 'month' ? '달' : '년'}`}
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <button 
-                  onClick={() => onQuickDateRange(qdr.getRange)}
-                  className="flex-1 px-2 py-1 text-xs font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors text-center"
-                >
-                  {qdr.label}
-                </button>
-                <button 
-                  onClick={() => onQuickDateRange(qdr.getNextRange)}
-                  className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                  title={`다음 ${qdr.type === 'day' ? '일' : qdr.type === 'week' ? '주' : qdr.type === 'month' ? '달' : '년'}`}
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            ))}
+          <div className="flex items-center gap-1.5">
+            {/* 필터 초기화 버튼 */}
+            {activeFilterCount > 0 && onReset && (
+              <button
+                onClick={onReset}
+                className={ACTION_BUTTON_CONFIG.RESET_BUTTON.className}
+                data-testid="reset-filter-button"
+              >
+                <X size={ACTION_BUTTON_CONFIG.RESET_BUTTON.iconSize} />
+                초기화
+              </button>
+            )}
+
+            {/* 카드 편집 버튼 */}
+            {onCardEdit && (
+              <button
+                onClick={onCardEdit}
+                className={ACTION_BUTTON_CONFIG.CARD_EDIT_BUTTON.className}
+                data-testid="card-edit-button"
+              >
+                <Settings size={ACTION_BUTTON_CONFIG.CARD_EDIT_BUTTON.iconSize} className="mr-1" />
+                카드 편집
+              </button>
+            )}
+
+            {/* 새로고침 버튼 */}
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className={ACTION_BUTTON_CONFIG.REFRESH_BUTTON.className}
+                data-testid="refresh-button"
+              >
+                <RefreshCw 
+                  size={ACTION_BUTTON_CONFIG.REFRESH_BUTTON.iconSize} 
+                  className={isLoading ? 'animate-spin mr-1' : 'mr-1'} 
+                />
+                새로고침
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 필터 컨텐츠 */}
+      <div className={FILTER_LAYOUT_CONFIG.CONTENT.className}>
+        <div className={`${FILTER_LAYOUT_CONFIG.GRID.responsive} ${FILTER_LAYOUT_CONFIG.GRID.gap}`}>
+          {/* 기간 선택 */}
+          <div>
+            <label className={INPUT_FIELD_CONFIG.LABEL.className}>
+              {FILTER_LABELS.DATE_RANGE.label}
+            </label>
+            <div className="grid grid-cols-2 gap-1">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => onStartDateChange(e.target.value)}
+                className={INPUT_FIELD_CONFIG.INPUT.className}
+                data-testid="start-date-input"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => onEndDateChange(e.target.value)}
+                className={INPUT_FIELD_CONFIG.INPUT.className}
+                data-testid="end-date-input"
+              />
+            </div>
+          </div>
+
+          {/* 차트 표시 단위 */}
+          <div>
+            <label className={INPUT_FIELD_CONFIG.LABEL.className}>
+              {FILTER_LABELS.VIEW_TYPE.label}
+            </label>
+            <select
+              value={viewType}
+              onChange={(e) => onViewTypeChange(e.target.value as ViewType)}
+              className={INPUT_FIELD_CONFIG.SELECT.className}
+              data-testid="view-type-select"
+            >
+              {VIEW_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 결제 상태 필터 */}
+          <div>
+            <label className={INPUT_FIELD_CONFIG.LABEL.className}>
+              {FILTER_LABELS.STATUS_FILTER.label}
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange(e.target.value as PaymentStatusFilter)}
+              className={INPUT_FIELD_CONFIG.SELECT.className}
+              data-testid="status-filter-select"
+            >
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* 통계 단위 선택 */}
-        <div>
-          <label htmlFor="viewType" className="block text-sm font-medium text-gray-700 mb-1">
-            차트 표시 단위
-          </label>
-          <select
-            id="viewType"
-            value={viewType}
-            onChange={(e) => onViewTypeChange(e.target.value as ViewType)}
-            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 text-sm"
-          >
-            <option value="daily">일간</option>
-            <option value="weekly">주간</option>
-            <option value="monthly">월간</option>
-          </select>
-        </div>
-
-        {/* 상태 필터 선택 */}
-        <div>
-          <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">
-            결제 상태
-          </label>
-          <select
-            id="statusFilter"
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value as PaymentStatusFilter)}
-            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 text-sm"
-          >
-            <option value="전체">전체</option>
-            <option value="완료">완료</option>
-            <option value="취소">취소</option>
-            <option value="환불">환불</option>
-          </select>
+        {/* 빠른 날짜 선택 */}
+        <div className={QUICK_DATE_CONFIG.CONTAINER.className}>
+          {quickDateRanges.map((range, index) => (
+            <div key={index} className={QUICK_DATE_CONFIG.BUTTON_GROUP.className}>
+              <button
+                onClick={() => onQuickDateRange(range.getPrevRange)}
+                className={QUICK_DATE_CONFIG.NAV_BUTTON.className}
+                title={`이전 ${range.label}`}
+              >
+                <ChevronLeft size={QUICK_DATE_CONFIG.NAV_BUTTON.iconSize} />
+              </button>
+              <button
+                onClick={() => onQuickDateRange(range.getRange)}
+                className={QUICK_DATE_CONFIG.MAIN_BUTTON.className}
+              >
+                {range.label}
+              </button>
+              <button
+                onClick={() => onQuickDateRange(range.getNextRange)}
+                className={QUICK_DATE_CONFIG.NAV_BUTTON.className}
+                title={`다음 ${range.label}`}
+              >
+                <ChevronRight size={QUICK_DATE_CONFIG.NAV_BUTTON.iconSize} />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>

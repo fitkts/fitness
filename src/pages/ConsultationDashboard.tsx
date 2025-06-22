@@ -1,371 +1,382 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ConsultationMember,
-  ConsultationTableFilters,
-  ConsultationTableSort,
+  ConsultationFilter,
+  ConsultationSortConfig,
+  ConsultationPaginationConfig,
+  ConsultationStatistics as ConsultationStatsType,
   NewMemberFormData,
-  ConsultationRecord,
   ConsultationFormData
 } from '../types/consultation';
+import { Staff } from '../models/types';
+import { CONSULTATION_PAGINATION_CONFIG } from '../config/consultationFilterConfig';
 import { 
-  filterMembers, 
-  sortMembers, 
-  transformNewMemberData 
-} from '../utils/consultationUtils';
+  CONSULTATION_MESSAGES,
+  CONSULTATION_FILTER_DEFAULTS,
+  CONSULTATION_TEST_IDS
+} from '../config/consultationPageConfig';
 import { 
-  transformConsultationFormData 
-} from '../utils/consultationRecordUtils';
-import ConsultationTable from '../components/consultation/ConsultationTable';
+  filterConsultationMembers, 
+  sortConsultationMembers, 
+  calculateConsultationStatistics 
+} from '../utils/consultationFilterUtils';
+import { transformNewMemberData } from '../utils/consultationUtils';
+import { useToast } from '../contexts/ToastContext';
+import { useModalState } from '../hooks/useModalState';
+import { getAllStaff } from '../database/ipcService';
+import PageContainer from '../components/common/PageContainer';
+import PageHeader from '../components/common/PageHeader';
 import NewMemberModal from '../components/consultation/NewMemberModal';
 import ConsultationDetailModal from '../components/consultation/ConsultationDetailModal';
-import AddConsultationModal from '../components/consultation/AddConsultationModal';
-import PromotionModal from '../components/consultation/PromotionModal';
-import { MESSAGES } from '../config/consultationConfig';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import ConsultationSearchFilter from '../components/consultation/ConsultationSearchFilter';
+import ConsultationStatistics from '../components/consultation/ConsultationStatistics';
+import ConsultationTableWithPagination from '../components/consultation/ConsultationTableWithPagination';
+
+// 임시 데이터베이스 함수들 (실제 IPC 연결까지 사용)
+const getAllConsultationMembers = async (): Promise<{ success: boolean; data?: ConsultationMember[]; error?: string; }> => {
+  try {
+    // @ts-ignore
+    if (window.api?.getAllConsultationMembers) {
+      // @ts-ignore
+      return await window.api.getAllConsultationMembers();
+    }
+    // 임시 더미 데이터
+    return { 
+      success: true, 
+      data: [
+        {
+          id: 1,
+          name: '김상담',
+          phone: '010-1234-5678',
+          email: 'test@example.com',
+          gender: '남',
+          birth_date: new Date('1990-01-01').getTime() / 1000,
+          join_date: new Date('2025-01-01').getTime() / 1000,
+          first_visit: new Date('2025-01-01').getTime() / 1000,
+          health_conditions: '무릎 부상 있음',
+          fitness_goals: ['체중감량', '근력강화'],
+          staff_id: 1,
+          staff_name: '트레이너A',
+          consultation_status: 'pending',
+          notes: '상담 예정',
+          is_promoted: false,
+          created_at: new Date('2025-01-01').getTime() / 1000,
+          updated_at: new Date('2025-01-01').getTime() / 1000
+        }
+      ] 
+    };
+  } catch (error) {
+    return { success: false, error: '상담 회원 조회 실패' };
+  }
+};
+
+const addConsultationMember = async (memberData: any): Promise<{ success: boolean; data?: number; error?: string; }> => {
+  try {
+    // @ts-ignore
+    if (window.api?.addConsultationMember) {
+      // @ts-ignore
+      return await window.api.addConsultationMember(memberData);
+    }
+    return { success: true, data: Date.now() };
+  } catch (error) {
+    return { success: false, error: '상담 회원 추가 실패' };
+  }
+};
+
+const updateConsultationMember = async (consultationData: any): Promise<{ success: boolean; error?: string; }> => {
+  try {
+    // @ts-ignore
+    if (window.api?.updateConsultationMember) {
+      // @ts-ignore
+      return await window.api.updateConsultationMember(consultationData.id, consultationData);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: '상담 회원 수정 실패' };
+  }
+};
+
+const deleteConsultationMember = async (id: number): Promise<{ success: boolean; error?: string; }> => {
+  try {
+    // @ts-ignore
+    if (window.api?.deleteConsultationMember) {
+      // @ts-ignore
+      return await window.api.deleteConsultationMember(id);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: '상담 회원 삭제 실패' };
+  }
+};
+
+const promoteToMember = async (consultationMember: ConsultationMember): Promise<{ success: boolean; error?: string; }> => {
+  try {
+    // @ts-ignore
+    if (window.api?.promoteConsultationMember) {
+      // @ts-ignore
+      return await window.api.promoteConsultationMember(consultationMember);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: '회원 승격 실패' };
+  }
+};
 
 const ConsultationDashboard: React.FC = () => {
-  // 상태 관리
-  const [allMembers, setAllMembers] = useState<ConsultationMember[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<ConsultationMember[]>([]);
-  const [filters, setFilters] = useState<ConsultationTableFilters>({});
-  const [sort, setSort] = useState<ConsultationTableSort>({
-    field: 'last_visit',
-    direction: 'desc'
+  // 전역 상태 및 컨텍스트
+  const { showToast } = useToast();
+  const { modalState, openModal, closeModal } = useModalState<ConsultationMember>();
+
+  // 로컬 상태
+  const [consultationMembers, setConsultationMembers] = useState<ConsultationMember[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ConsultationFilter>(CONSULTATION_FILTER_DEFAULTS);
+  const [sortConfig, setSortConfig] = useState<ConsultationSortConfig>({
+    key: null,
+    direction: 'ascending'
   });
-  const [loading, setLoading] = useState(true);
-  
-  // 모달 상태
-  const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isAddConsultationModalOpen, setIsAddConsultationModalOpen] = useState(false);
-  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
-  
-  // 선택된 회원 및 상담 기록
-  const [selectedMember, setSelectedMember] = useState<ConsultationMember | null>(null);
-  const [consultationRecords, setConsultationRecords] = useState<ConsultationRecord[]>([]);
-  const [memberForPromotion, setMemberForPromotion] = useState<ConsultationMember | null>(null);
+  const [pagination, setPagination] = useState<ConsultationPaginationConfig>({
+    currentPage: 1,
+    pageSize: CONSULTATION_PAGINATION_CONFIG.DEFAULT_PAGE_SIZE,
+    showAll: false,
+  });
 
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  // 추가 상태
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // 컴포넌트 마운트 시 데이터 로드
+  // 초기 데이터 로딩
   useEffect(() => {
-    loadMembers();
-    loadConsultationRecords();
+    loadInitialData();
   }, []);
 
-  // 필터 및 정렬 적용
-  useEffect(() => {
-    let result = [...allMembers];
-    
-    // 필터 적용
-    result = filterMembers(result, filters);
-    
-    // 정렬 적용
-    result = sortMembers(result, sort);
-    
-    setFilteredMembers(result);
-  }, [allMembers, filters, sort]);
+  // 데이터 로딩 함수
+  const loadInitialData = async () => {
+    await Promise.all([
+      fetchConsultationMembers(),
+      loadStaffList()
+    ]);
+  };
 
-  // 회원 데이터 로드 (실제 API 호출)
-  const loadMembers = async () => {
-    setLoading(true);
+  const fetchConsultationMembers = async () => {
     try {
-      // 상담 회원 테이블에서 데이터 로드 (members 테이블 대신)
-      const response = await window.api.getAllConsultationMembers();
-      
-      if (response.success) {
-        // ConsultationMemberData를 ConsultationMember 형식으로 변환
-        const consultationMembers: ConsultationMember[] = response.data.map((member: any) => ({
-          id: member.id,
-          name: member.name,
-          phone: member.phone || '',
-          email: member.email,
-          gender: member.gender,
-          birth_date: member.birth_date, // 이미 Unix timestamp
-          join_date: member.created_at, // 상담 회원은 가입일 대신 생성일 사용
-          first_visit: member.first_visit, // 이미 Unix timestamp
-          last_visit: undefined, // 상담 회원은 아직 방문 기록이 없음
-          membership_type: undefined, // 상담 회원은 아직 회원권이 없음
-          membership_start: undefined,
-          membership_end: undefined,
-          staff_id: member.staff_id,
-          staff_name: member.staff_name,
-          notes: member.notes,
-          consultation_status: member.consultation_status || 'pending',
-          health_conditions: member.health_conditions,
-          fitness_goals: member.fitness_goals ? JSON.parse(member.fitness_goals) : [],
-          is_promoted: member.is_promoted,
-          promoted_at: member.promoted_at,
-          promoted_member_id: member.promoted_member_id,
-          created_at: member.created_at,
-          updated_at: member.updated_at
-        }));
-        
-        setAllMembers(consultationMembers);
+      setLoading(true);
+      setError(null);
+      const response = await getAllConsultationMembers();
+      if (response.success && response.data) {
+        setConsultationMembers(response.data);
       } else {
-        console.error('상담 회원 데이터 로드 실패:', response.error);
-        setAllMembers([]);
+        setError(response.error || CONSULTATION_MESSAGES.error.loadFailed);
       }
     } catch (error) {
-      console.error('상담 회원 데이터 로드 실패:', error);
-      setAllMembers([]);
+      console.error('상담 회원 데이터 로딩 오류:', error);
+      setError(CONSULTATION_MESSAGES.error.loadFailed);
+      showToast('error', CONSULTATION_MESSAGES.error.loadFailed);
     } finally {
       setLoading(false);
     }
   };
 
-  // 상담 기록 로드
-  const loadConsultationRecords = async () => {
+  const loadStaffList = async () => {
     try {
-      const response = await window.api.getAllConsultationRecords();
-      
-      if (response.success) {
-        setConsultationRecords(response.data);
-      } else {
-        console.error('상담 기록 로드 실패:', response.error);
-        setConsultationRecords([]);
+      const response = await getAllStaff();
+      if (response.success && response.data) {
+        setStaffList(response.data);
       }
     } catch (error) {
-      console.error('상담 기록 로드 실패:', error);
-      setConsultationRecords([]);
+      console.error('직원 목록 로딩 오류:', error);
     }
   };
 
-  // 필터 변경 핸들러
-  const handleFilterChange = (newFilters: ConsultationTableFilters) => {
-    setFilters(newFilters);
+  // 필터링된 상담 회원 목록 계산
+  const filteredConsultationMembers = useMemo(() => {
+    return filterConsultationMembers(consultationMembers, filter);
+  }, [consultationMembers, filter]);
+
+  // 정렬된 상담 회원 목록 계산
+  const sortedConsultationMembers = useMemo(() => {
+    if (!sortConfig.key) {
+      return filteredConsultationMembers;
+    }
+    return sortConsultationMembers(filteredConsultationMembers, sortConfig);
+  }, [filteredConsultationMembers, sortConfig]);
+
+  // 통계 계산
+  const statistics = useMemo(() => {
+    return calculateConsultationStatistics(consultationMembers);
+  }, [consultationMembers]);
+
+  // 모달 핸들러들
+  const handleAddMember = () => {
+    setIsAddModalOpen(true);
   };
 
-  // 정렬 변경 핸들러
-  const handleSortChange = (newSort: ConsultationTableSort) => {
-    setSort(newSort);
+  const handleViewMember = (member: ConsultationMember) => {
+    openModal(member, true);
   };
 
-  // 회원 선택 핸들러 (승격용)
-  const handleMemberSelect = (member: ConsultationMember) => {
-    setMemberForPromotion(member);
-    setIsPromotionModalOpen(true);
-  };
-
-  // 신규 회원 등록 모달 열기
-  const handleAddNewMember = () => {
-    setIsNewMemberModalOpen(true);
-  };
-
-  // 신규 상담 회원 등록 제출
-  const handleNewMemberSubmit = async (formData: NewMemberFormData) => {
+  // 새 회원 추가 핸들러
+  const handleSaveNewMember = async (memberData: NewMemberFormData): Promise<void> => {
     try {
-      // 폼 데이터를 ConsultationMember 형식으로 변환
-      const consultationMemberData = {
-        name: formData.name,
-        phone: formData.phone || '',
-        email: formData.email || '',
-        gender: formData.gender,
-        birth_date: formData.birth_date, // YYYY-MM-DD 형식
-        first_visit: formData.first_visit, // YYYY-MM-DD 형식
-        health_conditions: formData.health_conditions || '',
-        fitness_goals: formData.fitness_goals || [],
-        staff_id: formData.staff_id,
-        staff_name: formData.staff_name,
-        consultation_status: formData.consultation_status || 'pending',
-        notes: formData.notes || ''
-      };
-      
-      // 상담 회원 API 호출
-      const response = await window.api.addConsultationMember(consultationMemberData);
+      const transformedData = transformNewMemberData(memberData);
+      const response = await addConsultationMember(transformedData);
       
       if (response.success) {
-        // 상담 회원 목록 다시 로드하여 테이블에 실시간 반영
-        await loadMembers();
-        
-        console.log(MESSAGES.success.memberCreated);
+        showToast('success', CONSULTATION_MESSAGES.success.memberAdded);
+        await fetchConsultationMembers();
+        setIsAddModalOpen(false);
       } else {
-        throw new Error(response.error || '상담 회원 등록에 실패했습니다.');
+        showToast('error', response.error || CONSULTATION_MESSAGES.error.saveFailed);
+        throw new Error(response.error || CONSULTATION_MESSAGES.error.saveFailed);
       }
-      
     } catch (error) {
-      console.error('상담 회원 등록 실패:', error);
+      console.error('새 회원 추가 오류:', error);
+      showToast('error', CONSULTATION_MESSAGES.error.saveFailed);
       throw error;
     }
   };
 
-  // 상담 기록 추가 핸들러
-  const handleAddConsultation = async (formData: ConsultationFormData) => {
-    if (!selectedMember) return;
-    
+  // 상담 기록 저장 핸들러
+  const handleSaveConsultation = async (consultationData: ConsultationFormData): Promise<boolean> => {
     try {
-      // API 호출을 위한 데이터 준비
-      const consultationData = {
-        member_id: selectedMember.id!,
-        consultation_type: formData.consultation_type,
-        consultation_date: formData.consultation_date,
-        content: formData.content,
-        goals_discussed: formData.goals_discussed,
-        recommendations: formData.recommendations || '',
-        next_appointment: formData.next_appointment || '',
-        status: formData.status || 'completed',
-        consultant_id: formData.consultant_id!,
-        consultant_name: formData.consultant_name!
-      };
-      
-      // 실제 API 호출
-      const response = await window.api.addConsultationRecord(consultationData);
+      const response = await updateConsultationMember(consultationData);
       
       if (response.success) {
-        // 상담 기록 목록 새로고침
-        await loadConsultationRecords();
+        showToast('success', CONSULTATION_MESSAGES.success.itemUpdated);
+        await fetchConsultationMembers();
+        return true;
+      } else {
+        showToast('error', response.error || CONSULTATION_MESSAGES.error.saveFailed);
+        return false;
+      }
+    } catch (error) {
+      console.error('상담 기록 저장 오류:', error);
+      showToast('error', CONSULTATION_MESSAGES.error.saveFailed);
+      return false;
+    }
+  };
+
+  // 회원 등록 핸들러
+  const handlePromoteToMember = async (consultationMember: ConsultationMember): Promise<boolean> => {
+    if (window.confirm(CONSULTATION_MESSAGES.confirm.promotionConfirm)) {
+      try {
+        const response = await promoteToMember(consultationMember);
         
-        // 회원의 상담 상태 업데이트
-        if (formData.next_appointment) {
-          // 다음 상담이 예정되어 있으면 진행 중으로 변경
-          setAllMembers(prev => prev.map(member => 
-            member.id === selectedMember.id 
-              ? { ...member, consultation_status: 'in_progress' as const }
-              : member
-          ));
+        if (response.success) {
+          showToast('success', CONSULTATION_MESSAGES.success.memberPromoted);
+          await fetchConsultationMembers();
+          return true;
+        } else {
+          showToast('error', response.error || CONSULTATION_MESSAGES.error.promotionFailed);
+          return false;
         }
-        
-        console.log(MESSAGES.success.consultationSaved);
-      } else {
-        throw new Error(response.error || '상담 기록 저장에 실패했습니다.');
+      } catch (error) {
+        console.error('회원 등록 오류:', error);
+        showToast('error', CONSULTATION_MESSAGES.error.promotionFailed);
+        return false;
       }
-      
-    } catch (error) {
-      console.error('상담 기록 저장 실패:', error);
-      throw error;
+    }
+    return false;
+  };
+
+  // 상담 회원 삭제 핸들러
+  const handleDeleteMember = async (id: number) => {
+    if (window.confirm(CONSULTATION_MESSAGES.confirm.deleteConfirm)) {
+      try {
+        const response = await deleteConsultationMember(id);
+        if (response.success) {
+          showToast('success', CONSULTATION_MESSAGES.success.itemDeleted);
+          await fetchConsultationMembers();
+        } else {
+          showToast('error', response.error || CONSULTATION_MESSAGES.error.deleteFailed);
+        }
+      } catch (error) {
+        console.error('상담 회원 삭제 오류:', error);
+        showToast('error', CONSULTATION_MESSAGES.error.deleteFailed);
+      }
     }
   };
 
-  // 상담 기록 편집 핸들러
-  const handleEditConsultation = async (id: number, formData: ConsultationFormData) => {
-    try {
-      // TODO: 실제 API 호출로 대체
-      // const response = await api.updateConsultationRecord(id, formData);
-      
-      // 폼 데이터를 올바른 형식으로 변환
-      const updatedData = {
-        consultation_type: formData.consultation_type,
-        consultation_date: Math.floor(new Date(formData.consultation_date).getTime() / 1000),
-        content: formData.content,
-        goals_discussed: formData.goals_discussed,
-        recommendations: formData.recommendations || '',
-        next_appointment: formData.next_appointment ? 
-          Math.floor(new Date(formData.next_appointment).getTime() / 1000) : undefined,
-        updated_at: Math.floor(Date.now() / 1000)
-      };
-      
-      // 임시로 로컬 상태 업데이트
-      setConsultationRecords(prev => prev.map(record => 
-        record.id === id 
-          ? { ...record, ...updatedData }
-          : record
-      ));
-      
-      console.log(MESSAGES.success.dataUpdated);
-      
-    } catch (error) {
-      console.error('상담 기록 업데이트 실패:', error);
-      throw error;
-    }
+  // 정렬 핸들러
+  const handleSort = (key: keyof ConsultationMember) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending'
+    }));
   };
 
-  // 선택된 회원의 상담 기록 필터링
-  const memberConsultationRecords = selectedMember 
-    ? consultationRecords.filter(record => record.member_id === selectedMember.id)
-    : [];
-
-  // 상세보기 열기
-  const handleViewDetail = (memberId: number) => {
-    console.log('handleViewDetail 호출됨:', memberId);
-    setSelectedMemberId(memberId);
-    setShowDetailModal(true);
-    console.log('상세보기 모달 상태 변경:', { selectedMemberId: memberId, showDetailModal: true });
+  // 필터 초기화
+  const handleResetFilters = () => {
+    setFilter(CONSULTATION_FILTER_DEFAULTS);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  // 상세보기 닫기
-  const handleCloseDetail = () => {
-    setShowDetailModal(false);
-    setSelectedMemberId(null);
-  };
-
-  // 상세보기에서 업데이트 후 처리
-  const handleDetailUpdate = () => {
-    loadMembers(); // 목록 새로고침
-  };
-
-  // 상세보기에서 승격 핸들러
-  const handlePromoteFromDetail = (member: ConsultationMember) => {
-    setMemberForPromotion(member);
-    setIsPromotionModalOpen(true);
-    setShowDetailModal(false); // 상세보기 모달 닫기
-  };
-
-  // 승격 성공 핸들러
-  const handlePromotionSuccess = () => {
-    loadMembers(); // 목록 새로고침
-    setIsPromotionModalOpen(false);
-    setMemberForPromotion(null);
+  // 가져오기 성공 핸들러
+  const handleImportSuccess = () => {
+    fetchConsultationMembers();
+    showToast('success', CONSULTATION_MESSAGES.success.importSuccess);
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* 페이지 헤더 */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">상담일지 관리</h1>
-        <p className="text-gray-600">
-          회원들의 상담 현황을 관리하고 새로운 회원을 등록할 수 있습니다.
+    <PageContainer testId={CONSULTATION_TEST_IDS.pageContainer}>
+      <PageHeader 
+        title={CONSULTATION_MESSAGES.pageTitle}
+        testId={CONSULTATION_TEST_IDS.pageHeader}
+      />
+      
+      {/* 페이지 설명 */}
+      <div className="mb-4">
+        <p className="text-sm text-gray-600">
+          {CONSULTATION_MESSAGES.pageDescription}
         </p>
       </div>
 
-      {/* 메인 테이블 */}
-      <ConsultationTable
-        members={filteredMembers}
-        filters={filters}
-        sort={sort}
-        onFilterChange={handleFilterChange}
-        onSortChange={handleSortChange}
-        onMemberSelect={handleMemberSelect}
-        onAddNewMember={handleAddNewMember}
-        onViewDetail={handleViewDetail}
-        loading={loading}
+      <ConsultationSearchFilter
+        filter={filter}
+        onFilterChange={setFilter}
+        onReset={handleResetFilters}
+        onPaginationReset={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}
+        staffList={staffList}
+        onAddMember={handleAddMember}
+        onImportSuccess={handleImportSuccess}
+        showToast={showToast}
       />
 
-      {/* 신규 회원 등록 모달 */}
-      <NewMemberModal
-        isOpen={isNewMemberModalOpen}
-        onClose={() => setIsNewMemberModalOpen(false)}
-        onSubmit={handleNewMemberSubmit}
+      <ConsultationStatistics statistics={statistics} />
+
+      <ConsultationTableWithPagination
+        members={sortedConsultationMembers}
+        sortConfig={sortConfig}
+        pagination={pagination}
+        isLoading={loading}
+        onSort={handleSort}
+        onView={handleViewMember}
+        onPromote={handlePromoteToMember}
+        onPaginationChange={(newPagination) => setPagination(prev => ({ ...prev, ...newPagination }))}
       />
 
-      {/* 상담 기록 추가 모달 */}
-      <AddConsultationModal
-        isOpen={isAddConsultationModalOpen}
-        onClose={() => setIsAddConsultationModalOpen(false)}
-        member={selectedMember}
-        onSubmit={handleAddConsultation}
-      />
+      {/* 새 회원 추가 모달 */}
+      {isAddModalOpen && (
+        <NewMemberModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSubmit={handleSaveNewMember}
+          loading={loading}
+        />
+      )}
 
-      {/* 상세보기 모달 */}
-      <ConsultationDetailModal
-        isOpen={showDetailModal}
-        onClose={handleCloseDetail}
-        consultationMemberId={selectedMemberId}
-        onUpdate={handleDetailUpdate}
-        onPromote={handlePromoteFromDetail}
-      />
-
-      {/* 승격 모달 */}
-      <PromotionModal
-        isOpen={isPromotionModalOpen}
-        onClose={() => {
-          setIsPromotionModalOpen(false);
-          setMemberForPromotion(null);
-        }}
-        consultationMember={memberForPromotion}
-        onSuccess={handlePromotionSuccess}
-      />
-    </div>
+      {/* 상담 상세 모달 */}
+      {modalState.isOpen && modalState.selectedItem && (
+        <ConsultationDetailModal
+          isOpen={modalState.isOpen}
+          onClose={closeModal}
+          consultationMemberId={modalState.selectedItem.id || null}
+          onUpdate={fetchConsultationMembers}
+          onPromote={handlePromoteToMember}
+        />
+      )}
+    </PageContainer>
   );
 };
 

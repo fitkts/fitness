@@ -239,4 +239,45 @@ export interface PromotionData {
 export type ConsultationStatus = ConsultationMember['consultation_status'];
 export type WorkoutType = WorkoutSchedule['workout_type'];
 export type SessionType = PersonalTrainingSession['session_type'];
-export type PTStatus = PersonalTrainingSession['status']; 
+export type PTStatus = PersonalTrainingSession['status'];
+
+// 상담 회원 필터 인터페이스 (회원관리와 동일한 구조)
+export interface ConsultationFilter {
+  search?: string;
+  status?: ConsultationStatus | 'all';
+  staffName?: string | 'all';
+  gender?: string | 'all';
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD
+}
+
+// 정렬 설정 (회원관리와 동일한 구조)  
+export interface ConsultationSortConfig {
+  key: string;
+  direction: 'ascending' | 'descending' | null;
+}
+
+// 페이지네이션 설정 (회원관리와 동일한 구조)
+export interface ConsultationPaginationConfig {
+  currentPage: number;
+  pageSize: number;
+  showAll: boolean;
+}
+
+// 통계 정보 인터페이스
+export interface ConsultationStatistics {
+  total: number;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  followUp: number;
+}
+
+// 검색 필터 액션 인터페이스
+export interface ConsultationSearchFilterActions {
+  onAddMember?: () => void;
+  onImportSuccess?: () => void;
+  showToast?: (type: 'success' | 'error', message: string) => void;
+  members?: ConsultationMember[];
+  showActionButtons?: boolean;
+} 

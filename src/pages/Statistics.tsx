@@ -19,7 +19,7 @@ import { defaultKPICards } from '../config/kpiCardsConfig';
 import { useKPICalculations } from '../hooks/useKPICalculations';
 import { getKPICardRenderData } from '../utils/kpiCardRenderer';
 import KPICard from '../components/KPICard';
-import StatisticsFilters from '../components/StatisticsFilters';
+import FilterPanel from '../components/FilterPanel';
 import KPICardEditModal from '../components/KPICardEditModal';
 import StatisticsSummary from '../components/StatisticsSummary';
 import KPIDetailModal from '../components/KPIDetailModal';
@@ -253,6 +253,17 @@ const Statistics: React.FC = () => {
     setEndDate(end);
   };
 
+  // 필터 초기화 함수
+  const handleFilterReset = () => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    setStartDate(formatLocalDate(firstDayOfMonth));
+    setEndDate(formatLocalDate(today));
+    setViewType('monthly');
+    setStatusFilter('전체');
+    showToast('success', '필터가 초기화되었습니다.');
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-6 bg-gray-50">
@@ -287,28 +298,11 @@ const Statistics: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-800">KPI 대시보드</h1>
             <p className="text-gray-600 mt-1">핵심 성과 지표를 한눈에 확인하세요.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={openEditModal}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center transition-colors"
-            >
-              <Settings size={18} className="mr-2" />
-              카드 편집
-            </button>
-            <button
-              onClick={refreshData}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center transition-colors"
-              disabled={isLoading}
-            >
-              <RefreshCw size={18} className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              새로고침
-            </button>
-          </div>
         </div>
       </header>
 
       {/* 필터 컨트롤 패널 */}
-      <StatisticsFilters
+      <FilterPanel
         startDate={startDate}
         endDate={endDate}
         viewType={viewType}
@@ -318,6 +312,10 @@ const Statistics: React.FC = () => {
         onViewTypeChange={setViewType}
         onStatusFilterChange={setStatusFilter}
         onQuickDateRange={handleQuickDateRange}
+        onReset={handleFilterReset}
+        onCardEdit={openEditModal}
+        onRefresh={refreshData}
+        isLoading={isLoading}
       />
 
       {/* KPI 카드 그리드 */}

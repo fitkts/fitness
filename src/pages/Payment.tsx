@@ -409,24 +409,6 @@ const PaymentPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
-      <header className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">결제 및 이용권 관리</h1>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleOpenPaymentModal(null, false)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-          >
-            <DollarSign size={18} className="mr-2" /> 새 결제 등록
-          </button>
-          <button
-            onClick={() => handleOpenMembershipTypeModal(null, false)}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-150 ease-in-out"
-          >
-            <CreditCard size={18} className="mr-2" /> 새 이용권 추가
-          </button>
-        </div>
-      </header>
-
       <div className="mb-6 border-b border-gray-200">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
           <button
@@ -477,6 +459,12 @@ const PaymentPage: React.FC = () => {
             onReset={resetPaymentFilter}
             membershipTypes={membershipTypeNames}
             staffList={staffList}
+            showActionButtons={true}
+            onAddPayment={() => handleOpenPaymentModal(null, false)}
+            onAddMembershipType={() => handleOpenMembershipTypeModal(null, false)}
+            onImportSuccess={loadData}
+            showToast={showToast}
+            payments={payments}
           />
           
           {/* 필터링된 결제 목록 (간략 버전) */}
@@ -527,6 +515,12 @@ const PaymentPage: React.FC = () => {
             onReset={resetPaymentFilter}
             membershipTypes={membershipTypeNames}
             staffList={staffList}
+            showActionButtons={true}
+            onAddPayment={() => handleOpenPaymentModal(null, false)}
+            onAddMembershipType={() => handleOpenMembershipTypeModal(null, false)}
+            onImportSuccess={loadData}
+            showToast={showToast}
+            payments={payments}
           />
           
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
@@ -591,6 +585,11 @@ const PaymentPage: React.FC = () => {
             filter={membershipTypeFilter}
             onFilterChange={setMembershipTypeFilter}
             onReset={resetMembershipTypeFilter}
+            showActionButtons={true}
+            onAddMembershipType={() => handleOpenMembershipTypeModal(null, false)}
+            onImportSuccess={loadData}
+            showToast={showToast}
+            membershipTypes={membershipTypes}
           />
           
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">

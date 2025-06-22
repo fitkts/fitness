@@ -3,6 +3,12 @@ import { Member, MemberFilter } from '../models/types';
 import { SortConfig, PaginationConfig } from '../types/member';
 import { PAGINATION_CONFIG } from '../config/memberConfig';
 import { 
+  MEMBERS_PAGE_STYLES,
+  MEMBERS_MESSAGES,
+  MEMBERS_FILTER_DEFAULTS,
+  MEMBERS_TEST_IDS
+} from '../config/membersPageConfig';
+import { 
   formatDate, 
   getMembershipStatus, 
   calculateStatistics, 
@@ -11,8 +17,11 @@ import {
 } from '../utils/memberUtils';
 import { useMemberStore } from '../stores/memberStore';
 import { useToast } from '../contexts/ToastContext';
+import { useModalState } from '../hooks/useModalState';
 import { getAllStaff } from '../database/ipcService';
 import { Staff } from '../models/types';
+import PageContainer from '../components/common/PageContainer';
+import PageHeader from '../components/common/PageHeader';
 import MemberModal from '../components/MemberModal';
 import MemberSearchFilter from '../components/member/MemberSearchFilter';
 import MemberStatistics from '../components/member/MemberStatistics';
@@ -33,14 +42,11 @@ const Members: React.FC = () => {
   // Toast 컨텍스트
   const { showToast } = useToast();
 
+  // 모달 상태 관리 (커스텀 훅 사용)
+  const { modalState, openModal, closeModal, switchToEditMode } = useModalState<Member>();
+
   // 로컬 상태
-  const [filter, setFilter] = useState<MemberFilter>({
-    search: '',
-    status: 'all',
-    staffName: 'all',
-    gender: 'all',
-    membershipType: 'all',
-  });
+  const [filter, setFilter] = useState<MemberFilter>(MEMBERS_FILTER_DEFAULTS);
 
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: '',
@@ -57,13 +63,6 @@ const Members: React.FC = () => {
   // 필터용 데이터 상태
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [membershipTypes, setMembershipTypes] = useState<string[]>([]);
-
-  // 모달 상태
-  const [modalState, setModalState] = useState({
-    isOpen: false,
-    isViewMode: false,
-    selectedMember: null as Member | null,
-  });
 
   // 초기 데이터 로딩
   useEffect(() => {
@@ -91,6 +90,7 @@ const Members: React.FC = () => {
       setMembershipTypes(uniqueMembershipTypes);
     } catch (error) {
       console.error('필터 데이터 로딩 오류:', error);
+      showToast('error', MEMBERS_MESSAGES.error.loadFailed);
     }
   };
 
@@ -150,43 +150,16 @@ const Members: React.FC = () => {
   }, [members]);
 
   // 모달 핸들러들
-  const handleCloseModal = () => {
-    setModalState({
-      isOpen: false,
-      isViewMode: false,
-      selectedMember: null,
-    });
-  };
-
   const handleAddMember = () => {
-    setModalState({
-      isOpen: true,
-      isViewMode: false,
-      selectedMember: null,
-    });
+    openModal(undefined, false);
   };
 
   const handleEditMember = (member: Member) => {
-    setModalState({
-      isOpen: true,
-      isViewMode: false,
-      selectedMember: member,
-    });
+    openModal(member, false);
   };
 
   const handleViewMember = (member: Member) => {
-    setModalState({
-      isOpen: true,
-      isViewMode: true,
-      selectedMember: member,
-    });
-  };
-
-  const handleSwitchToEditMode = () => {
-    setModalState(prev => ({
-      ...prev,
-      isViewMode: false,
-    }));
+    openModal(member, true);
   };
 
   // 회원 저장 핸들러
@@ -194,29 +167,29 @@ const Members: React.FC = () => {
     try {
       if (member.id) {
         await updateMember(member);
-        showToast('success', '회원 정보가 수정되었습니다.');
+        showToast('success', MEMBERS_MESSAGES.success.memberUpdated);
       } else {
         await addMember(member);
-        showToast('success', '새 회원이 추가되었습니다.');
+        showToast('success', MEMBERS_MESSAGES.success.memberAdded);
       }
       await fetchMembers();
       return true;
     } catch (error) {
       console.error('회원 저장 오류:', error);
-      showToast('error', '회원 정보 저장에 실패했습니다.');
+      showToast('error', MEMBERS_MESSAGES.error.saveFailed);
       return false;
     }
   };
 
   // 회원 삭제 핸들러
   const handleDeleteMember = async (id: number) => {
-    if (window.confirm('정말로 이 회원을 삭제하시겠습니까?')) {
+    if (window.confirm(MEMBERS_MESSAGES.confirm.deleteConfirm)) {
       try {
         await deleteMember(id);
-        showToast('info', '회원이 삭제되었습니다.');
+        showToast('info', MEMBERS_MESSAGES.success.memberDeleted);
       } catch (error) {
         console.error('회원 삭제 오류:', error);
-        showToast('error', '회원 삭제에 실패했습니다.');
+        showToast('error', MEMBERS_MESSAGES.error.deleteFailed);
       }
     }
   };
@@ -235,21 +208,16 @@ const Members: React.FC = () => {
 
   // 필터 초기화
   const handleResetFilters = () => {
-    setFilter({
-      search: '',
-      status: 'all',
-      staffName: 'all',
-      gender: 'all',
-      membershipType: 'all',
-    });
+    setFilter(MEMBERS_FILTER_DEFAULTS);
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">회원 관리</h1>
-      </div>
+    <PageContainer testId={MEMBERS_TEST_IDS.pageContainer}>
+      <PageHeader 
+        title={MEMBERS_MESSAGES.pageTitle}
+        testId={MEMBERS_TEST_IDS.pageHeader}
+      />
 
       <MemberSearchFilter
         filter={filter}
@@ -282,14 +250,14 @@ const Members: React.FC = () => {
       {modalState.isOpen && (
         <MemberModal
           isOpen={modalState.isOpen}
-          onClose={handleCloseModal}
+          onClose={closeModal}
           onSave={handleSaveMember}
-          member={modalState.selectedMember}
+          member={modalState.selectedItem}
           isViewMode={modalState.isViewMode}
-          onSwitchToEdit={handleSwitchToEditMode}
+          onSwitchToEdit={switchToEditMode}
         />
       )}
-    </div>
+    </PageContainer>
   );
 };
 

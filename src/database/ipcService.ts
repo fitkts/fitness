@@ -639,13 +639,74 @@ export async function getMembersWithPagination(page: number, pageSize: number, o
   }
 }
 
-// IpcPaymentService 클래스 내부의 메소드들도 window.api를 사용하도록 수정해야 합니다.
-// 예시:
-// static async getAll(): Promise<Member[]> {
-//   try {
-//     if (!window.api || typeof window.api.getAllMembers !== 'function') { ... }
-//     const response = await window.api.getAllMembers();
-//     ...
-//   } ...
-// }
-// 모든 클래스 메소드에 대해 동일한 패턴 적용
+// ============== CONSULTATION MEMBERS API ==============
+
+export async function getAllConsultationMembers(): Promise<{ success: boolean; data?: any[]; error?: string; }> {
+  try {
+    // @ts-ignore
+    if (!window.api || typeof window.api.getAllConsultationMembers !== 'function') {
+      throw new Error('API for getAllConsultationMembers is not available.');
+    }
+    // @ts-ignore
+    return await window.api.getAllConsultationMembers();
+  } catch (error) {
+    console.error('상담 회원 조회 IPC 오류:', error);
+    return { success: false, error: '상담 회원 조회 중 오류가 발생했습니다.' };
+  }
+}
+
+export async function addConsultationMember(memberData: any): Promise<{ success: boolean; data?: number; error?: string; }> {
+  try {
+    // @ts-ignore
+    if (!window.api || typeof window.api.addConsultationMember !== 'function') {
+      throw new Error('API for addConsultationMember is not available.');
+    }
+    // @ts-ignore
+    return await window.api.addConsultationMember(memberData);
+  } catch (error) {
+    console.error('상담 회원 추가 IPC 오류:', error);
+    return { success: false, error: '상담 회원 추가 중 오류가 발생했습니다.' };
+  }
+}
+
+export async function updateConsultationMember(consultationData: any): Promise<{ success: boolean; error?: string; }> {
+  try {
+    // @ts-ignore
+    if (!window.api || typeof window.api.updateConsultationMember !== 'function') {
+      throw new Error('API for updateConsultationMember is not available.');
+    }
+    // @ts-ignore
+    return await window.api.updateConsultationMember(consultationData.id, consultationData);
+  } catch (error) {
+    console.error('상담 회원 수정 IPC 오류:', error);
+    return { success: false, error: '상담 회원 수정 중 오류가 발생했습니다.' };
+  }
+}
+
+export async function deleteConsultationMember(id: number): Promise<{ success: boolean; error?: string; }> {
+  try {
+    // @ts-ignore
+    if (!window.api || typeof window.api.deleteConsultationMember !== 'function') {
+      throw new Error('API for deleteConsultationMember is not available.');
+    }
+    // @ts-ignore
+    return await window.api.deleteConsultationMember(id);
+  } catch (error) {
+    console.error('상담 회원 삭제 IPC 오류:', error);
+    return { success: false, error: '상담 회원 삭제 중 오류가 발생했습니다.' };
+  }
+}
+
+export async function promoteToMember(consultationMember: any): Promise<{ success: boolean; error?: string; }> {
+  try {
+    // @ts-ignore
+    if (!window.api || typeof window.api.promoteConsultationMember !== 'function') {
+      throw new Error('API for promoteConsultationMember is not available.');
+    }
+    // @ts-ignore
+    return await window.api.promoteConsultationMember(consultationMember);
+  } catch (error) {
+    console.error('회원 승격 IPC 오류:', error);
+    return { success: false, error: '회원 승격 중 오류가 발생했습니다.' };
+  }
+}

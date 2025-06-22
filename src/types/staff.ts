@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SortConfig, PaginationConfig } from './common';
 
 // 직원 상태 enum
 export enum StaffStatus {
@@ -79,3 +80,23 @@ export interface StaffFilter {
   sortKey?: keyof Staff;
   sortDirection?: 'ascending' | 'descending' | null;
 }
+
+// 직원 통계 타입
+export interface StaffStatisticsData {
+  total: number;
+  active: number;
+  inactive: number;
+  byPosition: Record<string, number>;
+}
+
+// 직원 검색 필터 액션 타입
+export interface StaffSearchFilterActions {
+  onAddStaff?: () => void;
+  onImportSuccess?: () => void;
+  showToast?: (type: 'success' | 'error', message: string) => void;
+  staff?: Staff[];
+  showActionButtons?: boolean;
+}
+
+// 공통 타입들은 common.ts에서 가져와서 사용
+export { SortConfig, PaginationConfig };

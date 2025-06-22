@@ -1,6 +1,6 @@
 import React from 'react';
 import { Locker } from '../../models/types';
-import { LockerAction } from '../../config/lockerConfig';
+import { LockerAction, GRID_COMPACT_CONFIG } from '../../config/lockerConfig';
 import LockerCard from './LockerCard';
 
 interface LockerGridProps {
@@ -39,34 +39,12 @@ const LockerGrid: React.FC<LockerGridProps> = ({
     return { gridAutoFlow: 'row' };
   };
 
-  // 로딩 상태
+  // 로딩 중일 때
   if (isLoading) {
     return (
-      <div className={getGridClasses()}>
-        {Array.from({ length: 16 }).map((_, index) => (
-          <div
-            key={index}
-            className="p-2 rounded-lg border animate-pulse bg-gray-50"
-          >
-            <div className="space-y-2">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  <div className="h-3 bg-gray-200 rounded w-12"></div>
-                </div>
-                <div className="flex gap-1">
-                  <div className="h-4 w-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 w-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 w-4 bg-gray-200 rounded"></div>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
-                <div className="h-3 bg-gray-200 rounded w-24"></div>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className={`text-center ${GRID_COMPACT_CONFIG.EMPTY_STATE.padding}`}>
+        <div className={`animate-spin rounded-full ${GRID_COMPACT_CONFIG.EMPTY_STATE.containerSize.replace('w-', 'h-').replace('h-', 'w-')} border-b-2 border-gray-600 mx-auto mb-4`}></div>
+        <p className={`${GRID_COMPACT_CONFIG.EMPTY_STATE.subtitleSize} text-gray-600`}>락커 목록을 불러오는 중...</p>
       </div>
     );
   }
@@ -74,10 +52,10 @@ const LockerGrid: React.FC<LockerGridProps> = ({
   // 락커가 없는 경우
   if (lockers.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+      <div className={`text-center ${GRID_COMPACT_CONFIG.EMPTY_STATE.padding}`}>
+        <div className={`mx-auto ${GRID_COMPACT_CONFIG.EMPTY_STATE.containerSize} bg-gray-100 rounded-full flex items-center justify-center ${GRID_COMPACT_CONFIG.EMPTY_STATE.spacing}`}>
           <svg 
-            className="w-12 h-12 text-gray-400" 
+            className={`w-${GRID_COMPACT_CONFIG.EMPTY_STATE.iconSize} h-${GRID_COMPACT_CONFIG.EMPTY_STATE.iconSize} text-gray-400`}
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -90,10 +68,10 @@ const LockerGrid: React.FC<LockerGridProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className={`${GRID_COMPACT_CONFIG.EMPTY_STATE.titleSize} font-medium text-gray-900 mb-2`}>
           락커가 없습니다
         </h3>
-        <p className="text-gray-500 mb-6">
+        <p className={`${GRID_COMPACT_CONFIG.EMPTY_STATE.subtitleSize} text-gray-500 mb-6`}>
           새 락커를 추가하여 시작해보세요.
         </p>
       </div>
@@ -102,7 +80,7 @@ const LockerGrid: React.FC<LockerGridProps> = ({
 
   // 락커 목록 표시
   return (
-    <div className={getGridClasses()} style={getGridStyle()}>
+    <div className={`${getGridClasses()} ${GRID_COMPACT_CONFIG.CONTAINER.gap}`} style={getGridStyle()}>
       {lockers.map((locker) => (
         <LockerCard
           key={locker.id || locker.number}

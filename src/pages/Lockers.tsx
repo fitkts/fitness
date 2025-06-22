@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus } from 'lucide-react';
 import { Locker } from '../models/types';
 import { LockerAction } from '../config/lockerConfig';
-import { PAGINATION_CONFIG } from '../config/lockerConfig';
+import { PAGINATION_CONFIG, ACTION_BUTTON_CONFIG } from '../config/lockerConfig';
 import {
   getAllLockers,
   addLocker,
@@ -12,6 +13,8 @@ import { useToast } from '../contexts/ToastContext';
 import { filterLockers, sortLockersAdvanced, calculatePagination } from '../utils/lockerUtils';
 
 // 컴포넌트 임포트
+import PageContainer from '../components/common/PageContainer';
+import PageHeader from '../components/common/PageHeader';
 import LockerSearchAndFilter from '../components/locker/LockerSearchAndFilter';
 import LockerGrid from '../components/locker/LockerGrid';
 import LockerPagination from '../components/locker/LockerPagination';
@@ -163,6 +166,15 @@ const Lockers: React.FC = () => {
     setBulkAddModalOpen(true);
   };
 
+  // 필터 초기화
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setFilter('all');
+    setSortBy('number_asc');
+    setLayoutDirection('row');
+    setCurrentPage(1);
+  };
+
   const handleLockerAction = (action: LockerAction, locker: Locker) => {
     setSelectedLocker(locker);
     
@@ -283,8 +295,12 @@ const Lockers: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto space-y-6">
-      {/* 검색 및 필터링 */}
+    <PageContainer testId="locker-page-container">
+      <PageHeader 
+        title="락커 관리"
+        testId="locker-page-header"
+      />
+
       <LockerSearchAndFilter
         searchTerm={searchTerm}
         onSearchChange={handleSearchChange}
@@ -294,9 +310,9 @@ const Lockers: React.FC = () => {
         onSortChange={handleSortChange}
         layoutDirection={layoutDirection}
         onLayoutChange={handleLayoutChange}
-        onAddClick={handleAddLocker}
-        totalCount={totalItems}
-        filteredCount={totalItems}
+        onReset={handleResetFilters}
+        onAddLocker={handleAddLocker}
+        showActionButtons={true}
       />
 
       {/* 락커 그리드 */}
@@ -332,7 +348,7 @@ const Lockers: React.FC = () => {
         locker={selectedLocker}
         isViewMode={isViewMode}
       />
-    </div>
+    </PageContainer>
   );
 };
 

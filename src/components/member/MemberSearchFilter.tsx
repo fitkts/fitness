@@ -127,38 +127,38 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
       {/* 헤더 */}
       <div className={`${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.headerPadding} bg-gray-50 border-b border-gray-200`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Filter size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-600" />
             <h3 className={COMPACT_LAYOUT_CONFIG.HEADER.title}>회원 검색 및 필터</h3>
             {activeFilterCount > 0 && (
-              <span className={`bg-blue-100 text-blue-800 ${COMPACT_LAYOUT_CONFIG.HEADER.badge} font-medium px-2 py-0.5 rounded-full`}>
-                {activeFilterCount}개 필터 적용됨
+              <span className={`bg-blue-100 text-blue-800 ${COMPACT_LAYOUT_CONFIG.HEADER.badge} font-medium px-1.5 py-0.5 rounded-full`}>
+                {activeFilterCount}개
               </span>
             )}
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {/* 필터 초기화 버튼 */}
             {activeFilterCount > 0 && (
               <button
                 onClick={onReset}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
               >
-                <X size={12} />
+                <X size={10} />
                 초기화
               </button>
             )}
             
             {/* 액션 버튼들 */}
             {showActionButtons && (
-              <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-300">
+              <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-gray-300">
                 {/* 회원 추가 버튼 */}
                 {onAddMember && (
                   <button
                     onClick={onAddMember}
                     className={ACTION_BUTTON_CONFIG.ADD_MEMBER.className}
                   >
-                    <Plus size={ACTION_BUTTON_CONFIG.ADD_MEMBER.iconSize} className="mr-2" />
+                    <Plus size={ACTION_BUTTON_CONFIG.ADD_MEMBER.iconSize} className="mr-1" />
                     {ACTION_BUTTON_CONFIG.ADD_MEMBER.text}
                   </button>
                 )}
@@ -202,23 +202,23 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
 
       {/* 필터 컨텐츠 */}
       <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
-        <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
-          {/* 검색 박스 */}
-          <div className="lg:col-span-2">
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
+          {/* 검색 박스 - 가장 작은 크기로 */}
+          <div>
             <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              회원명 검색
+              검색
             </label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="회원 이름으로 검색..."
-                className={`w-full pl-8 pr-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                placeholder="회원명..."
+                className={`w-full pl-7 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 value={filter.search || ''}
                 onChange={handleSearchChange}
               />
               <Search
-                className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={14}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={12}
               />
             </div>
           </div>
@@ -226,10 +226,10 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
           {/* 상태별 필터 */}
           <div>
             <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              회원 상태
+              상태
             </label>
             <select
-              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.status || 'all'}
               onChange={handleStatusChange}
             >
@@ -247,14 +247,14 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
               담당자
             </label>
             <select
-              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.staffName || 'all'}
               onChange={handleStaffNameChange}
             >
-              <option value="all">전체 담당자</option>
+              <option value="all">전체</option>
               {staffList.map((staff) => (
                 <option key={staff.id} value={staff.name}>
-                  {staff.name} ({staff.position})
+                  {staff.name}
                 </option>
               ))}
             </select>
@@ -266,11 +266,11 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
               성별
             </label>
             <select
-              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.gender || 'all'}
               onChange={handleGenderChange}
             >
-              <option value="all">전체 성별</option>
+              <option value="all">전체</option>
               <option value="남성">남성</option>
               <option value="여성">여성</option>
               <option value="기타">기타</option>
@@ -280,14 +280,14 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
           {/* 이용권별 필터 */}
           <div>
             <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              이용권 종류
+              이용권
             </label>
             <select
-              className={`w-full px-3 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               value={filter.membershipType || 'all'}
               onChange={handleMembershipTypeChange}
             >
-              <option value="all">전체 이용권</option>
+              <option value="all">전체</option>
               {membershipTypes.map((type) => (
                 <option key={type} value={type}>
                   {type}

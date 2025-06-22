@@ -50,4 +50,17 @@ export interface PromotionInfo {
   isPromoted?: boolean;
   promotedAt?: DateString;
   promotedMemberId?: number;
+}
+
+// 정렬 설정 타입
+export interface SortConfig {
+  key: string;
+  direction: 'ascending' | 'descending' | 'none';
+}
+
+// 페이지네이션 설정 타입
+export interface PaginationConfig {
+  currentPage: number;
+  pageSize: number;
+  showAll: boolean;
 } 

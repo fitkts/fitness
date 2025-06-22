@@ -1,7 +1,7 @@
-import { LockerAction } from '../types/lockerHistory';
+import { LockerHistoryAction } from '../types/lockerHistory';
 
 // 액션 타입별 한글 라벨
-export const LOCKER_ACTION_LABELS: Record<LockerAction, string> = {
+export const LOCKER_ACTION_LABELS: Record<LockerHistoryAction, string> = {
   assign: '락커 배정',
   release: '락커 해제',
   extend: '사용 연장',
@@ -13,7 +13,7 @@ export const LOCKER_ACTION_LABELS: Record<LockerAction, string> = {
 };
 
 // 액션별 색상 설정
-export const LOCKER_ACTION_COLORS: Record<LockerAction, string> = {
+export const LOCKER_ACTION_COLORS: Record<LockerHistoryAction, string> = {
   assign: 'bg-green-100 text-green-800',
   release: 'bg-red-100 text-red-800',
   extend: 'bg-blue-100 text-blue-800',
