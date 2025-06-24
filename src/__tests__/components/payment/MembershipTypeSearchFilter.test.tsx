@@ -114,7 +114,7 @@ describe('MembershipTypeSearchFilter', () => {
       render(<MembershipTypeSearchFilter {...mockCompactProps} />);
       
       const searchInput = screen.getByPlaceholderText('이용권 이름 또는 설명으로 검색...');
-      expect(searchInput).toHaveClass('text-sm');
+      expect(searchInput).toHaveClass('text-xs');
     });
   });
 
@@ -234,8 +234,8 @@ describe('MembershipTypeSearchFilter', () => {
       
       const addButton = screen.getByText('새 이용권 추가');
       
-      // 컴팩트 스타일 클래스 확인
-      expect(addButton).toHaveClass('text-sm', 'py-1.5', 'px-3');
+      // 컴팩트 스타일 클래스 확인 - 새로운 컴팩트 크기로 변경
+      expect(addButton).toHaveClass('text-xs', 'py-1', 'px-2');
     });
 
     it('액션 버튼들이 헤더 오른쪽에 올바르게 배치되어야 한다', () => {

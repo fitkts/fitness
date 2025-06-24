@@ -8,50 +8,50 @@ import {
 } from '../../config/membershipTypeConfig';
 import * as XLSX from 'xlsx';
 
-// 회원관리와 동일한 컴팩트 레이아웃 설정 사용
+// 회원관리와 완전히 동일한 컴팩트 레이아웃 설정 사용
 const COMPACT_LAYOUT_CONFIG = {
   FILTER_CONTAINER: {
     padding: '', // 실제 컨테이너 패딩은 컴포넌트에서 직접 관리
-    headerPadding: 'px-3 py-2', // 회원관리와 동일
-    contentPadding: 'p-3', // 회원관리와 동일
+    headerPadding: 'px-3 py-1.5', // 회원관리와 동일 (더 컴팩트하게)
+    contentPadding: 'p-2.5', // 회원관리와 동일 (더 컴팩트하게)
   },
   INPUT_FIELD: {
-    padding: 'py-1.5', // 회원관리와 동일
-    textSize: 'text-sm', // 회원관리와 동일
+    padding: 'py-1', // 회원관리와 동일 (더 컴팩트하게)
+    textSize: 'text-xs', // 회원관리와 동일 (더 작은 폰트)
     labelSize: 'text-xs', // 회원관리와 동일
-    labelMargin: 'mb-1', // 회원관리와 동일
+    labelMargin: 'mb-0.5', // 회원관리와 동일 (더 작은 마진)
   },
   GRID: {
-    gap: 'gap-3', // 회원관리와 동일
-    responsive: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6', // 회원관리와 동일
+    gap: 'gap-2', // 회원관리와 동일 (더 작은 간격)
+    responsive: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6', // 회원관리와 동일 (더 조밀한 그리드)
   },
   HEADER: {
-    title: 'text-sm font-medium text-gray-900', // 회원관리와 동일
+    title: 'text-xs font-medium text-gray-900', // 회원관리와 동일 (더 작은 제목)
     badge: 'text-xs', // 회원관리와 동일
-    icon: 16, // 회원관리와 동일
+    icon: 14, // 회원관리와 동일 (더 작은 아이콘)
   },
   RANGE_SECTION: {
-    title: 'text-sm font-medium text-gray-700', // 회원관리와 동일
-    iconSize: 16, // 회원관리와 동일
+    title: 'text-xs font-medium text-gray-700', // 회원관리와 동일 (더 작은 제목)
+    iconSize: 14, // 회원관리와 동일 (더 작은 아이콘)
     gridGap: 'gap-2', // 회원관리와 동일
     presetContainer: 'flex flex-wrap gap-1', // 회원관리와 동일
     presetButton: 'px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors', // 회원관리와 동일
   },
 };
 
-// 결제내역 탭과 동일한 초록색 버튼 색상 사용
+// 결제내역 탭과 동일한 초록색 버튼 + 회원관리와 동일한 컴팩트 크기
 const ACTION_BUTTON_CONFIG = {
   ADD_MEMBERSHIP_TYPE: {
     text: '새 이용권 추가',
-    className: 'bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-1.5 px-3 rounded-md flex items-center transition-colors', // 결제내역과 동일한 초록색
-    iconSize: 14,
+    className: 'bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1 px-2 rounded-md flex items-center transition-colors', // 초록색 + 컴팩트 크기
+    iconSize: 12, // 회원관리와 동일 (더 작은 아이콘)
   },
   EXCEL_BUTTONS: {
-    container: 'flex gap-1 items-center',
-    button: 'bg-gray-100 border-none rounded p-2 cursor-pointer hover:bg-gray-200', // 회원관리와 동일
-    infoButton: 'bg-transparent border-none p-1 cursor-pointer',
-    iconSize: 16, // 회원관리와 동일
-    infoIconSize: 15, // 회원관리와 동일
+    container: 'flex gap-0.5 items-center', // 회원관리와 동일 (더 작은 간격)
+    button: 'bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200', // 회원관리와 동일 (더 작은 패딩)
+    infoButton: 'bg-transparent border-none p-0.5 cursor-pointer', // 회원관리와 동일 (더 작은 패딩)
+    iconSize: 14, // 회원관리와 동일
+    infoIconSize: 13, // 회원관리와 동일
   },
   ACTION_GROUP: {
     container: 'flex items-center gap-2 ml-4 pl-4 border-l border-gray-300', // 회원관리와 동일
