@@ -57,7 +57,8 @@ const ConsultationDetailModal: React.FC<ConsultationDetailModalProps> = ({
     health_conditions: '',
     fitness_goals: [],
     notes: '',
-    staff_id: undefined
+    staff_id: undefined,
+    staff_name: ''
   });
   const [staffOptions, setStaffOptions] = useState<Array<{id: number, name: string, position: string}>>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -113,6 +114,22 @@ const ConsultationDetailModal: React.FC<ConsultationDetailModalProps> = ({
     setIsEditing(!isEditing);
   };
 
+  // 직원 선택 핸들러 (staff_id와 staff_name을 함께 업데이트)
+  const handleStaffChange = (staffId: string) => {
+    const selectedStaff = staffOptions.find(staff => staff.id.toString() === staffId);
+    
+    setEditFormData(prev => ({
+      ...prev,
+      staff_id: staffId ? parseInt(staffId) : undefined,
+      staff_name: selectedStaff ? selectedStaff.name : ''
+    }));
+    
+    // 에러 초기화
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
   // 폼 데이터 변경 핸들러
   const handleFormChange = (field: keyof MemberEditFormData, value: any) => {
     setEditFormData(prev => ({
@@ -152,10 +169,12 @@ const ConsultationDetailModal: React.FC<ConsultationDetailModalProps> = ({
     setIsSaving(true);
     try {
       const updateData = convertToUpdateData(member.id!, editFormData);
-      const response = await window.api.updateConsultationMember(updateData);
+      // @ts-ignore
+      const response = await window.api.updateConsultationMember(member.id!, updateData);
       
       if (response.success) {
-        setMember(response.data);
+        // 업데이트 후 다시 회원 정보를 로드
+        await loadMemberDetail();
         setIsEditing(false);
         setErrors([]);
         onUpdate();
@@ -460,7 +479,7 @@ const ConsultationDetailModal: React.FC<ConsultationDetailModalProps> = ({
                     {isEditing ? (
                       <select
                         value={editFormData.staff_id || ''}
-                        onChange={(e) => handleFormChange('staff_id', e.target.value ? parseInt(e.target.value) : undefined)}
+                        onChange={(e) => handleStaffChange(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">담당자를 선택하세요</option>

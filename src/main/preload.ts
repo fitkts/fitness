@@ -48,5 +48,16 @@ contextBridge.exposeInMainWorld('api', {
   getAttendanceByDate: (date: string) => ipcRenderer.invoke('get-attendance-by-date', date),
   getMembersWithPagination: (page: number, pageSize: number, options: any) =>
     ipcRenderer.invoke('get-members-pagination', page, pageSize, options),
+  
+  // 상담회원 관련 API
+  getAllConsultationMembers: () => ipcRenderer.invoke('get-all-consultation-members'),
+  addConsultationMember: (memberData: any) => ipcRenderer.invoke('add-consultation-member', memberData),
+  updateConsultationMember: (id: number, updates: any) => ipcRenderer.invoke('update-consultation-member', id, updates),
+  deleteConsultationMember: (id: number) => ipcRenderer.invoke('delete-consultation-member', id),
+  getConsultationMemberById: (id: number) => ipcRenderer.invoke('get-consultation-member-by-id', id),
+  
+  // 상담회원 승격 API
+  promoteConsultationMember: (promotionData: any) => ipcRenderer.invoke('promote-consultation-member', promotionData),
+  
   // 다른 IPC 통신 함수들도 필요에 따라 여기에 추가할 수 있습니다.
 });

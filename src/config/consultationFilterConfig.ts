@@ -104,16 +104,46 @@ export const CONSULTATION_STATISTICS_CONFIG = {
   }
 };
 
+// 테이블 컴팩트 레이아웃 설정 (회원관리와 동일)
+export const CONSULTATION_TABLE_COMPACT_CONFIG = {
+  HEADER: {
+    containerPadding: 'py-2', // 회원관리와 동일
+    cellPadding: 'px-4 py-2', // 회원관리와 동일
+    iconSize: 16, // 회원관리와 동일
+    badgeTextSize: 'text-xs',
+  },
+  CELL: {
+    padding: 'px-4 py-2', // 회원관리와 동일
+    textSize: 'text-sm',
+    avatarSize: 'h-7 w-7', // 회원관리와 동일
+    avatarTextSize: 'text-xs', // 회원관리와 동일
+  },
+  PAGINATION: {
+    containerPadding: 'py-2', // 회원관리와 동일
+    buttonPadding: 'p-1.5', // 회원관리와 동일
+    numberButtonPadding: 'px-2.5 py-1', // 회원관리와 동일
+    iconSize: 14, // 회원관리와 동일
+  },
+  LOADING: {
+    containerPadding: 'p-8', // 회원관리와 동일
+    spinnerSize: 'h-6 w-6', // 회원관리와 동일
+  },
+  EMPTY_STATE: {
+    containerPadding: 'p-8', // 회원관리와 동일
+    iconSize: 40, // 회원관리와 동일
+  },
+} as const;
+
 // 테이블 설정
 export const CONSULTATION_TABLE_CONFIG = {
-  MAX_HEIGHT: '600px',
-  MIN_WIDTH: '800px',
+  MAX_HEIGHT: 'calc(100vh - 350px)', // 회원관리와 동일
+  MIN_WIDTH: 600, // 회원관리와 동일
   STICKY_HEADER_Z_INDEX: 10
 };
 
 // 페이지네이션 설정
 export const CONSULTATION_PAGINATION_CONFIG = {
-  PAGE_SIZE_OPTIONS: [10, 20, 50, 100],
-  DEFAULT_PAGE_SIZE: 20,
-  MAX_VISIBLE_PAGES: 5
+  PAGE_SIZE_OPTIONS: [10, 20, 30, 50], // 회원관리와 동일
+  DEFAULT_PAGE_SIZE: 30, // 회원관리와 동일
+  MAX_VISIBLE_PAGES: 5 // 회원관리와 동일
 }; 

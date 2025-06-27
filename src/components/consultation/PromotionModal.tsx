@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Star, User, Calendar, CreditCard, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { Star, User } from 'lucide-react';
 import Modal from '../common/Modal';
 import { ConsultationMember } from '../../types/consultation';
 
@@ -10,115 +10,34 @@ interface PromotionModalProps {
   onSuccess: () => void;
 }
 
-interface MembershipType {
-  id: number;
-  name: string;
-  price: number;
-  duration_months: number;
-}
-
 const PromotionModal: React.FC<PromotionModalProps> = ({
   isOpen,
   onClose,
   consultationMember,
   onSuccess
 }) => {
-  const [membershipTypes, setMembershipTypes] = useState<MembershipType[]>([]);
-  const [selectedMembershipType, setSelectedMembershipType] = useState<number | null>(null);
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | 'transfer'>('card');
-  const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      loadMembershipTypes();
-    }
-  }, [isOpen]);
-
-  const loadMembershipTypes = async () => {
-    try {
-      const response = await window.api.getAllMembershipTypes();
-      if (response.success) {
-        setMembershipTypes(response.data);
-      }
-    } catch (error) {
-      console.error('회원권 타입 로드 실패:', error);
-    }
-  };
-
-  const calculateEndDate = (startDate: string, durationMonths: number): string => {
-    if (!startDate || !durationMonths || isNaN(durationMonths) || durationMonths <= 0) {
-      return '';
-    }
-
-    try {
-      const start = new Date(startDate);
-      if (isNaN(start.getTime())) {
-        return '';
-      }
-
-      const endDate = new Date(start);
-      endDate.setMonth(endDate.getMonth() + durationMonths);
-
-      if (isNaN(endDate.getTime())) {
-        return '';
-      }
-
-      return endDate.toISOString().split('T')[0];
-    } catch (error) {
-      console.error('종료일 계산 오류:', error);
-      return '';
-    }
-  };
-
-  // 안전한 월 단가 계산 함수
-  const calculateMonthlyPrice = (price: number, durationMonths: number): string => {
-    if (!price || !durationMonths || durationMonths <= 0) {
-      return '계산 불가';
-    }
-    return Math.round(price / durationMonths).toLocaleString();
-  };
-
-  // 선택된 회원권 정보
-  const selectedMembership = membershipTypes.find(type => type.id === selectedMembershipType);
-  const endDate = selectedMembership 
-    ? calculateEndDate(startDate, selectedMembership.duration_months)
-    : '';
-
-  // 시작일이나 회원권 변경 시 종료일 재계산
-  useEffect(() => {
-    // 컴포넌트가 마운트되거나 시작일/회원권이 변경될 때 자동으로 종료일이 계산됨
-    // calculateEndDate 함수가 실시간으로 endDate를 계산하므로 별도 처리 불필요
-  }, [startDate, selectedMembership]);
-
-  // 승격 처리
+  // 승격 처리 (최소한의 정보만 사용)
   const handlePromotion = async () => {
-    if (!consultationMember || !selectedMembership || !consultationMember.id) {
-      alert('필수 정보가 누락되었습니다.');
+    if (!consultationMember || !consultationMember.id) {
+      alert('상담 회원 정보가 없습니다.');
       return;
     }
 
     setIsLoading(true);
     try {
+      // 기본 회원 정보로 승격 처리 (날짜는 오늘로 자동 설정)
       const promotionData = {
         consultationMemberId: consultationMember.id,
-        membershipTypeId: selectedMembership.id,
-        membershipType: selectedMembership.name,
-        startDate,
-        endDate,
-        paymentAmount: selectedMembership.price,
-        paymentMethod,
-        notes
+        notes: notes || '상담회원에서 정식회원으로 승격'
       };
 
       const response = await window.api.promoteConsultationMember(promotionData);
       
       if (response.success) {
-        alert(`${consultationMember.name}님이 정식 회원으로 승격되었습니다!`);
+        alert(`${consultationMember.name}님이 정식 회원으로 승격되었습니다!\n\n회원권 및 결제 정보는 회원 관리 또는 결제 관리에서 설정해주세요.`);
         onSuccess();
         onClose();
       } else {
@@ -141,7 +60,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
       </div>
       <div>
         <h2 className="text-xl font-bold text-gray-900">정식 회원 승격</h2>
-        <p className="text-sm text-gray-500">상담회원을 정식회원으로 등록합니다</p>
+        <p className="text-sm text-gray-500">상담회원을 정식회원으로 승격합니다</p>
       </div>
     </div>
   );
@@ -157,7 +76,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
       </button>
       <button
         onClick={handlePromotion}
-        disabled={!selectedMembershipType || !startDate || isLoading}
+        disabled={isLoading}
         className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all font-semibold shadow-lg"
       >
         {isLoading ? (
@@ -177,7 +96,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={modalTitle}
-      size="xl"
+      size="lg"
       footer={modalFooter}
     >
       <div className="space-y-6">
@@ -195,6 +114,14 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
             <div className="flex flex-col">
               <span className="text-sm text-blue-600 font-medium">전화번호</span>
               <span className="text-gray-700">{consultationMember.phone || '미등록'}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm text-blue-600 font-medium">이메일</span>
+              <span className="text-gray-700">{consultationMember.email || '미등록'}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm text-blue-600 font-medium">담당 직원</span>
+              <span className="text-gray-700">{consultationMember.staff_name || '미지정'}</span>
             </div>
             <div className="flex flex-col md:col-span-2">
               <span className="text-sm text-blue-600 font-medium">건강 상태</span>
@@ -217,186 +144,44 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
           </div>
         </div>
 
-        {/* 회원권 선택 - 컴팩트 디자인 */}
-        <div>
-          <label className="block text-lg font-semibold text-gray-900 mb-3">
-            회원권 선택 *
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {membershipTypes.map((type) => (
-              <div
-                key={type.id}
-                role="button"
-                tabIndex={0}
-                className={`relative border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-                  selectedMembershipType === type.id
-                    ? 'border-green-500 bg-green-50 shadow-md ring-2 ring-green-200'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                }`}
-                onClick={() => setSelectedMembershipType(type.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setSelectedMembershipType(type.id);
-                  }
-                }}
-              >
-                <div className="flex flex-col space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      selectedMembershipType === type.id
-                        ? 'border-green-500 bg-green-500'
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedMembershipType === type.id && (
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                      )}
-                    </div>
-                    <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {type.duration_months}개월
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <h4 className="font-bold text-gray-900 text-base mb-1">{type.name}</h4>
-                    <div className="text-xl font-bold text-green-600 mb-1">
-                      {type.price.toLocaleString()}원
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      월 {calculateMonthlyPrice(type.price, type.duration_months)}원
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {membershipTypes.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              회원권 정보를 불러오는 중...
-            </div>
-          )}
-        </div>
-
-        {/* 이용 기간 및 결제 방법 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 이용 기간 설정 */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">이용 기간</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="inline h-4 w-4 mr-1" />
-                  시작일 *
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="inline h-4 w-4 mr-1" />
-                  종료일
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  readOnly
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 text-gray-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 결제 방법 */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">결제 방법</h3>
-            <div className="space-y-3">
-              {[
-                { value: 'card', label: '카드 결제', icon: '💳' },
-                { value: 'cash', label: '현금 결제', icon: '💵' },
-                { value: 'transfer', label: '계좌이체', icon: '🏦' }
-              ].map((method) => (
-                <label 
-                  key={method.value} 
-                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                    paymentMethod === method.value
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={method.value}
-                    checked={paymentMethod === method.value}
-                    onChange={(e) => setPaymentMethod(e.target.value as any)}
-                    className="sr-only"
-                  />
-                  <span className="text-lg mr-3">{method.icon}</span>
-                  <span className="font-medium">{method.label}</span>
-                  {paymentMethod === method.value && (
-                    <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
-                  )}
-                </label>
-              ))}
-            </div>
+        {/* 승격 메모만 남김 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">승격 메모</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              메모 (선택사항)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="승격 관련 메모사항을 입력하세요..."
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              rows={3}
+            />
           </div>
         </div>
 
-        {/* 메모 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FileText className="inline h-4 w-4 mr-1" />
-            메모 (선택사항)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
-            placeholder="승격 관련 추가 메모를 입력하세요..."
-          />
-        </div>
-
-        {/* 결제 정보 요약 */}
-        {selectedMembership && (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1 bg-green-100 rounded">
-                <CreditCard className="h-4 w-4 text-green-600" />
+        {/* 안내 메시지 */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center">
+                <span className="text-yellow-600 text-sm">💡</span>
               </div>
-              <h4 className="font-semibold text-green-800">결제 정보 요약</h4>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-green-700">회원권:</span>
-                  <span className="font-semibold text-green-800">{selectedMembership.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-green-700">결제 금액:</span>
-                  <span className="font-bold text-green-800 text-lg">{selectedMembership.price.toLocaleString()}원</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-green-700">결제 방법:</span>
-                  <span className="font-semibold text-green-800">
-                    {paymentMethod === 'card' ? '💳 카드' :
-                     paymentMethod === 'cash' ? '💵 현금' : '🏦 계좌이체'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-green-700">이용 기간:</span>
-                  <span className="font-semibold text-green-800">{startDate} ~ {endDate}</span>
-                </div>
+            <div className="ml-3">
+              <h4 className="text-sm font-medium text-yellow-800">승격 후 안내</h4>
+              <div className="mt-1 text-sm text-yellow-700">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>기본 정보로 정식 회원 등록됩니다 (가입일: 오늘)</li>
+                  <li>회원권 및 결제 정보는 결제 관리에서 별도로 등록해주세요</li>
+                  <li>승격된 회원은 상담 목록에서 제거됩니다</li>
+                </ul>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </Modal>
   );

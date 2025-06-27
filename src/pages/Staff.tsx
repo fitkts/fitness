@@ -34,7 +34,6 @@ const Staff: React.FC = () => {
   const [pagination, setPagination] = useState<PaginationConfig>({
     currentPage: 1,
     pageSize: PAGINATION_CONFIG.DEFAULT_PAGE_SIZE,
-    totalPages: 1,
     showAll: false,
   });
 
@@ -98,7 +97,7 @@ const Staff: React.FC = () => {
   const handleSaveStaff = async (staffData: Staff): Promise<boolean> => {
     try {
       if (staffData.id) {
-        const response = await updateStaff(staffData);
+        const response = await updateStaff(staffData.id, staffData);
         if (response.success) {
           showToast('success', STAFF_MESSAGES.success.itemUpdated);
           await fetchStaffData();
@@ -199,7 +198,6 @@ const Staff: React.FC = () => {
           onSave={handleSaveStaff}
           staff={modalState.selectedItem}
           isViewMode={modalState.isViewMode}
-          onSwitchToEdit={switchToEditMode}
         />
       )}
     </PageContainer>

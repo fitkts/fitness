@@ -120,29 +120,69 @@ export const sortMembers = (
 
 /**
  * 신규 회원 폼 데이터를 ConsultationMember 형식으로 변환
+ * 데이터베이스 스키마와 정확히 일치하도록 변환
  */
 export const transformNewMemberData = (formData: NewMemberFormData): any => {
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(Date.now() / 1000); // Unix timestamp (초 단위)
   
-  // Member API에 맞는 형식으로 변환
+  // 날짜 문자열을 Unix timestamp로 변환하는 헬퍼 함수
+  const dateStringToTimestamp = (dateStr?: string): number | undefined => {
+    if (!dateStr) return undefined;
+    try {
+      const date = new Date(dateStr);
+      // Invalid Date 체크
+      if (isNaN(date.getTime())) {
+        console.warn('잘못된 날짜 형식:', dateStr);
+        return undefined;
+      }
+      return Math.floor(date.getTime() / 1000); // Unix timestamp (초 단위)
+    } catch (error) {
+      console.warn('날짜 변환 오류:', dateStr, error);
+      return undefined;
+    }
+  };
+
+  // ConsultationMember 인터페이스와 정확히 일치하는 형식으로 변환
   return {
+    // 기본 정보
     name: formData.name.trim(),
     phone: formData.phone.replace(/[^\d-]/g, ''), // 숫자와 하이픈만 유지
     email: formData.email?.trim() || undefined,
-    gender: formData.gender,
-    birthDate: formData.birth_date || undefined, // YYYY-MM-DD 형식 유지
-    joinDate: new Date().toISOString().split('T')[0], // 오늘 날짜
-    membershipType: formData.membership_type,
-    staffId: formData.staff_id,
-    staffName: formData.staff_name,
+    gender: formData.gender || undefined,
+    
+    // 날짜 정보 - Unix timestamp로 변환
+    birth_date: dateStringToTimestamp(formData.birth_date),
+    join_date: now, // 현재 시간 (상담 신청일)
+    first_visit: dateStringToTimestamp(formData.first_visit),
+    
+    // 회원권 관련 정보
+    membership_type: formData.membership_type?.trim() || undefined,
+    membership_start: undefined, // 상담 단계에서는 undefined
+    membership_end: undefined,   // 상담 단계에서는 undefined
+    last_visit: undefined,       // 아직 방문하지 않음
+    
+    // 직원 정보
+    staff_id: formData.staff_id || undefined,
+    staff_name: formData.staff_name?.trim() || undefined,
+    
+    // 상담 관련 정보 - 이 부분이 누락되었던 핵심 필드들
+    consultation_status: formData.consultation_status || 'pending',
+    health_conditions: formData.health_conditions?.trim() || undefined,
+    fitness_goals: formData.fitness_goals && formData.fitness_goals.length > 0 
+      ? JSON.stringify(formData.fitness_goals) // JSON 문자열로 저장
+      : undefined,
+    
+    // 승격 관련 정보
+    is_promoted: 0, // 초기값: 미승격
+    promoted_at: undefined,
+    promoted_member_id: undefined,
+    
+    // 메모 및 기타
     notes: formData.notes?.trim() || undefined,
-    // 추가 정보들은 별도로 처리할 수 있도록 메타데이터로 전달
-    metadata: {
-      first_visit: formData.first_visit,
-      consultation_status: formData.consultation_status || 'pending',
-      health_conditions: formData.health_conditions?.trim() || undefined,
-      fitness_goals: formData.fitness_goals || []
-    }
+    
+    // 시스템 정보
+    created_at: now,
+    updated_at: now
   };
 };
 

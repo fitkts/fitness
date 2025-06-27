@@ -139,6 +139,8 @@ export interface PaymentDateRange {
   startDate: string;
   endDate: string;
   label: string;
+  type?: 'today' | 'week' | 'month' | 'year' | 'days';
+  days?: number; // days 타입일 때 사용
 }
 
 export interface PaymentAmountRange {

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import NewPaymentModal from '../components/payment/NewPaymentModal';
 import MembershipTypeModal from '../components/payment/MembershipTypeModal';
-import PaymentTable from '../components/payment/PaymentTable';
+import PaymentTableWithPagination from '../components/payment/PaymentTableWithPagination';
 import MembershipTypeList from '../components/payment/MembershipTypeList';
 import PaymentSearchFilter from '../components/payment/PaymentSearchFilter';
 import MembershipTypeSearchFilter from '../components/payment/MembershipTypeSearchFilter';
@@ -36,6 +36,8 @@ import { useToast } from '../contexts/ToastContext';
 import { Member, Payment, MembershipType, Staff } from '../models/types';
 import { MembershipTypeFilter } from '../types/payment';
 import { MemberOption } from '../components/payment/NewMemberSearchInput';
+import { SortConfig, PaginationConfig } from '../types/member';
+import { PAGINATION_CONFIG } from '../config/memberConfig';
 import { 
   filterPayments, 
   filterMembershipTypes, 
@@ -44,8 +46,6 @@ import {
   formatCurrency,
   PaymentFilter
 } from '../utils/paymentUtils';
-
-// 포맷팅 함수들은 utils로 이동했으므로 삭제
 
 const ITEMS_PER_PAGE = 10; // 페이지당 항목 수
 
@@ -70,12 +70,23 @@ const PaymentPage: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<'payments' | 'membershipTypes' | 'statistics'>('payments');
 
-  const [paymentSortConfig, setPaymentSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: 'paymentDate', direction: 'descending' });
-  const [membershipTypeSortConfig, setMembershipTypeSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' | null }>({ key: 'name', direction: 'ascending' });
+  const [paymentSortConfig, setPaymentSortConfig] = useState<SortConfig>({ key: 'paymentDate', direction: 'descending' });
+  const [membershipTypeSortConfig, setMembershipTypeSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
 
-  // 페이지네이션 상태 추가
-  const [paymentsCurrentPage, setPaymentsCurrentPage] = useState<number>(1);
-  const [membershipTypesCurrentPage, setMembershipTypesCurrentPage] = useState<number>(1);
+  // 페이지네이션 상태 추가 (회원 관리와 동일한 방식)
+  const [paymentPagination, setPaymentPagination] = useState<PaginationConfig>({
+    currentPage: 1,
+    pageSize: PAGINATION_CONFIG.DEFAULT_PAGE_SIZE,
+    totalPages: 1,
+    showAll: false,
+  });
+
+  const [membershipTypePagination, setMembershipTypePagination] = useState<PaginationConfig>({
+    currentPage: 1,
+    pageSize: PAGINATION_CONFIG.DEFAULT_PAGE_SIZE,
+    totalPages: 1,
+    showAll: false,
+  });
 
   // 필터 상태 추가
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>({
@@ -130,7 +141,7 @@ const PaymentPage: React.FC = () => {
       minAmount: undefined,
       maxAmount: undefined,
     });
-    setPaymentsCurrentPage(1);
+    setPaymentPagination(prev => ({ ...prev, currentPage: 1 }));
   }, []);
 
   const resetMembershipTypeFilter = useCallback(() => {
@@ -141,25 +152,23 @@ const PaymentPage: React.FC = () => {
       minDuration: undefined,
       maxDuration: undefined,
     });
-    setMembershipTypesCurrentPage(1);
+    setMembershipTypePagination(prev => ({ ...prev, currentPage: 1 }));
   }, []);
 
   const requestPaymentSort = (key: string) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (paymentSortConfig.key === key && paymentSortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setPaymentSortConfig({ key, direction });
-    setPaymentsCurrentPage(1); // 정렬 시 첫 페이지로 이동
+    setPaymentSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending',
+    }));
+    setPaymentPagination(prev => ({ ...prev, currentPage: 1 })); // 정렬 시 첫 페이지로 이동
   };
 
   const requestMembershipTypeSort = (key: string) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (membershipTypeSortConfig.key === key && membershipTypeSortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setMembershipTypeSortConfig({ key, direction });
-    setMembershipTypesCurrentPage(1); // 정렬 시 첫 페이지로 이동
+    setMembershipTypeSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending',
+    }));
+    setMembershipTypePagination(prev => ({ ...prev, currentPage: 1 })); // 정렬 시 첫 페이지로 이동
   };
   
   const loadData = useCallback(async () => {
@@ -297,30 +306,26 @@ const PaymentPage: React.FC = () => {
 
   // 페이지네이션된 데이터
   const paginatedPayments = useMemo(() => {
-    const startIndex = (paymentsCurrentPage - 1) * ITEMS_PER_PAGE;
-    return sortedPayments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [sortedPayments, paymentsCurrentPage]);
+    const startIndex = (paymentPagination.currentPage - 1) * paymentPagination.pageSize;
+    return sortedPayments.slice(startIndex, startIndex + paymentPagination.pageSize);
+  }, [sortedPayments, paymentPagination]);
 
   const paginatedMembershipTypes = useMemo(() => {
-    const startIndex = (membershipTypesCurrentPage - 1) * ITEMS_PER_PAGE;
-    return sortedMembershipTypes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [sortedMembershipTypes, membershipTypesCurrentPage]);
+    const startIndex = (membershipTypePagination.currentPage - 1) * membershipTypePagination.pageSize;
+    return sortedMembershipTypes.slice(startIndex, startIndex + membershipTypePagination.pageSize);
+  }, [sortedMembershipTypes, membershipTypePagination]);
 
   // 총 페이지 수 계산
-  const totalPaymentPages = Math.ceil(sortedPayments.length / ITEMS_PER_PAGE);
-  const totalMembershipTypePages = Math.ceil(sortedMembershipTypes.length / ITEMS_PER_PAGE);
+  const totalPaymentPages = Math.ceil(sortedPayments.length / paymentPagination.pageSize);
+  const totalMembershipTypePages = Math.ceil(sortedMembershipTypes.length / membershipTypePagination.pageSize);
 
   // 페이지 변경 핸들러
-  const handlePaymentPageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPaymentPages) {
-      setPaymentsCurrentPage(newPage);
-    }
+  const handlePaymentPageChange = (newPagination: Partial<PaginationConfig>) => {
+    setPaymentPagination(prev => ({ ...prev, ...newPagination }));
   };
 
-  const handleMembershipTypePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalMembershipTypePages) {
-      setMembershipTypesCurrentPage(newPage);
-    }
+  const handleMembershipTypePageChange = (newPagination: Partial<PaginationConfig>) => {
+    setMembershipTypePagination(prev => ({ ...prev, ...newPagination }));
   };
   
   // Pagination UI 컴포넌트
@@ -334,7 +339,7 @@ const PaymentPage: React.FC = () => {
     return (
       <div className="mt-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600">
         <div className="mb-2 sm:mb-0">
-          총 {itemCount}개 중 { (currentPage -1) * ITEMS_PER_PAGE + 1 } - { Math.min(currentPage * ITEMS_PER_PAGE, itemCount) } 표시
+          총 {itemCount}개 중 { (currentPage -1) * paymentPagination.pageSize + 1 } - { Math.min(currentPage * paymentPagination.pageSize, itemCount) } 표시
         </div>
         <div className="flex items-center space-x-1">
           <button
@@ -470,23 +475,25 @@ const PaymentPage: React.FC = () => {
           {/* 필터링된 결제 목록 (간략 버전) */}
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">필터링된 결제 내역</h2>
-            <PaymentTable
-              payments={paginatedPayments}
-              membershipTypes={membershipTypes}
+            <PaymentTableWithPagination
+              payments={sortedPayments}
               sortConfig={paymentSortConfig}
-              requestSort={requestPaymentSort}
-              formatDate={formatDate}
-              formatCurrency={formatCurrency}
-              onViewPayment={(payment) => handleOpenPaymentModal(payment, true)}
-              onEditPayment={(payment) => handleOpenPaymentModal(payment, false)}
-              onDeletePayment={async (paymentId) => {
+              pagination={{
+                ...paymentPagination,
+                totalPages: totalPaymentPages,
+              }}
+              isLoading={isLoading}
+              onSort={requestPaymentSort}
+              onView={(payment) => handleOpenPaymentModal(payment, true)}
+              onEdit={(payment) => handleOpenPaymentModal(payment, false)}
+              onDelete={async (paymentId) => {
                 if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
                   try {
                     const result = await deletePayment(paymentId);
                     if (result.success) {
                       showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
                       loadData(); 
-                      setPaymentsCurrentPage(1);
+                      handlePaymentPageChange({ currentPage: 1 });
                     } else {
                       showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
                     }
@@ -495,12 +502,9 @@ const PaymentPage: React.FC = () => {
                   }
                 }
               }}
-            />
-            <PaginationControls
-              currentPage={paymentsCurrentPage}
-              totalPages={totalPaymentPages}
-              onPageChange={handlePaymentPageChange}
-              itemCount={sortedPayments.length}
+              onPaginationChange={handlePaymentPageChange}
+              formatDate={formatDate}
+              formatCurrency={formatCurrency}
             />
           </div>
         </div>
@@ -525,55 +529,37 @@ const PaymentPage: React.FC = () => {
           
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">결제 내역</h2>
-            {paginatedPayments.length === 0 && sortedPayments.length > 0 && (
-               <div className="text-center py-10">
-                  <p className="text-gray-500">현재 페이지에 표시할 결제 내역이 없습니다.</p>
-               </div>
-            )}
-            {sortedPayments.length === 0 ? (
-              <div className="text-center py-10">
-                <DollarSign size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500">등록된 결제 내역이 없습니다.</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  '새 결제 등록' 버튼을 클릭하여 결제를 추가하세요.
-                </p>
-              </div>
-            ) : (
-              <>
-                <PaymentTable
-                  payments={paginatedPayments}
-                  membershipTypes={membershipTypes}
-                  sortConfig={paymentSortConfig}
-                  requestSort={requestPaymentSort}
-                  formatDate={formatDate}
-                  formatCurrency={formatCurrency}
-                  onViewPayment={(payment) => handleOpenPaymentModal(payment, true)}
-                  onEditPayment={(payment) => handleOpenPaymentModal(payment, false)}
-                  onDeletePayment={async (paymentId) => {
-                    if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
-                      try {
-                        const result = await deletePayment(paymentId);
-                        if (result.success) {
-                          showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
-                          loadData(); 
-                          setPaymentsCurrentPage(1);
-                        } else {
-                          showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
-                        }
-                      } catch (error: any) {
-                        showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
-                      }
+            <PaymentTableWithPagination
+              payments={sortedPayments}
+              sortConfig={paymentSortConfig}
+              pagination={{
+                ...paymentPagination,
+                totalPages: totalPaymentPages,
+              }}
+              isLoading={isLoading}
+              onSort={requestPaymentSort}
+              onView={(payment) => handleOpenPaymentModal(payment, true)}
+              onEdit={(payment) => handleOpenPaymentModal(payment, false)}
+              onDelete={async (paymentId) => {
+                if (window.confirm('정말로 이 결제 내역을 삭제하시겠습니까?')) {
+                  try {
+                    const result = await deletePayment(paymentId);
+                    if (result.success) {
+                      showToast('success', '결제 내역이 성공적으로 삭제되었습니다.');
+                      loadData(); 
+                      handlePaymentPageChange({ currentPage: 1 });
+                    } else {
+                      showToast('error', `결제 내역 삭제 실패: ${result.error || '알 수 없는 오류'}`);
                     }
-                  }}
-                />
-                <PaginationControls
-                  currentPage={paymentsCurrentPage}
-                  totalPages={totalPaymentPages}
-                  onPageChange={handlePaymentPageChange}
-                  itemCount={sortedPayments.length}
-                />
-              </>
-            )}
+                  } catch (error: any) {
+                    showToast('error', `삭제 중 오류 발생: ${error.message || '알 수 없는 오류'}`);
+                  }
+                }
+              }}
+              onPaginationChange={handlePaymentPageChange}
+              formatDate={formatDate}
+              formatCurrency={formatCurrency}
+            />
           </div>
         </div>
       )}
@@ -623,7 +609,7 @@ const PaymentPage: React.FC = () => {
                         if (result.success) {
                           showToast('success', '이용권 종류가 성공적으로 삭제되었습니다.');
                           loadData();
-                          setMembershipTypesCurrentPage(1);
+                          handleMembershipTypePageChange({ currentPage: 1 });
                         } else {
                           showToast('error', `이용권 종류 삭제 실패: ${result.error || '알 수 없는 오류'}`);
                         }
@@ -634,9 +620,9 @@ const PaymentPage: React.FC = () => {
                   }}
                 />
                 <PaginationControls
-                  currentPage={membershipTypesCurrentPage}
+                  currentPage={membershipTypePagination.currentPage}
                   totalPages={totalMembershipTypePages}
-                  onPageChange={handleMembershipTypePageChange}
+                  onPageChange={(page) => handleMembershipTypePageChange({ currentPage: page })}
                   itemCount={sortedMembershipTypes.length}
                 />
               </>

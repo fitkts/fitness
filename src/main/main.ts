@@ -1105,15 +1105,9 @@ ipcMain.handle('get-all-consultation-members', async () => {
 ipcMain.handle('add-consultation-member', async (event, memberData: any) => {
   electronLog.info('[Main Process] Received add-consultation-member request:', memberData);
   try {
-    // 날짜 문자열을 Unix timestamp로 변환
-    const processedData = {
-      ...memberData,
-      birth_date: memberData.birth_date ? Math.floor(new Date(memberData.birth_date).getTime() / 1000) : undefined,
-      first_visit: memberData.first_visit ? Math.floor(new Date(memberData.first_visit).getTime() / 1000) : undefined,
-      fitness_goals: memberData.fitness_goals ? JSON.stringify(memberData.fitness_goals) : undefined
-    };
-
-    const newMember = consultationRepository.createConsultationMember(processedData);
+    // Frontend에서 이미 변환된 데이터를 그대로 사용
+    // transformNewMemberData 함수에서 이미 올바른 형식으로 변환되었음
+    const newMember = consultationRepository.createConsultationMember(memberData);
     
     electronLog.info('[Main Process] Consultation member created successfully:', newMember.id);
     return { success: true, data: newMember };
@@ -1132,19 +1126,19 @@ ipcMain.handle('update-consultation-member', async (event, id: number, updates: 
       throw new Error('유효하지 않은 업데이트 데이터입니다.');
     }
 
-    // 날짜 문자열을 Unix timestamp로 변환 (null 체크 강화)
-    const processedUpdates = {
-      ...updates,
-      birth_date: (updates.birth_date && updates.birth_date !== null) 
-        ? Math.floor(new Date(updates.birth_date).getTime() / 1000) 
-        : undefined,
-      first_visit: (updates.first_visit && updates.first_visit !== null) 
-        ? Math.floor(new Date(updates.first_visit).getTime() / 1000) 
-        : undefined,
-      fitness_goals: (updates.fitness_goals && updates.fitness_goals !== null) 
-        ? JSON.stringify(updates.fitness_goals) 
-        : undefined
-    };
+    // Frontend에서 이미 변환된 데이터인지 확인 (timestamp가 숫자인 경우)
+    const processedUpdates = { ...updates };
+    
+    // 만약 문자열 형태의 날짜가 온다면 변환, 이미 timestamp라면 그대로 사용
+    if (updates.birth_date && typeof updates.birth_date === 'string') {
+      processedUpdates.birth_date = Math.floor(new Date(updates.birth_date).getTime() / 1000);
+    }
+    if (updates.first_visit && typeof updates.first_visit === 'string') {
+      processedUpdates.first_visit = Math.floor(new Date(updates.first_visit).getTime() / 1000);
+    }
+    if (updates.fitness_goals && Array.isArray(updates.fitness_goals)) {
+      processedUpdates.fitness_goals = JSON.stringify(updates.fitness_goals);
+    }
 
     const success = consultationRepository.updateConsultationMember(id, processedUpdates);
     

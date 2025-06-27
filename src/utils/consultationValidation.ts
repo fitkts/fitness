@@ -39,24 +39,54 @@ export function validateMemberEdit(formData: MemberEditFormData): string[] {
 }
 
 // API 업데이트 데이터로 변환
-export function convertToUpdateData(id: number, formData: MemberEditFormData): ConsultationMemberUpdateData {
+export function convertToUpdateData(id: number, formData: MemberEditFormData): any {
+  // 날짜 문자열을 Unix timestamp로 변환하는 헬퍼 함수
+  const dateStringToTimestamp = (dateStr?: string): number | undefined => {
+    if (!dateStr || !dateStr.trim()) return undefined;
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        console.warn('잘못된 날짜 형식:', dateStr);
+        return undefined;
+      }
+      return Math.floor(date.getTime() / 1000); // Unix timestamp (초 단위)
+    } catch (error) {
+      console.warn('날짜 변환 오류:', dateStr, error);
+      return undefined;
+    }
+  };
+
   return {
     id,
     name: formData.name.trim(),
     phone: formData.phone.trim(),
     email: formData.email.trim() || undefined,
     gender: formData.gender || undefined,
-    birth_date: formData.birth_date || undefined,
+    birth_date: dateStringToTimestamp(formData.birth_date), // Unix timestamp로 변환
     consultation_status: formData.consultation_status || undefined,
     health_conditions: formData.health_conditions.trim() || undefined,
-    fitness_goals: formData.fitness_goals,
+    fitness_goals: Array.isArray(formData.fitness_goals) ? formData.fitness_goals : [], // 배열 보장
     notes: formData.notes.trim() || undefined,
-    staff_id: formData.staff_id
+    staff_id: formData.staff_id,
+    staff_name: formData.staff_name.trim() || undefined
   };
 }
 
 // 폼 데이터로 변환
 export function convertToFormData(member: ConsultationMember): MemberEditFormData {
+  // fitness_goals 파싱 로직
+  let fitnessGoals: string[] = [];
+  if (typeof member.fitness_goals === 'string') {
+    try {
+      fitnessGoals = JSON.parse(member.fitness_goals);
+    } catch (error) {
+      console.warn('fitness_goals JSON 파싱 오류:', member.fitness_goals, error);
+      fitnessGoals = [];
+    }
+  } else if (Array.isArray(member.fitness_goals)) {
+    fitnessGoals = member.fitness_goals;
+  }
+
   return {
     name: member.name || '',
     phone: member.phone || '',
@@ -65,9 +95,10 @@ export function convertToFormData(member: ConsultationMember): MemberEditFormDat
     birth_date: member.birth_date ? formatUnixToDate(member.birth_date) : '',
     consultation_status: member.consultation_status || '',
     health_conditions: member.health_conditions || '',
-    fitness_goals: Array.isArray(member.fitness_goals) ? member.fitness_goals : [],
+    fitness_goals: fitnessGoals,
     notes: member.notes || '',
-    staff_id: member.staff_id
+    staff_id: member.staff_id,
+    staff_name: member.staff_name || ''
   };
 }
 

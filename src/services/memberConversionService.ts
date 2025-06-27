@@ -223,12 +223,14 @@ export class MemberConversionService {
       errors.email = '올바른 이메일 형식을 입력해주세요.';
     }
 
-    // 정식 회원의 경우 회원권 정보 검증
+    // 정식 회원의 경우 회원권 정보 검증 (승격 프로세스에서는 선택사항)
     if (member.memberType === 'regular') {
       const regularMember = member as Partial<Member>;
-      if (!regularMember.membershipType) {
-        errors.membershipType = '회원권 종류는 필수입니다.';
-      }
+      
+      // 회원권 정보는 선택사항으로 변경 (승격 후 별도 설정 가능)
+      // if (!regularMember.membershipType) {
+      //   errors.membershipType = '회원권 종류는 필수입니다.';
+      // }
       
       if (regularMember.membershipStart && regularMember.membershipEnd) {
         if (regularMember.membershipStart >= regularMember.membershipEnd) {

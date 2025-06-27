@@ -41,6 +41,20 @@ declare global {
       // 대시보드 통계 API
       getDashboardStats: () => Promise<DashboardStats>; 
       
+      // 상담회원 승격 API
+      promoteConsultationMember: (promotionData: {
+        consultationMemberId: number;
+        startDate?: string; // 선택사항, 미제공시 오늘 날짜 사용
+        notes?: string;
+      }) => Promise<{
+        success: boolean;
+        data?: {
+          memberId: number;
+          consultationMemberId: number;
+        };
+        error?: string;
+      }>;
+      
       // 락커 결제 관련 API
       processLockerPayment: (paymentData: LockerPaymentData) => Promise<{
         success: boolean;

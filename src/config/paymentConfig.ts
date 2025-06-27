@@ -18,34 +18,130 @@ export const PAYMENT_METHOD_OPTIONS = [
   { value: '기타', label: '기타' },
 ] as const;
 
-// 미리 정의된 날짜 범위
-export const PREDEFINED_DATE_RANGES: PaymentDateRange[] = [
+// 날짜 유틸리티 함수들 (시간대 문제 수정)
+export const dateUtils = {
+  // 로컬 날짜를 YYYY-MM-DD 형식으로 변환하는 헬퍼 함수
+  formatLocalDate: (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  // 이번 주의 시작일(월요일)과 종료일(일요일) 계산
+  getThisWeek: (offset = 0) => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0: 일요일, 1: 월요일, ..., 6: 토요일
+    
+    // 월요일 계산 (일요일이 0이므로 조정)
+    const daysToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + daysToMonday + (offset * 7));
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6); // 일요일로 설정
+    
+    return {
+      startDate: dateUtils.formatLocalDate(monday),
+      endDate: dateUtils.formatLocalDate(sunday),
+    };
+  },
+
+  // 이번 달의 첫날과 마지막날 계산
+  getThisMonth: (offset = 0) => {
+    const today = new Date();
+    const targetYear = today.getFullYear();
+    const targetMonth = today.getMonth() + offset;
+    
+    const firstDay = new Date(targetYear, targetMonth, 1);
+    const lastDay = new Date(targetYear, targetMonth + 1, 0); // 다음 달 0일 = 이번 달 마지막 일
+    
+    return {
+      startDate: dateUtils.formatLocalDate(firstDay),
+      endDate: dateUtils.formatLocalDate(lastDay),
+    };
+  },
+
+  // 올해의 첫날(1월 1일)과 마지막날(12월 31일) 계산
+  getThisYear: (offset = 0) => {
+    const today = new Date();
+    const targetYear = today.getFullYear() + offset;
+    
+    const firstDay = new Date(targetYear, 0, 1); // 1월 1일
+    const lastDay = new Date(targetYear, 11, 31); // 12월 31일
+    
+    return {
+      startDate: dateUtils.formatLocalDate(firstDay),
+      endDate: dateUtils.formatLocalDate(lastDay),
+    };
+  },
+
+  // 오늘 날짜
+  getToday: (offset = 0) => {
+    const today = new Date();
+    today.setDate(today.getDate() + offset);
+    const dateStr = dateUtils.formatLocalDate(today);
+    
+    return {
+      startDate: dateStr,
+      endDate: dateStr,
+    };
+  },
+
+  // 최근 N일
+  getRecentDays: (days: number, offset = 0) => {
+    const today = new Date();
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + offset);
+    
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - days + 1); // +1을 해서 오늘 포함
+    
+    return {
+      startDate: dateUtils.formatLocalDate(startDate),
+      endDate: dateUtils.formatLocalDate(endDate),
+    };
+  },
+};
+
+// 미리 정의된 날짜 범위 - 동적으로 계산되도록 함수화
+export const getPredefinedDateRanges = (): PaymentDateRange[] => [
   {
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    ...dateUtils.getToday(),
     label: '오늘',
+    type: 'today',
   },
   {
-    startDate: new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    ...dateUtils.getThisWeek(),
     label: '이번 주',
+    type: 'week',
   },
   {
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    ...dateUtils.getThisMonth(),
     label: '이번 달',
+    type: 'month',
   },
   {
-    startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    ...dateUtils.getThisYear(),
+    label: '올해',
+    type: 'year',
+  },
+  {
+    ...dateUtils.getRecentDays(7),
     label: '최근 7일',
+    type: 'days',
+    days: 7,
   },
   {
-    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    ...dateUtils.getRecentDays(30),
     label: '최근 30일',
+    type: 'days',
+    days: 30,
   },
 ];
+
+// 기존 정적 배열도 유지 (호환성을 위해)
+export const PREDEFINED_DATE_RANGES: PaymentDateRange[] = getPredefinedDateRanges();
 
 // 미리 정의된 금액 범위
 export const PREDEFINED_AMOUNT_RANGES: PaymentAmountRange[] = [

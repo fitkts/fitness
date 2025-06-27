@@ -1,9 +1,10 @@
-import React from 'react';
-import { Search, Filter, X, Calendar, DollarSign, Plus, Download, Upload, Info, CreditCard } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, X, Calendar, DollarSign, Plus, Download, Upload, Info, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PaymentFilter } from '../../utils/paymentUtils';
 import { Staff } from '../../models/types';
 import {
-  PREDEFINED_DATE_RANGES,
+  getPredefinedDateRanges,
+  dateUtils,
   PREDEFINED_AMOUNT_RANGES,
   FILTER_CONFIG,
   COMPACT_LAYOUT_CONFIG,
@@ -38,6 +39,15 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
   showToast,
   payments = [],
 }) => {
+  const [dateOffsets, setDateOffsets] = useState<Record<string, number>>({
+    today: 0,
+    week: 0,
+    month: 0,
+    year: 0,
+    days7: 0,
+    days30: 0,
+  });
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFilterChange({ ...filter, search: e.target.value });
   };
@@ -84,23 +94,7 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
     });
   };
 
-  const handleMinAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    onFilterChange({ 
-      ...filter, 
-      minAmount: value ? parseInt(value) : null 
-    });
-  };
-
-  const handleMaxAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    onFilterChange({ 
-      ...filter, 
-      maxAmount: value ? parseInt(value) : null 
-    });
-  };
-
-  const handleDateRangePreset = (range: { startDate: string; endDate: string }) => {
+  const handleDateRangePreset = (range: any) => {
     onFilterChange({ 
       ...filter, 
       startDate: range.startDate, 
@@ -108,11 +102,42 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
     });
   };
 
-  const handleAmountRangePreset = (range: { min: number; max: number }) => {
-    onFilterChange({ 
-      ...filter, 
-      minAmount: range.min, 
-      maxAmount: range.max === Infinity ? null : range.max 
+  // 날짜 이동 기능
+  const handleDateNavigation = (type: string, direction: 'prev' | 'next', days?: number) => {
+    const offsetKey = days ? `days${days}` : type;
+    const currentOffset = dateOffsets[offsetKey] || 0;
+    const newOffset = direction === 'next' ? currentOffset + 1 : currentOffset - 1;
+    
+    setDateOffsets(prev => ({
+      ...prev,
+      [offsetKey]: newOffset
+    }));
+
+    let newRange;
+    switch (type) {
+      case 'today':
+        newRange = dateUtils.getToday(newOffset);
+        break;
+      case 'week':
+        newRange = dateUtils.getThisWeek(newOffset);
+        break;
+      case 'month':
+        newRange = dateUtils.getThisMonth(newOffset);
+        break;
+      case 'year':
+        newRange = dateUtils.getThisYear(newOffset);
+        break;
+      case 'days':
+        newRange = dateUtils.getRecentDays(days!, newOffset);
+        break;
+      default:
+        return;
+    }
+
+    onFilterChange({
+      ...filter,
+      startDate: newRange.startDate,
+      endDate: newRange.endDate,
     });
   };
 
@@ -126,12 +151,42 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
     if (filter.staffName && filter.staffName !== 'all') count++;
     if (filter.startDate) count++;
     if (filter.endDate) count++;
-    if (filter.minAmount !== null && filter.minAmount !== undefined) count++;
-    if (filter.maxAmount !== null && filter.maxAmount !== undefined) count++;
     return count;
   };
 
   const activeFilterCount = getActiveFilterCount();
+
+  // 날짜 라벨 생성 (현재 오프셋 반영)
+  const getDateRangeLabel = (type: string, baseLabel: string, days?: number) => {
+    const offsetKey = days ? `days${days}` : type;
+    const offset = dateOffsets[offsetKey] || 0;
+    
+    if (offset === 0) return baseLabel;
+    
+    switch (type) {
+      case 'today':
+        if (offset === -1) return '어제';
+        if (offset === 1) return '내일';
+        return offset > 0 ? `${offset}일 후` : `${Math.abs(offset)}일 전`;
+      case 'week':
+        if (offset === -1) return '지난 주';
+        if (offset === 1) return '다음 주';
+        return offset > 0 ? `${offset}주 후` : `${Math.abs(offset)}주 전`;
+      case 'month':
+        if (offset === -1) return '지난 달';
+        if (offset === 1) return '다음 달';
+        return offset > 0 ? `${offset}개월 후` : `${Math.abs(offset)}개월 전`;
+      case 'year':
+        if (offset === -1) return '작년';
+        if (offset === 1) return '내년';
+        return offset > 0 ? `${offset}년 후` : `${Math.abs(offset)}년 전`;
+      case 'days':
+        if (offset === 0) return baseLabel;
+        return offset > 0 ? `${days}일 후부터` : `${days}일 전 기준`;
+      default:
+        return baseLabel;
+    }
+  };
 
   // 엑셀 내보내기 핸들러
   const handleExportExcel = () => {
@@ -207,8 +262,8 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
             
             {/* 액션 버튼들 */}
             {showActionButtons && (
-              <div className={ACTION_BUTTON_CONFIG.ACTION_GROUP.container}>
-                <div className={ACTION_BUTTON_CONFIG.ACTION_GROUP.buttonGroup}>
+              <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-gray-300">
+                <div className="flex items-center gap-1.5">
                   {/* 결제 추가 버튼 */}
                   {onAddPayment && (
                     <button
@@ -271,7 +326,7 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
 
       {/* 필터 컨텐츠 */}
       <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* 첫 번째 행: 기본 필터들 */}
           <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
             {/* 검색 박스 */}
@@ -283,12 +338,12 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
                 <input
                   type="text"
                   placeholder={FILTER_CONFIG.SEARCH_PLACEHOLDER}
-                  className={`w-full pl-7 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`w-full pl-6 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   value={filter.search || ''}
                   onChange={handleSearchChange}
                 />
                 <Search
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  className="absolute left-1.5 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={12}
                 />
               </div>
@@ -369,94 +424,65 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
             </div>
           </div>
 
-          {/* 두 번째 행: 날짜 및 금액 범위 */}
-          <div className={COMPACT_LAYOUT_CONFIG.GRID.rangeSection}>
+          {/* 두 번째 행: 날짜 범위 (컴팩트하게) */}
+          <div className="space-y-2">
             {/* 날짜 범위 */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <Calendar size={COMPACT_LAYOUT_CONFIG.RANGE_SECTION.iconSize} className="text-gray-500" />
-                <label className={`block ${COMPACT_LAYOUT_CONFIG.RANGE_SECTION.title}`}>
+                <Calendar size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-500" />
+                <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700`}>
                   날짜 범위
                 </label>
               </div>
               
-              <div className={`grid grid-cols-2 ${COMPACT_LAYOUT_CONFIG.RANGE_SECTION.gridGap}`}>
+              <div className="grid grid-cols-2 gap-1">
                 <div>
-                  <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} text-gray-600 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>시작일</label>
                   <input
                     type="date"
-                    className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="시작일"
+                    className="w-full px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                     value={filter.startDate || ''}
                     onChange={handleStartDateChange}
+                    style={{ fontSize: '11px' }}
                   />
                 </div>
                 <div>
-                  <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} text-gray-600 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>종료일</label>
                   <input
                     type="date"
-                    className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="종료일"
+                    className="w-full px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                     value={filter.endDate || ''}
                     onChange={handleEndDateChange}
+                    style={{ fontSize: '11px' }}
                   />
                 </div>
               </div>
 
-              {/* 날짜 프리셋 */}
-              <div className={COMPACT_LAYOUT_CONFIG.RANGE_SECTION.presetContainer}>
-                {PREDEFINED_DATE_RANGES.map((range) => (
-                  <button
-                    key={range.label}
-                    onClick={() => handleDateRangePreset(range)}
-                    className={COMPACT_LAYOUT_CONFIG.RANGE_SECTION.presetButton}
-                  >
-                    {range.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 금액 범위 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 mb-1">
-                <DollarSign size={COMPACT_LAYOUT_CONFIG.RANGE_SECTION.iconSize} className="text-gray-500" />
-                <label className={`block ${COMPACT_LAYOUT_CONFIG.RANGE_SECTION.title}`}>
-                  금액 범위
-                </label>
-              </div>
-              
-              <div className={`grid grid-cols-2 ${COMPACT_LAYOUT_CONFIG.RANGE_SECTION.gridGap}`}>
-                <div>
-                  <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} text-gray-600 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>최소 금액</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                    value={filter.minAmount || ''}
-                    onChange={handleMinAmountChange}
-                  />
-                </div>
-                <div>
-                  <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} text-gray-600 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>최대 금액</label>
-                  <input
-                    type="number"
-                    placeholder="무제한"
-                    className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                    value={filter.maxAmount || ''}
-                    onChange={handleMaxAmountChange}
-                  />
-                </div>
-              </div>
-
-              {/* 금액 프리셋 */}
-              <div className={COMPACT_LAYOUT_CONFIG.RANGE_SECTION.presetContainer}>
-                {PREDEFINED_AMOUNT_RANGES.map((range) => (
-                  <button
-                    key={range.label}
-                    onClick={() => handleAmountRangePreset(range)}
-                    className={COMPACT_LAYOUT_CONFIG.RANGE_SECTION.presetButton}
-                  >
-                    {range.label}
-                  </button>
+              {/* 컴팩트한 날짜 프리셋 */}
+              <div className="grid grid-cols-4 gap-0.5 pt-1">
+                {getPredefinedDateRanges().slice(0, 8).map((range) => (
+                  <div key={range.label} className="flex items-center border border-gray-200 rounded overflow-hidden">
+                    <button
+                      onClick={() => handleDateNavigation(range.type || 'today', 'prev', range.days)}
+                      className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                      title="이전"
+                    >
+                      <ChevronLeft size={10} />
+                    </button>
+                    <button
+                      onClick={() => handleDateRangePreset(range)}
+                      className="flex-1 w-full text-center text-xs font-medium text-gray-800 px-1 py-1 hover:bg-gray-50 transition-colors"
+                    >
+                      {getDateRangeLabel(range.type || 'today', range.label, range.days)}
+                    </button>
+                    <button
+                      onClick={() => handleDateNavigation(range.type || 'today', 'next', range.days)}
+                      className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                      title="다음"
+                    >
+                      <ChevronRight size={10} />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

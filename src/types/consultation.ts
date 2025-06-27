@@ -221,6 +221,7 @@ export interface MemberEditFormData {
   fitness_goals: string[];
   notes: string;
   staff_id: number | undefined;
+  staff_name: string;
 }
 
 // 승격 관련 타입

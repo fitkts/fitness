@@ -31,40 +31,15 @@ import ConsultationDetailModal from '../components/consultation/ConsultationDeta
 import ConsultationSearchFilter from '../components/consultation/ConsultationSearchFilter';
 import ConsultationStatistics from '../components/consultation/ConsultationStatistics';
 import ConsultationTableWithPagination from '../components/consultation/ConsultationTableWithPagination';
+import PromotionModal from '../components/consultation/PromotionModal';
 
-// 임시 데이터베이스 함수들 (실제 IPC 연결까지 사용)
+// 실제 API 함수들
 const getAllConsultationMembers = async (): Promise<{ success: boolean; data?: ConsultationMember[]; error?: string; }> => {
   try {
-    // @ts-ignore
     if (window.api?.getAllConsultationMembers) {
-      // @ts-ignore
       return await window.api.getAllConsultationMembers();
     }
-    // 임시 더미 데이터
-    return { 
-      success: true, 
-      data: [
-        {
-          id: 1,
-          name: '김상담',
-          phone: '010-1234-5678',
-          email: 'test@example.com',
-          gender: '남',
-          birth_date: new Date('1990-01-01').getTime() / 1000,
-          join_date: new Date('2025-01-01').getTime() / 1000,
-          first_visit: new Date('2025-01-01').getTime() / 1000,
-          health_conditions: '무릎 부상 있음',
-          fitness_goals: ['체중감량', '근력강화'],
-          staff_id: 1,
-          staff_name: '트레이너A',
-          consultation_status: 'pending',
-          notes: '상담 예정',
-          is_promoted: false,
-          created_at: new Date('2025-01-01').getTime() / 1000,
-          updated_at: new Date('2025-01-01').getTime() / 1000
-        }
-      ] 
-    };
+    return { success: false, error: 'API를 사용할 수 없습니다.' };
   } catch (error) {
     return { success: false, error: '상담 회원 조회 실패' };
   }
@@ -72,12 +47,10 @@ const getAllConsultationMembers = async (): Promise<{ success: boolean; data?: C
 
 const addConsultationMember = async (memberData: any): Promise<{ success: boolean; data?: number; error?: string; }> => {
   try {
-    // @ts-ignore
     if (window.api?.addConsultationMember) {
-      // @ts-ignore
       return await window.api.addConsultationMember(memberData);
     }
-    return { success: true, data: Date.now() };
+    return { success: false, error: 'API를 사용할 수 없습니다.' };
   } catch (error) {
     return { success: false, error: '상담 회원 추가 실패' };
   }
@@ -85,12 +58,10 @@ const addConsultationMember = async (memberData: any): Promise<{ success: boolea
 
 const updateConsultationMember = async (consultationData: any): Promise<{ success: boolean; error?: string; }> => {
   try {
-    // @ts-ignore
     if (window.api?.updateConsultationMember) {
-      // @ts-ignore
       return await window.api.updateConsultationMember(consultationData.id, consultationData);
     }
-    return { success: true };
+    return { success: false, error: 'API를 사용할 수 없습니다.' };
   } catch (error) {
     return { success: false, error: '상담 회원 수정 실패' };
   }
@@ -98,27 +69,12 @@ const updateConsultationMember = async (consultationData: any): Promise<{ succes
 
 const deleteConsultationMember = async (id: number): Promise<{ success: boolean; error?: string; }> => {
   try {
-    // @ts-ignore
     if (window.api?.deleteConsultationMember) {
-      // @ts-ignore
       return await window.api.deleteConsultationMember(id);
     }
-    return { success: true };
+    return { success: false, error: 'API를 사용할 수 없습니다.' };
   } catch (error) {
     return { success: false, error: '상담 회원 삭제 실패' };
-  }
-};
-
-const promoteToMember = async (consultationMember: ConsultationMember): Promise<{ success: boolean; error?: string; }> => {
-  try {
-    // @ts-ignore
-    if (window.api?.promoteConsultationMember) {
-      // @ts-ignore
-      return await window.api.promoteConsultationMember(consultationMember);
-    }
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: '회원 승격 실패' };
   }
 };
 
@@ -145,6 +101,10 @@ const ConsultationDashboard: React.FC = () => {
   // 추가 상태
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // 승격 모달 상태
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
+  const [memberForPromotion, setMemberForPromotion] = useState<ConsultationMember | null>(null);
 
   // 초기 데이터 로딩
   useEffect(() => {
@@ -257,34 +217,38 @@ const ConsultationDashboard: React.FC = () => {
     }
   };
 
-  // 회원 등록 핸들러
+  // 회원 승격 핸들러 (PromotionModal 사용)
   const handlePromoteToMember = async (consultationMember: ConsultationMember): Promise<boolean> => {
-    if (window.confirm(CONSULTATION_MESSAGES.confirm.promotionConfirm)) {
-      try {
-        const response = await promoteToMember(consultationMember);
-        
-        if (response.success) {
-          showToast('success', CONSULTATION_MESSAGES.success.memberPromoted);
-          await fetchConsultationMembers();
-          return true;
-        } else {
-          showToast('error', response.error || CONSULTATION_MESSAGES.error.promotionFailed);
-          return false;
-        }
-      } catch (error) {
-        console.error('회원 등록 오류:', error);
-        showToast('error', CONSULTATION_MESSAGES.error.promotionFailed);
-        return false;
-      }
+    // 승격 조건 검증
+    if (consultationMember.consultation_status !== 'completed') {
+      showToast('error', '상담이 완료된 회원만 승격 가능합니다.');
+      return false;
     }
-    return false;
+    
+    if (consultationMember.is_promoted) {
+      showToast('error', '이미 승격된 회원입니다.');
+      return false;
+    }
+
+    // 승격 모달 열기
+    setMemberForPromotion(consultationMember);
+    setIsPromotionModalOpen(true);
+    return true;
+  };
+
+  // 승격 성공 핸들러
+  const handlePromotionSuccess = async () => {
+    await fetchConsultationMembers();
+    setIsPromotionModalOpen(false);
+    setMemberForPromotion(null);
+    showToast('success', CONSULTATION_MESSAGES.success.memberPromoted);
   };
 
   // 상담 회원 삭제 핸들러
-  const handleDeleteMember = async (id: number) => {
-    if (window.confirm(CONSULTATION_MESSAGES.confirm.deleteConfirm)) {
+  const handleDeleteMember = async (member: ConsultationMember) => {
+    if (window.confirm(`${member.name} 회원의 상담 정보를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
       try {
-        const response = await deleteConsultationMember(id);
+        const response = await deleteConsultationMember(member.id!);
         if (response.success) {
           showToast('success', CONSULTATION_MESSAGES.success.itemDeleted);
           await fetchConsultationMembers();
@@ -353,6 +317,7 @@ const ConsultationDashboard: React.FC = () => {
         onSort={handleSort}
         onView={handleViewMember}
         onPromote={handlePromoteToMember}
+        onDelete={handleDeleteMember}
         onPaginationChange={(newPagination) => setPagination(prev => ({ ...prev, ...newPagination }))}
       />
 
@@ -374,6 +339,19 @@ const ConsultationDashboard: React.FC = () => {
           consultationMemberId={modalState.selectedItem.id || null}
           onUpdate={fetchConsultationMembers}
           onPromote={handlePromoteToMember}
+        />
+      )}
+
+      {/* 승격 모달 */}
+      {isPromotionModalOpen && memberForPromotion && (
+        <PromotionModal
+          isOpen={isPromotionModalOpen}
+          onClose={() => {
+            setIsPromotionModalOpen(false);
+            setMemberForPromotion(null);
+          }}
+          consultationMember={memberForPromotion}
+          onSuccess={handlePromotionSuccess}
         />
       )}
     </PageContainer>

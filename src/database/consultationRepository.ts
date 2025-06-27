@@ -387,64 +387,77 @@ export function getConsultationRecordById(id: number): ConsultationRecord | null
 }
 
 /**
- * 상담 회원을 정식 회원으로 승격하는 함수
+ * 상담 회원을 정식 회원으로 승격하는 함수 (완전 간소화된 버전)
  */
 export function promoteConsultationMember(
   promotionData: {
     consultationMemberId: number;
-    membershipTypeId: number;
-    membershipType: string;
-    startDate: string;
-    endDate: string;
-    paymentAmount: number;
-    paymentMethod: 'card' | 'cash' | 'transfer';
+    startDate?: string; // 선택사항, 제공되지 않으면 오늘 날짜 사용
     notes?: string;
   }
 ): { memberId: number; consultationMemberId: number } {
   try {
+    electronLog.info('=== 회원 승격 프로세스 시작 ===');
+    electronLog.info('입력 데이터:', promotionData);
+    
     const db = getDatabase();
     if (!db) {
       throw new Error('데이터베이스가 초기화되지 않았습니다.');
     }
 
     const transaction = db.transaction(() => {
+      electronLog.info('1. 상담 회원 정보 조회 중...');
+      
       // 1. 상담 회원 정보 조회
       const consultationMember = db.prepare(`
         SELECT * FROM consultation_members 
         WHERE id = ? AND consultation_status = 'completed' AND is_promoted = 0
       `).get(promotionData.consultationMemberId) as ConsultationMemberData;
 
+      electronLog.info('조회된 상담회원:', consultationMember);
+
       if (!consultationMember) {
         throw new Error('승격할 수 없는 상담 회원입니다. 상담이 완료되었고 아직 승격되지 않은 회원만 승격 가능합니다.');
       }
 
-      // 2. 회원권 정보 조회
-      const membershipType = db.prepare(`
-        SELECT * FROM membership_types WHERE id = ?
-      `).get(promotionData.membershipTypeId);
+      electronLog.info('2. 정식 회원 데이터 준비 중...');
 
-      if (!membershipType) {
-        throw new Error('유효하지 않은 회원권 정보입니다.');
-      }
-
-      // 3. 정식 회원으로 등록
+      // 2. 정식 회원으로 등록 (기본 정보만)
       const memberInsert = db.prepare(`
         INSERT INTO members (
           name, phone, email, gender, birth_date, join_date,
-          membership_type, membership_start, membership_end, 
           staff_id, staff_name, notes, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const currentTimestamp = Math.floor(Date.now() / 1000);
-      const joinDate = new Date().toISOString().split('T')[0];
       
+      // startDate가 제공되지 않으면 오늘 날짜 사용
+      const joinDate = promotionData.startDate 
+        ? Math.floor(new Date(promotionData.startDate).getTime() / 1000)
+        : currentTimestamp;
+      
+      // 승격 메모 생성
       const memberNotes = [
         `상담 회원에서 승격 (${new Date().toLocaleDateString()})`,
-        `이전 상담 기록: ${consultationMember.health_conditions}`,
-        `운동 목표: ${JSON.parse(consultationMember.fitness_goals || '[]').join(', ')}`,
+        consultationMember.health_conditions ? `건강 상태: ${consultationMember.health_conditions}` : '',
+        consultationMember.fitness_goals ? `운동 목표: ${JSON.parse(consultationMember.fitness_goals || '[]').join(', ')}` : '',
         promotionData.notes || ''
       ].filter(note => note.trim()).join('\n');
+
+      electronLog.info('준비된 데이터:', {
+        name: consultationMember.name,
+        phone: consultationMember.phone,
+        email: consultationMember.email,
+        gender: consultationMember.gender,
+        birth_date: consultationMember.birth_date,
+        joinDate,
+        staff_id: consultationMember.staff_id,
+        staff_name: consultationMember.staff_name,
+        notes: memberNotes
+      });
+
+      electronLog.info('3. 정식 회원 INSERT 실행 중...');
 
       const memberResult = memberInsert.run(
         consultationMember.name,
@@ -452,10 +465,7 @@ export function promoteConsultationMember(
         consultationMember.email,
         consultationMember.gender,
         consultationMember.birth_date,
-        Math.floor(new Date(joinDate).getTime() / 1000),
-        promotionData.membershipType,
-        Math.floor(new Date(promotionData.startDate).getTime() / 1000),
-        Math.floor(new Date(promotionData.endDate).getTime() / 1000),
+        joinDate,
         consultationMember.staff_id,
         consultationMember.staff_name,
         memberNotes,
@@ -464,27 +474,11 @@ export function promoteConsultationMember(
       );
 
       const memberId = memberResult.lastInsertRowid as number;
+      electronLog.info('생성된 정식회원 ID:', memberId);
 
-      // 4. 결제 기록 생성
-      const paymentInsert = db.prepare(`
-        INSERT INTO payments (
-          member_id, amount, payment_date, payment_method, 
-          payment_type, description, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      electronLog.info('4. 상담 회원 상태 업데이트 중...');
 
-      paymentInsert.run(
-        memberId,
-        promotionData.paymentAmount,
-        Math.floor(new Date().getTime() / 1000),
-        promotionData.paymentMethod,
-        'membership',
-        `회원 승격 결제 - ${promotionData.membershipType}`,
-        currentTimestamp,
-        currentTimestamp
-      );
-
-      // 5. 상담 회원 상태 업데이트 (승격 완료 표시)
+      // 3. 상담 회원 상태 업데이트 (승격 완료 표시)
       const updateConsultation = db.prepare(`
         UPDATE consultation_members 
         SET is_promoted = 1, 
@@ -501,14 +495,18 @@ export function promoteConsultationMember(
         promotionData.consultationMemberId
       );
 
+      electronLog.info('상담회원 상태 업데이트 완료');
+
       return { memberId, consultationMemberId: promotionData.consultationMemberId };
     });
 
     const result = transaction();
-    electronLog.info('회원 승격 완료:', result);
+    electronLog.info('=== 회원 승격 프로세스 성공 완료 ===');
+    electronLog.info('최종 결과:', result);
     return result;
   } catch (error) {
-    electronLog.error('회원 승격 실패:', error);
+    electronLog.error('=== 회원 승격 프로세스 실패 ===');
+    electronLog.error('오류 상세:', error);
     throw error;
   }
 }
