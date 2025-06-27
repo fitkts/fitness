@@ -2,10 +2,26 @@ import { ViewType, PaymentStatusFilter } from '../types/statistics';
 
 /**
  * 통계 필터 패널 설정
- * 회원관리 페이지와 일관된 레이아웃을 위한 설정값들
+ * 회원/결제 관리 페이지와 일관된 레이아웃을 위한 설정값들
  */
 
-// 액션 버튼 설정 (회원관리와 동일)
+// 필터 그리드 설정 (회원/결제 관리와 동일)
+export const FILTER_GRID_CONFIG = {
+  baseGrid: 'grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-12 gap-1',
+  columns: {
+    search: 'col-span-2 lg:col-span-2 xl:col-span-3',
+    default: 'col-span-1',
+    wide: 'col-span-2 lg:col-span-1 xl:col-span-2',
+    dateRange: 'col-span-2 lg:col-span-2 xl:col-span-4', // 날짜 범위는 더 넓게
+  },
+  styles: {
+    input: 'w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500',
+    label: 'block text-xs font-medium text-gray-700 mb-0.5',
+    select: 'w-full py-1 h-7 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
+  }
+};
+
+// 액션 버튼 설정 (회원관리와 동일한 컴팩트 스타일)
 export const ACTION_BUTTON_CONFIG = {
   RESET_BUTTON: {
     className: 'flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700 transition-colors',
@@ -21,37 +37,33 @@ export const ACTION_BUTTON_CONFIG = {
   },
 };
 
-// 레이아웃 설정 (회원관리 페이지와 일관된 구조)
+// 레이아웃 설정 (회원/결제 관리와 일관된 구조)
 export const FILTER_LAYOUT_CONFIG = {
   CONTAINER: {
     className: 'bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden sticky top-4 z-20',
-    padding: '',
+    padding: 'p-3',
   },
   HEADER: {
-    className: 'px-3 py-1.5 bg-gray-50 border-b border-gray-200',
-    title: 'text-xs font-medium text-gray-900',
+    className: 'p-2 bg-gray-50 border-b border-gray-200',
+    title: 'text-sm font-medium text-gray-800',
     icon: 14,
     badge: 'text-xs',
   },
   CONTENT: {
-    className: 'p-2.5',
-  },
-  GRID: {
-    responsive: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-    gap: 'gap-2',
+    className: 'p-2',
   },
 } as const;
 
-// 입력 필드 설정 (회원관리와 동일)
+// 입력 필드 설정 (회원/결제 관리와 동일)
 export const INPUT_FIELD_CONFIG = {
   LABEL: {
     className: 'block text-xs font-medium text-gray-700 mb-0.5',
   },
   INPUT: {
-    className: 'w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+    className: 'w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500',
   },
   SELECT: {
-    className: 'w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+    className: 'w-full py-1 h-7 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500',
   },
   HELP_TEXT: {
     className: 'text-xs text-gray-500 mt-0.5',
@@ -61,7 +73,7 @@ export const INPUT_FIELD_CONFIG = {
 // 빠른 날짜 선택 설정 (더 컴팩트하게)
 export const QUICK_DATE_CONFIG = {
   CONTAINER: {
-    className: 'mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1.5',
+    className: 'flex flex-wrap gap-0.5',
   },
   BUTTON_GROUP: {
     className: 'flex items-center bg-gray-50 rounded-md p-0.5 border border-gray-200',
@@ -78,19 +90,18 @@ export const QUICK_DATE_CONFIG = {
 // 기간 선택 설정
 export const DATE_RANGE_CONFIG = {
   CONTAINER: {
-    className: 'lg:col-span-2',
+    className: 'col-span-2 lg:col-span-2 xl:col-span-4',
   },
   DATE_INPUTS: {
-    container: 'flex flex-col sm:flex-row gap-2 items-center',
-    separator: 'text-gray-500 hidden sm:inline',
-    input: 'w-full sm:w-auto flex-grow border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-1.5 text-sm',
+    container: 'grid grid-cols-2 gap-1',
+    input: 'w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500',
   },
 } as const;
 
 // 액션 버튼 섹션 설정
 export const ACTION_SECTION_CONFIG = {
   CONTAINER: {
-    className: 'flex items-center gap-2 justify-end',
+    className: 'flex items-center gap-1.5 justify-end',
   },
   BUTTON_GROUP: {
     className: 'flex items-center gap-1',

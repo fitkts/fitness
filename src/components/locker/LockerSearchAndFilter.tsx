@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, Filter, X, Plus } from 'lucide-react';
-import { FILTER_OPTIONS, SEARCH_CONFIG, SORT_OPTIONS, COMPACT_LAYOUT_CONFIG, ACTION_BUTTON_CONFIG } from '../../config/lockerConfig';
+import { FILTER_OPTIONS, SEARCH_CONFIG, SORT_OPTIONS, COMPACT_LAYOUT_CONFIG, ACTION_BUTTON_CONFIG, FILTER_GRID_CONFIG } from '../../config/lockerConfig';
 
 interface LockerSearchAndFilterProps {
   searchTerm: string;
@@ -92,52 +92,41 @@ const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
 
       {/* 필터 컨텐츠 */}
       <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
-        <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
-          {/* 검색 박스 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              검색
-            </label>
+        <div className={FILTER_GRID_CONFIG.baseGrid}>
+          {/* 검색 필드 */}
+          <div className={FILTER_GRID_CONFIG.columns.search}>
+            <label className={FILTER_GRID_CONFIG.styles.label}>검색</label>
             <div className="relative">
               <input
                 type="text"
                 placeholder="락커번호, 회원명..."
-                className={`w-full pl-7 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`${FILTER_GRID_CONFIG.styles.input} pl-7`}
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
               />
-              <Search
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={12}
-              />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
             </div>
           </div>
 
           {/* 상태 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              상태
-            </label>
+          <div className={FILTER_GRID_CONFIG.columns.default}>
+            <label className={FILTER_GRID_CONFIG.styles.label}>상태</label>
             <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={FILTER_GRID_CONFIG.styles.select}
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
             >
               {FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           </div>
 
-          {/* 정렬 방식 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              정렬
-            </label>
+          {/* 정렬 필터 */}
+          <div className={FILTER_GRID_CONFIG.columns.default}>
+            <label className={FILTER_GRID_CONFIG.styles.label}>정렬</label>
             <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={FILTER_GRID_CONFIG.styles.select}
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
             >
@@ -149,13 +138,11 @@ const LockerSearchAndFilter: React.FC<LockerSearchAndFilterProps> = ({
             </select>
           </div>
 
-          {/* 표시 방식 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              배치
-            </label>
+          {/* 배치 방식 필터 */}
+          <div className={FILTER_GRID_CONFIG.columns.default}>
+            <label className={FILTER_GRID_CONFIG.styles.label}>배치</label>
             <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={FILTER_GRID_CONFIG.styles.select}
               value={layoutDirection}
               onChange={(e) => onLayoutChange(e.target.value as 'row' | 'column')}
             >

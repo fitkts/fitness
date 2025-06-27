@@ -9,12 +9,14 @@ import Lockers from '../pages/Lockers';
 import Staff from '../pages/Staff';
 import Statistics from '../pages/Statistics';
 import ConsultationDashboard from '../pages/ConsultationDashboard';
+import UnifiedMemberManagement from '../pages/UnifiedMemberManagement';
 import PageTransition from '../components/common/PageTransition';
 
 // 페이지 enum
 enum Page {
   Dashboard = '대시보드',
   Members = '회원 관리',
+  UnifiedMembers = '통합 회원 관리',
   Attendance = '출석 관리',
   Payment = '결제 관리',
   Lockers = '락커 관리',
@@ -43,6 +45,8 @@ const App: React.FC = () => {
         return <Dashboard />;
       case Page.Members:
         return <Members />;
+      case Page.UnifiedMembers:
+        return <UnifiedMemberManagement />;
       case Page.Attendance:
         return <Attendance />;
       case Page.Payment:

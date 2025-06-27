@@ -206,35 +206,36 @@ export const ACTION_BUTTON_CONFIG = {
   },
 } as const;
 
-// 컴팩트 레이아웃 설정
+// 컴팩트 레이아웃 설정 - 최대한 축소된 버전 (비교용 필터 사이즈)
 export const COMPACT_LAYOUT_CONFIG = {
   FILTER_CONTAINER: {
     padding: '',
-    headerPadding: 'px-3 py-1.5',
-    contentPadding: 'p-2.5',
+    headerPadding: 'px-2 py-1', // 최소화
+    contentPadding: 'px-2 py-1.5', // 최소화
   },
   INPUT_FIELD: {
-    padding: 'py-1',
+    padding: 'px-1.5 py-0.5', // 최소화 + 고정 높이 대응
     textSize: 'text-xs',
     labelSize: 'text-xs',
     labelMargin: 'mb-0.5',
+    height: 'h-6', // 고정 높이 추가
   },
   GRID: {
-    gap: 'gap-2',
-    responsive: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
-    rangeSection: 'grid grid-cols-1 lg:grid-cols-2 gap-4',
+    gap: 'gap-1.5', // 최소화
+    responsive: 'grid grid-cols-6 lg:grid-cols-8 xl:grid-cols-10', // 더 많은 컬럼으로 조밀하게
+    rangeSection: 'grid grid-cols-1 lg:grid-cols-2 gap-1.5', // 최소화
   },
   HEADER: {
     title: 'text-xs font-medium text-gray-900',
     badge: 'text-xs',
-    icon: 14,
+    icon: 12, // 최소화
   },
   RANGE_SECTION: {
     title: 'text-xs font-medium text-gray-700',
-    iconSize: 14,
-    gridGap: 'gap-2',
-    presetContainer: 'flex flex-wrap gap-1',
-    presetButton: 'px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors',
+    iconSize: 12, // 최소화
+    gridGap: 'gap-1.5', // 최소화
+    presetContainer: 'flex flex-wrap gap-0.5', // 최소화
+    presetButton: 'px-1.5 py-0.5 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors', // 최소화
   },
 } as const;
 

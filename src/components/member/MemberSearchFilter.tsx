@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Filter, X, Plus, Download, Upload, Info } from 'lucide-react';
 import { MemberFilter, Staff } from '../../models/types';
-import { FILTER_OPTIONS, EXCEL_CONFIG, ACTION_BUTTON_CONFIG, COMPACT_LAYOUT_CONFIG } from '../../config/memberConfig';
+import { FILTER_OPTIONS, EXCEL_CONFIG, ACTION_BUTTON_CONFIG } from '../../config/memberConfig';
 import { MemberSearchFilterActions } from '../../types/member';
 import * as XLSX from 'xlsx';
 
@@ -121,17 +121,17 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.padding} overflow-hidden sticky top-4 z-20`}
+      className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 overflow-hidden sticky top-4 z-20"
       data-testid="member-search-filter-container"
     >
-      {/* 헤더 */}
-      <div className={`${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.headerPadding} bg-gray-50 border-b border-gray-200`}>
+      {/* 헤더 - 결제 페이지 스타일 */}
+      <div className="p-2 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Filter size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-600" />
-            <h3 className={COMPACT_LAYOUT_CONFIG.HEADER.title}>회원 검색 및 필터</h3>
+            <Filter size={14} className="text-gray-600" />
+            <h3 className="text-sm font-medium text-gray-800">회원 검색 및 필터</h3>
             {activeFilterCount > 0 && (
-              <span className={`bg-blue-100 text-blue-800 ${COMPACT_LAYOUT_CONFIG.HEADER.badge} font-medium px-1.5 py-0.5 rounded-full`}>
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded-full">
                 {activeFilterCount}개
               </span>
             )}
@@ -200,100 +200,114 @@ const MemberSearchFilter: React.FC<MemberSearchFilterProps> = ({
         </div>
       </div>
 
-      {/* 필터 컨텐츠 */}
-      <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
-        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
-          {/* 검색 박스 - 가장 작은 크기로 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              검색
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="회원명..."
-                className={`w-full pl-7 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                value={filter.search || ''}
-                onChange={handleSearchChange}
-              />
-              <Search
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={12}
-              />
+      {/* 필터 컨텐츠 - 결제 페이지 스타일 그리드로 변경 */}
+      <div className="p-2">
+        <div className="space-y-2">
+          {/* 첫 번째 행: 기본 필터들 - 결제 페이지와 동일한 그리드 */}
+          <div className="grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-12 gap-1">
+            
+            {/* 검색 박스 - 더 넓은 영역 (결제 페이지와 동일) */}
+            <div className="col-span-2 lg:col-span-2 xl:col-span-3">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                검색
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="회원명..."
+                  className="w-full pl-4 pr-1 py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={filter.search || ''}
+                  onChange={handleSearchChange}
+                />
+                <Search
+                  className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={10}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* 상태별 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              상태
-            </label>
-            <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              value={filter.status || 'all'}
-              onChange={handleStatusChange}
-            >
-              {FILTER_OPTIONS.STATUS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* 상태별 필터 - 1컬럼 */}
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                상태
+              </label>
+              <select
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={filter.status || 'all'}
+                onChange={handleStatusChange}
+              >
+                {FILTER_OPTIONS.STATUS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* 담당자별 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              담당자
-            </label>
-            <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              value={filter.staffName || 'all'}
-              onChange={handleStaffNameChange}
-            >
-              <option value="all">전체</option>
-              {staffList.map((staff) => (
-                <option key={staff.id} value={staff.name}>
-                  {staff.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* 담당자별 필터 - 1컬럼 */}
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                담당자
+              </label>
+              <select
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={filter.staffName || 'all'}
+                onChange={handleStaffNameChange}
+              >
+                <option value="all">전체</option>
+                {staffList.map((staff) => (
+                  <option key={staff.id} value={staff.name}>
+                    {staff.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* 성별 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              성별
-            </label>
-            <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              value={filter.gender || 'all'}
-              onChange={handleGenderChange}
-            >
-              <option value="all">전체</option>
-              <option value="남성">남성</option>
-              <option value="여성">여성</option>
-              <option value="기타">기타</option>
-            </select>
-          </div>
+            {/* 성별 필터 - 1컬럼 */}
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                성별
+              </label>
+              <select
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={filter.gender || 'all'}
+                onChange={handleGenderChange}
+              >
+                {FILTER_OPTIONS.GENDER.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* 이용권별 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              이용권
-            </label>
-            <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              value={filter.membershipType || 'all'}
-              onChange={handleMembershipTypeChange}
-            >
-              <option value="all">전체</option>
-              {membershipTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            {/* 회원권별 필터 - 넓은 영역 */}
+            <div className="col-span-2 lg:col-span-1 xl:col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                회원권
+              </label>
+              <select
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={filter.membershipType || 'all'}
+                onChange={handleMembershipTypeChange}
+              >
+                <option value="all">전체</option>
+                {membershipTypes && membershipTypes.length > 0 ? (
+                  membershipTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.length > 8 ? `${type.substring(0, 8)}...` : type}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>데이터 없음</option>
+                )}
+              </select>
+            </div>
+
+            {/* 나머지 공간 - 추후 확장 가능 */}
+            <div className="col-span-4 lg:col-span-4 xl:col-span-4">
+              {/* 향후 추가 필터나 빠른 액션 버튼들을 위한 공간 */}
+            </div>
           </div>
         </div>
       </div>

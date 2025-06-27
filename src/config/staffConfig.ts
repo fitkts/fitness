@@ -18,6 +18,21 @@ export const FILTER_OPTIONS = {
   ],
 };
 
+// 필터 그리드 설정 (회원/결제 관리와 동일)
+export const FILTER_GRID_CONFIG = {
+  baseGrid: 'grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-12 gap-1',
+  columns: {
+    search: 'col-span-2 lg:col-span-2 xl:col-span-3',
+    default: 'col-span-1',
+    wide: 'col-span-2 lg:col-span-1 xl:col-span-2'
+  },
+  styles: {
+    input: 'w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500',
+    label: 'block text-xs font-medium text-gray-700 mb-0.5',
+    select: 'w-full py-1 h-7 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
+  }
+};
+
 // 엑셀 관련 설정
 export const EXCEL_CONFIG = {
   FILE_NAME: 'staff_list.xlsx',
@@ -34,7 +49,7 @@ export const EXCEL_CONFIG = {
   },
 };
 
-// 액션 버튼 설정 - 회원관리와 동일한 스타일로 변경
+// 액션 버튼 설정 (회원관리와 동일한 컴팩트 스타일)
 export const ACTION_BUTTON_CONFIG = {
   ADD_STAFF: {
     text: '직원 추가',
@@ -42,11 +57,11 @@ export const ACTION_BUTTON_CONFIG = {
     iconSize: 12,
   },
   EXCEL_BUTTONS: {
-    container: 'flex gap-0.5 items-center',
-    button: 'bg-gray-100 border-none rounded p-1.5 cursor-pointer hover:bg-gray-200',
-    infoButton: 'bg-transparent border-none p-0.5 cursor-pointer',
-    iconSize: 14,
-    infoIconSize: 13,
+    container: 'flex items-center border border-gray-300 rounded-md overflow-hidden',
+    button: 'p-1 hover:bg-gray-100 transition-colors',
+    infoButton: 'p-1 hover:bg-gray-100 transition-colors border-l border-gray-300',
+    iconSize: 10,
+    infoIconSize: 10,
   },
 };
 
@@ -58,57 +73,54 @@ export const PAGINATION_CONFIG = {
   DEFAULT_CURRENT_PAGE: 1,
 };
 
-// 컴팩트 레이아웃 설정 - 회원관리와 동일한 스타일로 변경
+// 컴팩트 레이아웃 설정 (회원/결제 관리와 일관된 구조)
 export const COMPACT_LAYOUT_CONFIG = {
   FILTER_CONTAINER: {
-    padding: '', // 실제 컨테이너 패딩은 컴포넌트에서 직접 관리
-    headerPadding: 'px-3 py-1.5', // 회원관리와 동일
-    contentPadding: 'p-2.5', // 회원관리와 동일
+    padding: 'p-3',
+    headerPadding: 'p-2',
+    contentPadding: 'p-2',
   },
   HEADER: {
-    icon: 14, // 회원관리와 동일
-    title: 'text-xs font-medium text-gray-900', // 회원관리와 동일
-    badge: 'text-xs', // 회원관리와 동일
-  },
-  GRID: {
-    responsive: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5', // 직원관리는 5컬럼으로 조정
-    gap: 'gap-2', // 회원관리와 동일
+    icon: 14,
+    title: 'text-sm font-medium text-gray-800',
+    badge: 'text-xs',
   },
   INPUT_FIELD: {
-    labelSize: 'text-xs', // 회원관리와 동일
-    labelMargin: 'mb-0.5', // 회원관리와 동일
-    padding: 'py-1', // 회원관리와 동일
-    textSize: 'text-xs', // 회원관리와 동일
+    labelSize: 'text-xs',
+    labelMargin: 'mb-0.5',
+    padding: 'py-1',
+    textSize: 'text-xs',
+    height: 'h-7',
   },
 };
 
 // 테이블 컴팩트 설정 - 회원관리와 동일한 스타일로 변경
 export const TABLE_COMPACT_CONFIG = {
   HEADER: {
-    containerPadding: 'py-2', // 회원관리와 동일하게 변경
+    containerPadding: 'py-2',
     iconSize: 16,
     badgeTextSize: 'text-xs',
-    cellPadding: 'px-4 py-2', // 회원관리와 동일하게 변경
+    cellPadding: 'px-4 py-2',
   },
   CELL: {
-    padding: 'px-4 py-2', // 회원관리와 동일하게 변경
+    padding: 'px-4 py-2',
     textSize: 'text-sm',
-    avatarSize: 'h-7 w-7', // 회원관리와 동일하게 변경
-    avatarTextSize: 'text-xs', // 회원관리와 동일하게 변경
+    avatarSize: 'h-7 w-7',
+    avatarTextSize: 'text-xs',
   },
   LOADING: {
-    containerPadding: 'p-8', // 회원관리와 동일하게 변경
-    spinnerSize: 'h-6 w-6', // 회원관리와 동일하게 변경
+    containerPadding: 'p-8',
+    spinnerSize: 'h-6 w-6',
   },
   EMPTY_STATE: {
-    containerPadding: 'p-8', // 회원관리와 동일하게 변경
-    iconSize: 40, // 회원관리와 동일하게 변경
+    containerPadding: 'p-8',
+    iconSize: 40,
   },
   PAGINATION: {
-    containerPadding: 'py-2', // 회원관리와 동일하게 변경
-    buttonPadding: 'p-1.5', // 회원관리와 동일하게 변경
-    numberButtonPadding: 'px-2.5 py-1', // 회원관리와 동일하게 변경
-    iconSize: 14, // 회원관리와 동일하게 변경
+    containerPadding: 'py-2',
+    buttonPadding: 'p-1.5',
+    numberButtonPadding: 'px-2.5 py-1',
+    iconSize: 14,
   },
 };
 
@@ -122,20 +134,20 @@ export const TABLE_CONFIG = {
 // 통계 컴팩트 설정 - 회원관리와 동일한 스타일로 변경
 export const STATISTICS_COMPACT_CONFIG = {
   CONTAINER: {
-    margin: 'mb-4', // 회원관리와 동일하게 변경
-    padding: 'p-3', // 회원관리와 동일하게 변경
-    gridGap: 'gap-3', // 회원관리와 동일하게 변경
+    margin: 'mb-4',
+    padding: 'p-3',
+    gridGap: 'gap-3',
   },
   CARD: {
-    padding: 'p-3', // 회원관리와 동일하게 변경
-    labelSize: 'text-xs', // 회원관리와 동일하게 변경
-    valueSize: 'text-xl', // 회원관리와 동일하게 변경
-    percentageSize: 'text-xs', // 회원관리와 동일하게 변경
+    padding: 'p-3',
+    labelSize: 'text-xs',
+    valueSize: 'text-xl',
+    percentageSize: 'text-xs',
     marginTop: 'mt-1',
   },
   SKELETON: {
-    height: 'h-3', // 회원관리와 동일하게 변경
-    valueHeight: 'h-6', // 회원관리와 동일하게 변경
+    height: 'h-3',
+    valueHeight: 'h-6',
     margin: 'mb-2',
   },
 }; 

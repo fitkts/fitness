@@ -3,6 +3,7 @@ import { Filter, ChevronLeft, ChevronRight, X, Settings, RefreshCw } from 'lucid
 import { ViewType, PaymentStatusFilter } from '../types/statistics';
 import { createDynamicQuickDateRanges } from '../utils/dynamicDateUtils';
 import {
+  FILTER_GRID_CONFIG,
   FILTER_LAYOUT_CONFIG,
   INPUT_FIELD_CONFIG,
   QUICK_DATE_CONFIG,
@@ -151,97 +152,105 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         </div>
       </div>
 
-      {/* 필터 컨텐츠 */}
+      {/* 필터 컨텐츠 - 12컬럼 그리드 시스템 적용 */}
       <div className={FILTER_LAYOUT_CONFIG.CONTENT.className}>
-        <div className={`${FILTER_LAYOUT_CONFIG.GRID.responsive} ${FILTER_LAYOUT_CONFIG.GRID.gap}`}>
-          {/* 기간 선택 */}
-          <div>
-            <label className={INPUT_FIELD_CONFIG.LABEL.className}>
-              {FILTER_LABELS.DATE_RANGE.label}
-            </label>
-            <div className="grid grid-cols-2 gap-1">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => onStartDateChange(e.target.value)}
-                className={INPUT_FIELD_CONFIG.INPUT.className}
-                data-testid="start-date-input"
-              />
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => onEndDateChange(e.target.value)}
-                className={INPUT_FIELD_CONFIG.INPUT.className}
-                data-testid="end-date-input"
-              />
+        <div className="space-y-2">
+          {/* 첫 번째 행: 기본 필터들 */}
+          <div className={FILTER_GRID_CONFIG.baseGrid}>
+            {/* 기간 선택 - 4컬럼 차지 */}
+            <div className={FILTER_GRID_CONFIG.columns.dateRange}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>
+                {FILTER_LABELS.DATE_RANGE.label}
+              </label>
+              <div className="grid grid-cols-2 gap-1">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => onStartDateChange(e.target.value)}
+                  className={FILTER_GRID_CONFIG.styles.input}
+                  data-testid="start-date-input"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => onEndDateChange(e.target.value)}
+                  className={FILTER_GRID_CONFIG.styles.input}
+                  data-testid="end-date-input"
+                />
+              </div>
+            </div>
+
+            {/* 차트 표시 단위 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>
+                {FILTER_LABELS.VIEW_TYPE.label}
+              </label>
+              <select
+                value={viewType}
+                onChange={(e) => onViewTypeChange(e.target.value as ViewType)}
+                className={FILTER_GRID_CONFIG.styles.select}
+                data-testid="view-type-select"
+              >
+                {VIEW_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 결제 상태 필터 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>
+                {FILTER_LABELS.STATUS_FILTER.label}
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => onStatusFilterChange(e.target.value as PaymentStatusFilter)}
+                className={FILTER_GRID_CONFIG.styles.select}
+                data-testid="status-filter-select"
+              >
+                {STATUS_FILTER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 빠른 날짜 선택 - 나머지 공간 */}
+            <div className="col-span-4 lg:col-span-4 xl:col-span-6">
+              <label className={FILTER_GRID_CONFIG.styles.label}>
+                빠른 날짜
+              </label>
+              <div className={QUICK_DATE_CONFIG.CONTAINER.className}>
+                {quickDateRanges.map((range, index) => (
+                  <div key={index} className={QUICK_DATE_CONFIG.BUTTON_GROUP.className}>
+                    <button
+                      onClick={() => onQuickDateRange(range.getPrevRange)}
+                      className={QUICK_DATE_CONFIG.NAV_BUTTON.className}
+                      title={`이전 ${range.label}`}
+                    >
+                      <ChevronLeft size={QUICK_DATE_CONFIG.NAV_BUTTON.iconSize} />
+                    </button>
+                    <button
+                      onClick={() => onQuickDateRange(range.getRange)}
+                      className={QUICK_DATE_CONFIG.MAIN_BUTTON.className}
+                    >
+                      {range.label}
+                    </button>
+                    <button
+                      onClick={() => onQuickDateRange(range.getNextRange)}
+                      className={QUICK_DATE_CONFIG.NAV_BUTTON.className}
+                      title={`다음 ${range.label}`}
+                    >
+                      <ChevronRight size={QUICK_DATE_CONFIG.NAV_BUTTON.iconSize} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-
-          {/* 차트 표시 단위 */}
-          <div>
-            <label className={INPUT_FIELD_CONFIG.LABEL.className}>
-              {FILTER_LABELS.VIEW_TYPE.label}
-            </label>
-            <select
-              value={viewType}
-              onChange={(e) => onViewTypeChange(e.target.value as ViewType)}
-              className={INPUT_FIELD_CONFIG.SELECT.className}
-              data-testid="view-type-select"
-            >
-              {VIEW_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 결제 상태 필터 */}
-          <div>
-            <label className={INPUT_FIELD_CONFIG.LABEL.className}>
-              {FILTER_LABELS.STATUS_FILTER.label}
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => onStatusFilterChange(e.target.value as PaymentStatusFilter)}
-              className={INPUT_FIELD_CONFIG.SELECT.className}
-              data-testid="status-filter-select"
-            >
-              {STATUS_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* 빠른 날짜 선택 */}
-        <div className={QUICK_DATE_CONFIG.CONTAINER.className}>
-          {quickDateRanges.map((range, index) => (
-            <div key={index} className={QUICK_DATE_CONFIG.BUTTON_GROUP.className}>
-              <button
-                onClick={() => onQuickDateRange(range.getPrevRange)}
-                className={QUICK_DATE_CONFIG.NAV_BUTTON.className}
-                title={`이전 ${range.label}`}
-              >
-                <ChevronLeft size={QUICK_DATE_CONFIG.NAV_BUTTON.iconSize} />
-              </button>
-              <button
-                onClick={() => onQuickDateRange(range.getRange)}
-                className={QUICK_DATE_CONFIG.MAIN_BUTTON.className}
-              >
-                {range.label}
-              </button>
-              <button
-                onClick={() => onQuickDateRange(range.getNextRange)}
-                className={QUICK_DATE_CONFIG.NAV_BUTTON.className}
-                title={`다음 ${range.label}`}
-              >
-                <ChevronRight size={QUICK_DATE_CONFIG.NAV_BUTTON.iconSize} />
-              </button>
-            </div>
-          ))}
         </div>
       </div>
     </div>

@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Filter, X, Calendar, DollarSign, Plus, Download, Upload, Info, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import React from 'react';
+import { Search, Filter, X, Plus, Download, Upload, Info, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PaymentFilter } from '../../utils/paymentUtils';
 import { Staff } from '../../models/types';
 import {
-  getPredefinedDateRanges,
-  dateUtils,
-  PREDEFINED_AMOUNT_RANGES,
-  FILTER_CONFIG,
   COMPACT_LAYOUT_CONFIG,
   ACTION_BUTTON_CONFIG
 } from '../../config/paymentConfig';
@@ -39,15 +35,6 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
   showToast,
   payments = [],
 }) => {
-  const [dateOffsets, setDateOffsets] = useState<Record<string, number>>({
-    today: 0,
-    week: 0,
-    month: 0,
-    year: 0,
-    days7: 0,
-    days30: 0,
-  });
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFilterChange({ ...filter, search: e.target.value });
   };
@@ -94,51 +81,80 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
     });
   };
 
-  const handleDateRangePreset = (range: any) => {
-    onFilterChange({ 
-      ...filter, 
-      startDate: range.startDate, 
-      endDate: range.endDate 
+  // 날짜 범위 적용 함수 (Statistics와 동일한 방식)
+  const handleQuickDateRange = (rangeGetter: () => { startDate: string; endDate: string }) => {
+    const { startDate, endDate } = rangeGetter();
+    onFilterChange({
+      ...filter,
+      startDate,
+      endDate,
     });
   };
 
-  // 날짜 이동 기능
-  const handleDateNavigation = (type: string, direction: 'prev' | 'next', days?: number) => {
-    const offsetKey = days ? `days${days}` : type;
-    const currentOffset = dateOffsets[offsetKey] || 0;
-    const newOffset = direction === 'next' ? currentOffset + 1 : currentOffset - 1;
-    
-    setDateOffsets(prev => ({
-      ...prev,
-      [offsetKey]: newOffset
-    }));
+  // 현재 날짜 기준 날짜 범위 계산 함수들
+  const getCurrentDateRange = (type: string): { startDate: string; endDate: string } => {
+    const today = new Date();
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
-    let newRange;
     switch (type) {
       case 'today':
-        newRange = dateUtils.getToday(newOffset);
-        break;
+        return { startDate: formatDate(today), endDate: formatDate(today) };
       case 'week':
-        newRange = dateUtils.getThisWeek(newOffset);
-        break;
+        const dayOfWeek = today.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const startOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + mondayOffset);
+        const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6);
+        return { startDate: formatDate(startOfWeek), endDate: formatDate(endOfWeek) };
       case 'month':
-        newRange = dateUtils.getThisMonth(newOffset);
-        break;
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return { startDate: formatDate(startOfMonth), endDate: formatDate(endOfMonth) };
       case 'year':
-        newRange = dateUtils.getThisYear(newOffset);
-        break;
-      case 'days':
-        newRange = dateUtils.getRecentDays(days!, newOffset);
-        break;
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
+        const endOfYear = new Date(today.getFullYear(), 11, 31);
+        return { startDate: formatDate(startOfYear), endDate: formatDate(endOfYear) };
       default:
-        return;
+        return { startDate: formatDate(today), endDate: formatDate(today) };
     }
+  };
 
-    onFilterChange({
-      ...filter,
-      startDate: newRange.startDate,
-      endDate: newRange.endDate,
-    });
+  // 현재 선택된 날짜를 기준으로 이전/다음 범위 계산
+  const getRelativeDateRange = (type: string, direction: 'prev' | 'next'): { startDate: string; endDate: string } => {
+    const currentStart = filter.startDate || getCurrentDateRange(type).startDate;
+    const baseDate = new Date(currentStart);
+    const offset = direction === 'prev' ? -1 : 1;
+    
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (type) {
+      case 'today':
+        const newDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + offset);
+        return { startDate: formatDate(newDay), endDate: formatDate(newDay) };
+      case 'week':
+        const newWeekStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + (offset * 7));
+        const newWeekEnd = new Date(newWeekStart.getFullYear(), newWeekStart.getMonth(), newWeekStart.getDate() + 6);
+        return { startDate: formatDate(newWeekStart), endDate: formatDate(newWeekEnd) };
+      case 'month':
+        const newMonthStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1);
+        const newMonthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + offset + 1, 0);
+        return { startDate: formatDate(newMonthStart), endDate: formatDate(newMonthEnd) };
+      case 'year':
+        const newYearStart = new Date(baseDate.getFullYear() + offset, 0, 1);
+        const newYearEnd = new Date(baseDate.getFullYear() + offset, 11, 31);
+        return { startDate: formatDate(newYearStart), endDate: formatDate(newYearEnd) };
+      default:
+        return getCurrentDateRange(type);
+    }
   };
 
   // 활성 필터 개수 계산
@@ -155,38 +171,6 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
   };
 
   const activeFilterCount = getActiveFilterCount();
-
-  // 날짜 라벨 생성 (현재 오프셋 반영)
-  const getDateRangeLabel = (type: string, baseLabel: string, days?: number) => {
-    const offsetKey = days ? `days${days}` : type;
-    const offset = dateOffsets[offsetKey] || 0;
-    
-    if (offset === 0) return baseLabel;
-    
-    switch (type) {
-      case 'today':
-        if (offset === -1) return '어제';
-        if (offset === 1) return '내일';
-        return offset > 0 ? `${offset}일 후` : `${Math.abs(offset)}일 전`;
-      case 'week':
-        if (offset === -1) return '지난 주';
-        if (offset === 1) return '다음 주';
-        return offset > 0 ? `${offset}주 후` : `${Math.abs(offset)}주 전`;
-      case 'month':
-        if (offset === -1) return '지난 달';
-        if (offset === 1) return '다음 달';
-        return offset > 0 ? `${offset}개월 후` : `${Math.abs(offset)}개월 전`;
-      case 'year':
-        if (offset === -1) return '작년';
-        if (offset === 1) return '내년';
-        return offset > 0 ? `${offset}년 후` : `${Math.abs(offset)}년 전`;
-      case 'days':
-        if (offset === 0) return baseLabel;
-        return offset > 0 ? `${days}일 후부터` : `${days}일 전 기준`;
-      default:
-        return baseLabel;
-    }
-  };
 
   // 엑셀 내보내기 핸들러
   const handleExportExcel = () => {
@@ -232,17 +216,17 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.padding} overflow-hidden sticky top-4 z-20`}
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-3 overflow-hidden sticky top-4 z-20`}
       data-testid="payment-search-filter-container"
     >
       {/* 헤더 */}
-      <div className={`${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.headerPadding} bg-gray-50 border-b border-gray-200`}>
+      <div className="p-2 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Filter size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-600" />
-            <h3 className={COMPACT_LAYOUT_CONFIG.HEADER.title}>결제 검색 및 필터</h3>
+            <Filter size={14} className="text-gray-600" />
+            <h3 className="text-sm font-medium text-gray-800">결제 검색 및 필터</h3>
             {activeFilterCount > 0 && (
-              <span className={`bg-blue-100 text-blue-800 ${COMPACT_LAYOUT_CONFIG.HEADER.badge} font-medium px-1.5 py-0.5 rounded-full`}>
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded-full">
                 {activeFilterCount}개
               </span>
             )}
@@ -268,10 +252,10 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
                   {onAddPayment && (
                     <button
                       onClick={onAddPayment}
-                      className={ACTION_BUTTON_CONFIG.ADD_PAYMENT.className}
+                      className="bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-1 px-2 rounded-md flex items-center transition-colors"
                     >
-                      <Plus size={ACTION_BUTTON_CONFIG.ADD_PAYMENT.iconSize} className="mr-1" />
-                      {ACTION_BUTTON_CONFIG.ADD_PAYMENT.text}
+                      <Plus size={12} className="mr-1" />
+                      결제
                     </button>
                   )}
 
@@ -279,22 +263,22 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
                   {onAddMembershipType && (
                     <button
                       onClick={onAddMembershipType}
-                      className={ACTION_BUTTON_CONFIG.ADD_MEMBERSHIP_TYPE.className}
+                      className="bg-green-500 hover:bg-green-600 text-white text-xs font-medium py-1 px-2 rounded-md flex items-center transition-colors"
                     >
-                      <CreditCard size={ACTION_BUTTON_CONFIG.ADD_MEMBERSHIP_TYPE.iconSize} className="mr-1" />
-                      {ACTION_BUTTON_CONFIG.ADD_MEMBERSHIP_TYPE.text}
+                      <CreditCard size={12} className="mr-1" />
+                      이용권
                     </button>
                   )}
                 </div>
 
                 {/* 엑셀 버튼 그룹 */}
-                <div className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.container}>
+                <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
                   <button
                     title="엑셀 불러오기"
-                    className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.button}
+                    className="p-1 hover:bg-gray-100 transition-colors"
                     onClick={() => document.getElementById('payment-excel-import-input')?.click()}
                   >
-                    <Upload size={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.iconSize} />
+                    <Upload size={10} />
                   </button>
                   <input
                     id="payment-excel-import-input"
@@ -305,17 +289,17 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
                   />
                   <button
                     title="엑셀 내보내기"
-                    className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.button}
+                    className="p-1 hover:bg-gray-100 transition-colors border-l border-gray-300"
                     onClick={handleExportExcel}
                   >
-                    <Download size={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.iconSize} />
+                    <Download size={10} />
                   </button>
                   <button
                     title="엑셀 형식 안내"
-                    className={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.infoButton}
+                    className="p-1 hover:bg-gray-100 transition-colors border-l border-gray-300"
                     onClick={() => {/* TODO: 엑셀 형식 안내 모달 */}}
                   >
-                    <Info size={ACTION_BUTTON_CONFIG.EXCEL_BUTTONS.infoIconSize} color="#888" />
+                    <Info size={10} color="#888" />
                   </button>
                 </div>
               </div>
@@ -325,37 +309,37 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
       </div>
 
       {/* 필터 컨텐츠 */}
-      <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
+      <div className="p-2">
         <div className="space-y-2">
           {/* 첫 번째 행: 기본 필터들 */}
-          <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
-            {/* 검색 박스 */}
-            <div>
-              <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+          <div className="grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-12 gap-1">
+            {/* 검색 박스 - 기존보다 축소 */}
+            <div className="col-span-2 lg:col-span-2 xl:col-span-3">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
                 검색
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder={FILTER_CONFIG.SEARCH_PLACEHOLDER}
-                  className={`w-full pl-6 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  placeholder="회원명, 이용권..."
+                  className="w-full pl-4 pr-1 py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={filter.search || ''}
                   onChange={handleSearchChange}
                 />
                 <Search
-                  className="absolute left-1.5 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={12}
+                  className="absolute left-1 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={10}
                 />
               </div>
             </div>
 
-            {/* 상태 필터 */}
-            <div>
-              <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+            {/* 상태, 방법, 담당자 등 - 1컬럼씩만 차지 */}
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
                 상태
               </label>
               <select
-                className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={filter.status || 'all'}
                 onChange={handleStatusChange}
               >
@@ -367,50 +351,47 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
               </select>
             </div>
 
-            {/* 결제 방법 */}
-            <div>
-              <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-                결제방법
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                방법
               </label>
               <select
-                className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={filter.paymentMethod || 'all'}
                 onChange={handlePaymentMethodChange}
               >
                 <option value="all">전체</option>
                 <option value="현금">현금</option>
                 <option value="카드">카드</option>
-                <option value="계좌이체">계좌이체</option>
+                <option value="계좌이체">이체</option>
                 <option value="기타">기타</option>
               </select>
             </div>
 
-            {/* 이용권 종류 */}
-            <div>
-              <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+            <div className="col-span-2 lg:col-span-1 xl:col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
                 이용권
               </label>
               <select
-                className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={filter.membershipType || 'all'}
                 onChange={handleMembershipTypeChange}
               >
                 <option value="all">전체</option>
                 {membershipTypes.map((type) => (
                   <option key={type} value={type}>
-                    {type}
+                    {type.length > 8 ? `${type.substring(0, 8)}...` : type}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* 담당자 */}
-            <div>
-              <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
                 담당자
               </label>
               <select
-                className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={filter.staffName || 'all'}
                 onChange={handleStaffChange}
               >
@@ -422,65 +403,64 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* 두 번째 행: 날짜 범위 (컴팩트하게) */}
-          <div className="space-y-2">
-            {/* 날짜 범위 */}
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Calendar size={COMPACT_LAYOUT_CONFIG.HEADER.icon} className="text-gray-500" />
-                <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700`}>
-                  날짜 범위
-                </label>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-1">
-                <div>
-                  <input
-                    type="date"
-                    placeholder="시작일"
-                    className="w-full px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={filter.startDate || ''}
-                    onChange={handleStartDateChange}
-                    style={{ fontSize: '11px' }}
-                  />
-                </div>
-                <div>
-                  <input
-                    type="date"
-                    placeholder="종료일"
-                    className="w-full px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={filter.endDate || ''}
-                    onChange={handleEndDateChange}
-                    style={{ fontSize: '11px' }}
-                  />
-                </div>
-              </div>
+            {/* 시작일, 종료일 - 1컬럼씩 */}
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                시작일
+              </label>
+              <input
+                type="date"
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={filter.startDate || ''}
+                onChange={handleStartDateChange}
+              />
+            </div>
 
-              {/* 컴팩트한 날짜 프리셋 */}
-              <div className="grid grid-cols-4 gap-0.5 pt-1">
-                {getPredefinedDateRanges().slice(0, 8).map((range) => (
-                  <div key={range.label} className="flex items-center border border-gray-200 rounded overflow-hidden">
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                종료일
+              </label>
+              <input
+                type="date"
+                className="w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={filter.endDate || ''}
+                onChange={handleEndDateChange}
+              />
+            </div>
+
+            {/* 빠른 날짜 - 나머지 공간 */}
+            <div className="col-span-4 lg:col-span-4 xl:col-span-4">
+              <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                빠른 날짜
+              </label>
+              <div className="flex flex-wrap gap-0.5">
+                {[
+                  { label: '오늘', type: 'today' },
+                  { label: '이번주', type: 'week' },
+                  { label: '이번달', type: 'month' },
+                  { label: '올해', type: 'year' }
+                ].map((preset) => (
+                  <div key={preset.label} className="flex items-center bg-gray-50 rounded-md p-0.5 border border-gray-200">
                     <button
-                      onClick={() => handleDateNavigation(range.type || 'today', 'prev', range.days)}
-                      className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                      title="이전"
+                      onClick={() => handleQuickDateRange(() => getRelativeDateRange(preset.type, 'prev'))}
+                      className="p-0.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title={`이전 ${preset.label}`}
                     >
-                      <ChevronLeft size={10} />
+                      <ChevronLeft size={12} />
                     </button>
                     <button
-                      onClick={() => handleDateRangePreset(range)}
-                      className="flex-1 w-full text-center text-xs font-medium text-gray-800 px-1 py-1 hover:bg-gray-50 transition-colors"
+                      onClick={() => handleQuickDateRange(() => getCurrentDateRange(preset.type))}
+                      className="flex-1 px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors text-center"
                     >
-                      {getDateRangeLabel(range.type || 'today', range.label, range.days)}
+                      {preset.label}
                     </button>
                     <button
-                      onClick={() => handleDateNavigation(range.type || 'today', 'next', range.days)}
-                      className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                      title="다음"
+                      onClick={() => handleQuickDateRange(() => getRelativeDateRange(preset.type, 'next'))}
+                      className="p-0.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title={`다음 ${preset.label}`}
                     >
-                      <ChevronRight size={10} />
+                      <ChevronRight size={12} />
                     </button>
                   </div>
                 ))}
@@ -493,4 +473,4 @@ const PaymentSearchFilter: React.FC<PaymentSearchFilterProps> = ({
   );
 };
 
-export default PaymentSearchFilter; 
+export default PaymentSearchFilter;

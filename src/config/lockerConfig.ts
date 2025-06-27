@@ -226,4 +226,19 @@ export const PAGINATION_COMPACT_CONFIG = {
   INFO: {
     textSize: 'text-xs text-gray-500',
   },
-} as const; 
+} as const;
+
+// 필터 그리드 설정
+export const FILTER_GRID_CONFIG = {
+  baseGrid: 'grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-12 gap-1',
+  columns: {
+    search: 'col-span-2 lg:col-span-2 xl:col-span-3',
+    default: 'col-span-1',
+    wide: 'col-span-2 lg:col-span-1 xl:col-span-2'
+  },
+  styles: {
+    input: 'w-full py-1 h-7 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500',
+    label: 'block text-xs font-medium text-gray-700 mb-0.5',
+    select: 'w-full py-1 h-7 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
+  }
+}; 

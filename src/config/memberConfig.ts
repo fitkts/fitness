@@ -14,8 +14,8 @@ export const FILTER_OPTIONS = {
   ],
   GENDER: [
     { value: 'all', label: '전체 성별' },
-    { value: '남', label: '남' },
-    { value: '여', label: '여' },
+    { value: '남성', label: '남성' },
+    { value: '여성', label: '여성' },
   ],
 } as const;
 
@@ -61,8 +61,8 @@ export const STATISTICS_CONFIG = {
 
 // 성별 정렬 순서
 export const GENDER_SORT_ORDER = {
-  남: 1,
-  여: 2,
+  남성: 1,
+  여성: 2,
   '': 3
 } as const;
 
@@ -82,27 +82,35 @@ export const ACTION_BUTTON_CONFIG = {
   },
 } as const;
 
-// 컴팩트 레이아웃 설정
+// 컴팩트 레이아웃 설정 - 결제 페이지 스타일로 업데이트
 export const COMPACT_LAYOUT_CONFIG = {
   FILTER_CONTAINER: {
-    padding: '', // 실제 컨테이너 패딩은 컴포넌트에서 직접 관리
-    headerPadding: 'px-3 py-1.5', // 더 컴팩트하게 (기존 px-3 py-2에서 줄임)
-    contentPadding: 'p-2.5', // 더 컴팩트하게 (기존 p-3에서 줄임)
+    padding: 'p-3', // 결제 페이지와 동일
+    headerPadding: 'p-2', // 결제 페이지와 동일
+    contentPadding: 'p-2', // 결제 페이지와 동일
   },
   INPUT_FIELD: {
-    padding: 'py-1', // 더 컴팩트하게 (기존 py-1.5에서 줄임)
-    textSize: 'text-xs', // 더 작은 폰트 (기존 text-sm에서 줄임)
-    labelSize: 'text-xs', // 라벨 크기 유지
-    labelMargin: 'mb-0.5', // 더 작은 마진 (기존 mb-1에서 줄임)
+    padding: 'py-1', // 결제 페이지와 동일
+    textSize: 'text-xs', // 결제 페이지와 동일
+    labelSize: 'text-xs', // 결제 페이지와 동일
+    labelMargin: 'mb-0.5', // 결제 페이지와 동일
+    height: 'h-7', // 결제 페이지와 동일한 높이
   },
   GRID: {
-    gap: 'gap-2', // 더 작은 간격 (기존 gap-3에서 줄임)
-    responsive: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6', // 더 조밀한 그리드
+    gap: 'gap-1', // 결제 페이지와 동일한 좁은 간격
+    responsive: 'grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-12', // 결제 페이지와 동일한 그리드
   },
   HEADER: {
-    title: 'text-xs font-medium text-gray-900', // 더 작은 제목 (기존 text-sm에서 줄임)
-    badge: 'text-xs', // 배지 크기 유지
-    icon: 14, // 더 작은 아이콘 (기존 16에서 줄임)
+    title: 'text-sm font-medium text-gray-800', // 결제 페이지와 동일
+    badge: 'text-xs', // 결제 페이지와 동일
+    icon: 14, // 결제 페이지와 동일
+  },
+  // 컬럼 스팬 설정 추가
+  COLUMN_SPANS: {
+    SEARCH: 'col-span-2 lg:col-span-2 xl:col-span-3', // 검색 필드
+    FILTER_FIELD: 'col-span-1', // 기본 필터 필드
+    WIDE_FIELD: 'col-span-2 lg:col-span-1 xl:col-span-2', // 이용권 등 긴 텍스트용
+    EXTRA_SPACE: 'col-span-4 lg:col-span-4 xl:col-span-4', // 나머지 공간
   },
 } as const;
 

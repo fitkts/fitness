@@ -11,6 +11,7 @@ import {
   ChevronRight,
   BarChart,
   FileText,
+  UserCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -93,6 +94,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         return <LayoutDashboard size={20} />;
       case '회원 관리':
         return <Users size={20} />;
+      case '통합 회원 관리':
+        return <UserCheck size={20} />;
       case '출석 관리':
         return <Calendar size={20} />;
       case '결제 관리':

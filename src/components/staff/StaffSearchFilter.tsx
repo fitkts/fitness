@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Filter, X, Plus, Download, Upload, Info } from 'lucide-react';
 import { StaffFilter } from '../../types/staff';
-import { FILTER_OPTIONS, EXCEL_CONFIG, ACTION_BUTTON_CONFIG, COMPACT_LAYOUT_CONFIG } from '../../config/staffConfig';
+import { FILTER_GRID_CONFIG, FILTER_OPTIONS, EXCEL_CONFIG, ACTION_BUTTON_CONFIG, COMPACT_LAYOUT_CONFIG } from '../../config/staffConfig';
 import { StaffSearchFilterActions } from '../../types/staff';
 import * as XLSX from 'xlsx';
 
@@ -99,7 +99,7 @@ const StaffSearchFilter: React.FC<StaffSearchFilterProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.padding} overflow-hidden sticky top-4 z-20`}
+      className={`${COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.padding} bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden sticky top-4 z-20`}
       data-testid="staff-search-filter-container"
     >
       {/* 헤더 */}
@@ -178,63 +178,61 @@ const StaffSearchFilter: React.FC<StaffSearchFilterProps> = ({
         </div>
       </div>
 
-      {/* 필터 컨텐츠 */}
+      {/* 필터 컨텐츠 - 12컬럼 그리드 시스템 적용 */}
       <div className={COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
-        <div className={`${COMPACT_LAYOUT_CONFIG.GRID.responsive} ${COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
-          {/* 검색 박스 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              검색
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="직원명..."
-                className={`w-full pl-7 pr-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                value={filter.search || ''}
-                onChange={handleSearchChange}
-              />
-              <Search
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={12}
-              />
+        <div className="space-y-2">
+          <div className={FILTER_GRID_CONFIG.baseGrid}>
+            {/* 검색 필드 */}
+            <div className={FILTER_GRID_CONFIG.columns.search}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>검색</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="직원명..."
+                  className={`${FILTER_GRID_CONFIG.styles.input} pl-7`}
+                  value={filter.search || ''}
+                  onChange={handleSearchChange}
+                />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+              </div>
             </div>
-          </div>
 
-          {/* 재직 상태 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              상태
-            </label>
-            <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              value={filter.status || 'all'}
-              onChange={handleStatusChange}
-            >
-              {FILTER_OPTIONS.STATUS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label.replace('전체 상태', '전체')}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* 재직 상태 필터 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>상태</label>
+              <select
+                className={FILTER_GRID_CONFIG.styles.select}
+                value={filter.status || 'all'}
+                onChange={handleStatusChange}
+              >
+                {FILTER_OPTIONS.STATUS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label.replace('전체 상태', '전체')}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* 직책별 필터 */}
-          <div>
-            <label className={`block ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              직책
-            </label>
-            <select
-              className={`w-full px-2 ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.padding} border border-gray-300 rounded-md ${COMPACT_LAYOUT_CONFIG.INPUT_FIELD.textSize} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              value={filter.position || 'all'}
-              onChange={handlePositionChange}
-            >
-              {FILTER_OPTIONS.POSITION.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label.replace('전체 직책', '전체')}
-                </option>
-              ))}
-            </select>
+            {/* 직책별 필터 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>직책</label>
+              <select
+                className={FILTER_GRID_CONFIG.styles.select}
+                value={filter.position || 'all'}
+                onChange={handlePositionChange}
+              >
+                {FILTER_OPTIONS.POSITION.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label.replace('전체 직책', '전체')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 나머지 공간 */}
+            <div className="col-span-4 lg:col-span-4 xl:col-span-7">
+              {/* 향후 추가 필터나 빠른 액션 버튼들을 위한 공간 */}
+            </div>
           </div>
         </div>
       </div>

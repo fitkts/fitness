@@ -3,6 +3,7 @@ import { Filter, Search, X, Plus, Upload, Download, Info } from 'lucide-react';
 import { ConsultationFilter, ConsultationMember } from '../../types/consultation';
 import { Staff } from '../../types/staff';
 import { 
+  FILTER_GRID_CONFIG,
   CONSULTATION_FILTER_OPTIONS,
   CONSULTATION_COMPACT_LAYOUT_CONFIG,
   CONSULTATION_ACTION_BUTTON_CONFIG,
@@ -197,108 +198,95 @@ const ConsultationSearchFilter: React.FC<ConsultationSearchFilterProps> = ({
         </div>
       </div>
 
-      {/* 필터 컨텐츠 */}
+      {/* 필터 컨텐츠 - 12컬럼 그리드 시스템 적용 */}
       <div className={CONSULTATION_COMPACT_LAYOUT_CONFIG.FILTER_CONTAINER.contentPadding}>
-        <div className={`${CONSULTATION_COMPACT_LAYOUT_CONFIG.GRID.responsive} ${CONSULTATION_COMPACT_LAYOUT_CONFIG.GRID.gap}`}>
-          {/* 검색 박스 */}
-          <div>
-            <label className={`block ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              검색
-            </label>
-            <div className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.searchIconWrapper}>
+        <div className="space-y-2">
+          <div className={FILTER_GRID_CONFIG.baseGrid}>
+            {/* 검색 필드 */}
+            <div className={FILTER_GRID_CONFIG.columns.search}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>검색</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="회원명, 전화번호..."
+                  className={`${FILTER_GRID_CONFIG.styles.input} pl-7`}
+                  value={filter.search || ''}
+                  onChange={handleSearchChange}
+                />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+              </div>
+            </div>
+
+            {/* 상담 상태 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>상태</label>
+              <select
+                className={FILTER_GRID_CONFIG.styles.select}
+                value={filter.status || 'all'}
+                onChange={handleStatusChange}
+              >
+                {CONSULTATION_FILTER_OPTIONS.STATUS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label.replace('전체 상태', '전체')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 담당자 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>담당자</label>
+              <select
+                className={FILTER_GRID_CONFIG.styles.select}
+                value={filter.staffName || 'all'}
+                onChange={handleStaffNameChange}
+              >
+                <option value="all">전체</option>
+                {staffList.map((staff) => (
+                  <option key={staff.id} value={staff.name}>
+                    {staff.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 성별 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>성별</label>
+              <select
+                className={FILTER_GRID_CONFIG.styles.select}
+                value={filter.gender || 'all'}
+                onChange={handleGenderChange}
+              >
+                {CONSULTATION_FILTER_OPTIONS.GENDER.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label.replace('전체 성별', '전체')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 시작일 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>시작일</label>
               <input
-                type="text"
-                placeholder="회원명, 전화번호..."
-                className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.searchInputStyles}
-                value={filter.search || ''}
-                onChange={handleSearchChange}
-              />
-              <Search
-                className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.searchIcon}
-                size={12}
+                type="date"
+                className={FILTER_GRID_CONFIG.styles.input}
+                value={filter.dateFrom || ''}
+                onChange={handleDateFromChange}
               />
             </div>
-          </div>
 
-          {/* 상담 상태 */}
-          <div>
-            <label className={`block ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              상태
-            </label>
-            <select
-              className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.inputStyles}
-              value={filter.status || 'all'}
-              onChange={handleStatusChange}
-            >
-              {CONSULTATION_FILTER_OPTIONS.STATUS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label.replace('전체 상태', '전체')}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 담당자 */}
-          <div>
-            <label className={`block ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              담당자
-            </label>
-            <select
-              className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.inputStyles}
-              value={filter.staffName || 'all'}
-              onChange={handleStaffNameChange}
-            >
-              <option value="all">전체</option>
-              {staffList.map((staff) => (
-                <option key={staff.id} value={staff.name}>
-                  {staff.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 성별 */}
-          <div>
-            <label className={`block ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              성별
-            </label>
-            <select
-              className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.inputStyles}
-              value={filter.gender || 'all'}
-              onChange={handleGenderChange}
-            >
-              {CONSULTATION_FILTER_OPTIONS.GENDER.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label.replace('전체 성별', '전체')}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 시작일 */}
-          <div>
-            <label className={`block ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              시작일
-            </label>
-            <input
-              type="date"
-              className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.inputStyles}
-              value={filter.dateFrom || ''}
-              onChange={handleDateFromChange}
-            />
-          </div>
-
-          {/* 종료일 */}
-          <div>
-            <label className={`block ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelSize} font-medium text-gray-700 ${CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.labelMargin}`}>
-              종료일
-            </label>
-            <input
-              type="date"
-              className={CONSULTATION_COMPACT_LAYOUT_CONFIG.INPUT_FIELD.inputStyles}
-              value={filter.dateTo || ''}
-              onChange={handleDateToChange}
-            />
+            {/* 종료일 */}
+            <div className={FILTER_GRID_CONFIG.columns.default}>
+              <label className={FILTER_GRID_CONFIG.styles.label}>종료일</label>
+              <input
+                type="date"
+                className={FILTER_GRID_CONFIG.styles.input}
+                value={filter.dateTo || ''}
+                onChange={handleDateToChange}
+              />
+            </div>
           </div>
         </div>
       </div>

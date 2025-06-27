@@ -66,53 +66,58 @@ const Members: React.FC = () => {
 
   // 초기 데이터 로딩
   useEffect(() => {
-    fetchMembers();
-    loadFilterData();
+    const loadInitialData = async () => {
+      await fetchMembers();
+      await loadStaffData();
+    };
+    loadInitialData();
   }, [fetchMembers]);
 
-  // 필터용 데이터 로딩
-  const loadFilterData = async () => {
+  // 직원 데이터 로딩
+  const loadStaffData = async () => {
     try {
-      // 직원 목록 가져오기
       const staffResponse = await getAllStaff();
       if (staffResponse.success && staffResponse.data) {
         setStaffList(staffResponse.data);
       }
-
-      // 회원들로부터 이용권 종류 추출
-      const uniqueMembershipTypes = Array.from(
-        new Set(
-          members
-            .map(member => member.membershipType)
-            .filter(type => type && type.trim() !== '')
-        )
-      );
-      setMembershipTypes(uniqueMembershipTypes);
     } catch (error) {
-      console.error('필터 데이터 로딩 오류:', error);
-      showToast('error', MEMBERS_MESSAGES.error.loadFailed);
+      console.error('직원 데이터 로딩 오류:', error);
+      showToast('error', '직원 데이터 로딩에 실패했습니다.');
     }
   };
 
-  // 회원 데이터가 변경될 때마다 이용권 종류 업데이트
+  // 회원 데이터가 변경될 때마다 회원권 종류 추출 및 업데이트
   useEffect(() => {
-    const uniqueMembershipTypes = Array.from(
-      new Set(
-        members
-          .map(member => member.membershipType)
-          .filter(type => type && type.trim() !== '')
-      )
-    );
-    setMembershipTypes(uniqueMembershipTypes);
+    console.log('Members 데이터 확인:', members);
+    
+    if (members && members.length > 0) {
+      // 회원권 종류 추출
+      const membershipTypesFromMembers = members
+        .map(member => {
+          console.log('회원:', member.name, '회원권:', member.membershipType);
+          return member.membershipType;
+        })
+        .filter(type => type && typeof type === 'string' && type.trim() !== '');
+
+      const uniqueTypes = Array.from(new Set(membershipTypesFromMembers));
+      
+      console.log('추출된 회원권 종류들:', uniqueTypes);
+      setMembershipTypes(uniqueTypes);
+    } else {
+      console.log('회원 데이터가 없거나 비어있음');
+      setMembershipTypes([]);
+    }
   }, [members]);
 
   // 필터링된 회원 목록 계산
   const filteredMembers = React.useMemo(() => {
     return members.filter((member) => {
+      // 검색어 필터
       if (filter.search && member.name && !member.name.includes(filter.search)) {
         return false;
       }
 
+      // 상태 필터
       if (filter.status !== 'all') {
         const status = getMembershipStatus(member.membershipEnd);
         if (filter.status !== status) {
@@ -120,14 +125,17 @@ const Members: React.FC = () => {
         }
       }
 
+      // 담당자 필터
       if (filter.staffName !== 'all' && member.staffName !== filter.staffName) {
         return false;
       }
 
+      // 성별 필터
       if (filter.gender !== 'all' && member.gender !== filter.gender) {
         return false;
       }
 
+      // 회원권 필터
       if (filter.membershipType !== 'all' && member.membershipType !== filter.membershipType) {
         return false;
       }
@@ -172,6 +180,7 @@ const Members: React.FC = () => {
         await addMember(member);
         showToast('success', MEMBERS_MESSAGES.success.memberAdded);
       }
+      // 저장 후 데이터 새로고침
       await fetchMembers();
       return true;
     } catch (error) {
