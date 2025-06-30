@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import NewPaymentModal from '../payment/NewPaymentModal';
 import { MemberOption } from '../payment/NewMemberSearchInput';
 import { useToast } from '../../contexts/ToastContext';
+import { COMPACT_MODAL_CONFIG } from '../../config/memberConfig';
 
 interface MemberPaymentHistoryProps {
   memberId: number;
@@ -311,36 +312,40 @@ const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-800">결제 내역</h3>
+      <div className={`${COMPACT_MODAL_CONFIG.SECTION.headerPadding} bg-gray-50 border-b border-gray-200 flex justify-between items-center`}>
+        <h3 className={`${COMPACT_MODAL_CONFIG.SECTION.titleSize} text-gray-800`}>
+          결제 내역
+        </h3>
         <button
           type="button"
           onClick={handleOpenPaymentModal}
-          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          className={`inline-flex items-center ${COMPACT_MODAL_CONFIG.BUTTON.padding} ${COMPACT_MODAL_CONFIG.BUTTON.textSize} font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
         >
           <Plus className="h-4 w-4 mr-1" />
           결제 추가
         </button>
       </div>
-      <div className="p-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 pb-4 border-b border-gray-200">
-          <div className="flex items-center space-x-2 sm:space-x-4">
+      
+      <div className={COMPACT_MODAL_CONFIG.SECTION.contentPadding}>
+        {/* 컨트롤 영역 - 컴팩트 */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 pb-3 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
             <select
               value={pageSize}
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              className={`border border-gray-300 rounded-md px-2 py-1.5 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 showAll ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={showAll || payments.length === 0}
             >
-              <option value={5}>5개씩 보기</option>
-              <option value={10}>10개씩 보기</option>
-              <option value={15}>15개씩 보기</option>
+              <option value={5}>5개씩</option>
+              <option value={10}>10개씩</option>
+              <option value={15}>15개씩</option>
             </select>
             <button
               onClick={handleShowAllToggle}
               disabled={payments.length === 0}
-              className={`px-2 py-1.5 sm:px-3 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 showAll
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -349,62 +354,57 @@ const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
               {showAll ? '페이지 보기' : '전체 보기'}
             </button>
           </div>
+          <div className="text-sm text-gray-500">
+            총 {payments.length}건
+          </div>
         </div>
 
+        {/* 테이블 영역 */}
         {loadingPayments ? (
-          <div className="p-6 text-center text-gray-500">
-            결제 내역을 불러오는 중입니다...
+          <div className="py-8 text-center text-gray-500">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            결제 내역을 불러오는 중...
           </div>
         ) : payments.length === 0 ? (
-          <div className="py-6 text-center text-gray-500">
-            이 회원의 결제 내역이 없습니다.
+          <div className="py-8 text-center text-gray-500">
+            <div className="text-4xl mb-2">💳</div>
+            <p className="font-medium">결제 내역이 없습니다</p>
+            <p className="text-sm mt-1">첫 결제를 추가해보세요.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     결제일
                   </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     이용권
                   </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     금액
                   </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     상태
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentTableData.map((payment) => (
-                  <tr key={payment.id}>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                  <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
                       {formatDateToYYMMDD(payment.paymentDate)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
                       {payment.membershipType}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                      {formatCurrency(payment.amount)}
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {formatCurrency(payment.amount)}원
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${
                           payment.status === '완료'
                             ? 'bg-green-100 text-green-800'
                             : payment.status === '취소'
@@ -423,6 +423,8 @@ const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
             </table>
           </div>
         )}
+        
+        {/* 페이지네이션 - 기존 코드 유지하되 스타일만 컴팩트하게 */}
         {!loadingPayments && !showAll && totalPages > 1 && renderPagination()}
       </div>
 
@@ -431,9 +433,9 @@ const MemberPaymentHistory: React.FC<MemberPaymentHistoryProps> = ({
         isOpen={paymentModalOpen}
         onClose={handleClosePaymentModal}
         onSaveSuccess={handlePaymentSaveSuccess}
-        payment={null} // 새 결제이므로 null
-        isViewMode={false} // 편집 모드
-        members={currentMemberOption} // 현재 회원만 포함된 배열
+        payment={null}
+        isViewMode={false}
+        members={currentMemberOption}
         membershipTypes={membershipTypes}
         staffList={staffList}
       />

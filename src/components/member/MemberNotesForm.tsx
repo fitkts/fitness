@@ -1,4 +1,5 @@
 import React from 'react';
+import { COMPACT_MODAL_CONFIG } from '../../config/memberConfig';
 
 interface MemberNotesFormProps {
   notes: string | undefined; // notes는 undefined일 수 있음
@@ -15,13 +16,15 @@ const MemberNotesForm: React.FC<MemberNotesFormProps> = ({
   isSubmitting,
 }) => {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">메모</h3>
+    <div className={`${COMPACT_MODAL_CONFIG.SECTION.background} ${COMPACT_MODAL_CONFIG.SECTION.borderRadius} ${COMPACT_MODAL_CONFIG.SECTION.border} ${COMPACT_MODAL_CONFIG.SECTION.shadow} overflow-hidden`}>
+      <div className={`${COMPACT_MODAL_CONFIG.SECTION.headerPadding} bg-gray-50 border-b border-gray-200`}>
+        <h3 className={`${COMPACT_MODAL_CONFIG.SECTION.titleSize} text-gray-800`}>
+          메모
+        </h3>
       </div>
-      <div className="p-4">
+      <div className={COMPACT_MODAL_CONFIG.SECTION.contentPadding}>
         {isViewMode ? (
-          <div className="bg-gray-50 p-3 rounded min-h-[100px]">
+          <div className={`bg-gray-50 px-3 py-2 ${COMPACT_MODAL_CONFIG.INPUT.borderRadius} min-h-[60px] ${COMPACT_MODAL_CONFIG.INPUT.textSize}`}>
             {notes ? (
               <p className="whitespace-pre-wrap">{notes}</p>
             ) : (
@@ -31,12 +34,12 @@ const MemberNotesForm: React.FC<MemberNotesFormProps> = ({
         ) : (
           <textarea
             name="notes"
-            value={notes || ''} // undefined일 경우 빈 문자열로 처리
+            value={notes || ''}
             onChange={handleChange}
-            className="input w-full h-24"
+            className={`w-full h-16 ${COMPACT_MODAL_CONFIG.INPUT.padding} border border-gray-300 ${COMPACT_MODAL_CONFIG.INPUT.borderRadius} ${COMPACT_MODAL_CONFIG.INPUT.textSize} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors`}
             placeholder="회원에 대한 특이사항이나 메모를 입력하세요."
             disabled={isSubmitting}
-          ></textarea>
+          />
         )}
       </div>
     </div>

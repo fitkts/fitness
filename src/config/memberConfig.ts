@@ -182,3 +182,88 @@ export const RESPONSIVE_CONFIG = {
     desktop: '1024px',
   },
 } as const;
+
+// 개선된 컴팩트 모달 설정 - 최소화 기반 공간 효율성 극대화
+export const COMPACT_MODAL_CONFIG = {
+  MODAL: {
+    size: 'lg', // lg 크기 유지 (max-w-4xl)
+    maxWidth: 'max-w-4xl', // lg 크기 유지
+    padding: 'p-3', // 최소화된 패딩
+    spacing: 'space-y-3', // 최소화된 섹션 간격
+  },    
+  FORM: {
+    sectionSpacing: 'space-y-2', // 최소화된 섹션 간격
+    fieldSpacing: 'space-y-1', // 최소화된 필드 간격
+    gridGap: 'gap-x-4 gap-y-2', // 가로 간격 약간 증가 (더 넓은 필드)
+    // 2열 기반 효율적 그리드 레이아웃
+    basicInfoGrid: 'grid-cols-1 md:grid-cols-2', // 기본 정보용: 2열로 변경
+    membershipGrid: 'grid-cols-1 md:grid-cols-2', // 회원권 정보용: 2열로 변경
+  },
+  INPUT: {
+    height: 'h-8', // 최소화된 높이
+    padding: 'px-3 py-1.5', // 최소화된 패딩
+    textSize: 'text-sm', // 일관된 가독성
+    borderRadius: 'rounded-md', // 부드러운 모서리
+    labelSize: 'text-sm font-semibold', // 강조된 스타일
+    labelMargin: 'mb-1', // 최소화된 라벨 간격
+    helpTextSize: 'text-xs', // 적절한 크기
+    helpTextMargin: 'mt-1', // 최소화된 도움말 간격
+  },
+  SECTION: {
+    headerPadding: 'px-3 py-2', // 최소화된 헤더 패딩
+    contentPadding: 'p-3', // 최소화된 내용 패딩
+    titleSize: 'text-base font-bold', // 명확한 구분
+    borderRadius: 'rounded-md', // 부드러운 모서리
+    divider: 'border-b border-gray-100 pb-2 mb-2', // 최소화된 구분선
+    background: 'bg-white', // 배경색
+    border: 'border border-gray-200', // 테두리
+    shadow: 'shadow-sm', // 가벼운 그림자
+  },
+  BUTTON: {
+    height: 'h-8', // 입력 필드와 동일한 최소화된 높이
+    padding: 'px-4 py-1.5', // 최소화된 패딩
+    textSize: 'text-sm', // 일관된 텍스트 크기
+    fontWeight: 'font-medium', // 적절한 두께
+    borderRadius: 'rounded-md', // 부드러운 모서리
+    spacing: 'space-x-2', // 최소화된 간격
+  },
+  // 필드별 컬럼 스팬 설정 - 2열 그리드 최적화
+  FIELD_SPANS: {
+    // 기본 정보 섹션 (2열)
+    name: 'col-span-1', // 이름 (1번째 열)
+    phone: 'col-span-1', // 전화번호 (2번째 열)
+    gender: 'col-span-1', // 성별 (1번째 열)
+    birthDate: 'col-span-1', // 생년월일 (2번째 열)
+    email: 'col-span-1 md:col-span-2', // 이메일 (전체 너비)
+    
+    // 회원권 정보 섹션 (2열)
+    joinDate: 'col-span-1', // 가입일 (1번째 열)
+    membershipType: 'col-span-1', // 회원권 (2번째 열)
+    membershipStart: 'col-span-1', // 시작일 (1번째 열)
+    staff: 'col-span-1', // 담당자 (2번째 열)
+  },
+  // 반응형 최적화
+  RESPONSIVE: {
+    mobile: {
+      gridCols: 'grid-cols-1', // 모바일: 1열
+      spacing: 'space-y-2', // 최소화된 간격
+      padding: 'p-2', // 최소화된 패딩
+    },
+    tablet: {
+      gridCols: 'grid-cols-2', // 태블릿: 2열
+      spacing: 'space-y-2', // 최소화된 간격
+      padding: 'p-3', // 최소화된 패딩
+    },
+    desktop: {
+      gridCols: 'grid-cols-2', // 데스크톱: 2열 (3열에서 변경)
+      spacing: 'space-y-3', // 적절한 간격
+      padding: 'p-3', // 최소화된 패딩
+    },
+  },
+} as const;
+
+// 나이 제한 설정 (더 유연하게)
+export const AGE_LIMITS = {
+  MIN_AGE: 5, // 최소 5세
+  MAX_AGE: 120, // 최대 120세
+} as const;

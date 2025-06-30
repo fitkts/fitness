@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { COMMON_MODAL_CONFIG } from '../../config/commonFilterConfig';
 
 export interface MemberOption {
   id: number;
   name: string;
+  memberId?: string; // 회원 ID를 문자열로 저장하기 위한 추가 필드
   // 필요한 경우 다른 회원 정보 추가
 }
 
 interface NewMemberSearchInputProps {
   options: MemberOption[]; // 전체 회원 목록
-  onMemberSelect: (member: MemberOption) => void;
+  onMemberSelect: (member: MemberOption | null) => void;
   initialSearchTerm?: string; // 초기 검색어 (예: 수정 시)
   placeholder?: string;
   disabled?: boolean;
@@ -67,6 +69,10 @@ const NewMemberSearchInput: React.FC<NewMemberSearchInputProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    // 검색어가 변경되면 선택 해제
+    if (e.target.value.trim() === '') {
+      onMemberSelect(null);
+    }
   };
 
   const handleInputFocus = () => {
@@ -118,6 +124,11 @@ const NewMemberSearchInput: React.FC<NewMemberSearchInputProps> = ({
     }
   }, [activeIndex]);
 
+  // 입력 필드 클래스 생성
+  const inputClass = `${COMMON_MODAL_CONFIG.INPUT.baseInput} ${
+    error ? COMMON_MODAL_CONFIG.INPUT.errorBorder : COMMON_MODAL_CONFIG.INPUT.normalBorder
+  } ${disabled ? 'bg-gray-50 text-gray-500' : ''}`;
+
   return (
     <div className="relative w-full">
       <input
@@ -129,29 +140,41 @@ const NewMemberSearchInput: React.FC<NewMemberSearchInputProps> = ({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500 ${error ? 'border-red-500' : 'border-gray-300'}`}
+        className={inputClass}
         autoComplete="off"
       />
       {isDropdownVisible && filteredOptions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-[100]" // z-index는 모달보다 높게 설정
+          className={`absolute mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-300 ${COMMON_MODAL_CONFIG.INPUT.borderRadius} shadow-lg z-[100]`}
         >
           {filteredOptions.map((option, index) => (
             <div
               key={option.id}
-              className={`p-2 cursor-pointer hover:bg-gray-100 ${
+              className={`${COMMON_MODAL_CONFIG.INPUT.padding} cursor-pointer hover:bg-gray-100 transition-colors ${
                 index === activeIndex ? 'bg-blue-100' : ''
-              }`}
+              } ${index === 0 ? 'rounded-t-md' : ''} ${index === filteredOptions.length - 1 ? 'rounded-b-md' : ''}`}
               onMouseDown={(e) => e.preventDefault()} // input blur 방지
               onClick={() => selectMember(option)}
+              onMouseEnter={() => setActiveIndex(index)}
             >
-              {option.name}
+              <div className={`${COMMON_MODAL_CONFIG.INPUT.textSize} font-medium text-gray-900`}>
+                {option.name}
+              </div>
+              {option.memberId && (
+                <div className={`${COMMON_MODAL_CONFIG.INPUT.helpTextSize} text-gray-500`}>
+                  ID: {option.memberId}
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className={`${COMMON_MODAL_CONFIG.INPUT.helpTextSize} text-red-600 ${COMMON_MODAL_CONFIG.INPUT.helpTextMargin}`}>
+          {error}
+        </p>
+      )}
     </div>
   );
 };

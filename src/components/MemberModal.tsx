@@ -10,6 +10,7 @@ import MembershipInfoForm from './member/MembershipInfoForm';
 import MemberNotesForm from './member/MemberNotesForm';
 import MemberViewDetails from './member/MemberViewDetails';
 import MemberPaymentHistory from './member/MemberPaymentHistory';
+import { COMPACT_MODAL_CONFIG } from '../config/memberConfig';
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -271,16 +272,14 @@ const MemberModal: React.FC<MemberModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={getModalTitle()} size="xl">
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-blue-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-blue-800">
-              {currentIsViewMode
-                ? '회원 기본 정보'
-                : isEditMode
-                  ? '회원 정보 수정'
-                  : '신규 회원 등록'}
+    <Modal isOpen={isOpen} onClose={onClose} title={getModalTitle()} size={COMPACT_MODAL_CONFIG.MODAL.size}>
+      <form onSubmit={handleSubmit} className={`${COMPACT_MODAL_CONFIG.MODAL.padding} ${COMPACT_MODAL_CONFIG.MODAL.spacing}`}>
+        
+        {/* 메인 정보 카드 */}
+        <div className={`${COMPACT_MODAL_CONFIG.SECTION.background} ${COMPACT_MODAL_CONFIG.SECTION.borderRadius} ${COMPACT_MODAL_CONFIG.SECTION.border} ${COMPACT_MODAL_CONFIG.SECTION.shadow} overflow-hidden`}>
+          <div className={`${COMPACT_MODAL_CONFIG.SECTION.headerPadding} bg-blue-50 border-b border-gray-200`}>
+            <h3 className={`${COMPACT_MODAL_CONFIG.SECTION.titleSize} text-blue-800`}>
+              {currentIsViewMode ? '회원 정보' : isEditMode ? '정보 수정' : '신규 등록'}
             </h3>
           </div>
 
@@ -292,25 +291,39 @@ const MemberModal: React.FC<MemberModalProps> = ({
               formatDate={formatDate}
             />
           ) : (
-            <div className="p-4 space-y-6">
-              <MemberBasicInfoForm
-                formData={formData}
-                handleChange={handleChange}
-                errors={errors}
-                isViewMode={false}
-                isSubmitting={isSubmitting}
-              />
-              <MembershipInfoForm
-                formData={formData}
-                staffList={staffList}
-                handleChange={handleChange}
-                errors={errors}
-                isSubmitting={isSubmitting}
-              />
+            <div className={`${COMPACT_MODAL_CONFIG.SECTION.contentPadding} ${COMPACT_MODAL_CONFIG.FORM.sectionSpacing}`}>
+              {/* 기본 정보 섹션 */}
+              <div>
+                <h4 className={`text-sm font-medium text-gray-600 ${COMPACT_MODAL_CONFIG.SECTION.divider}`}>
+                  기본 정보
+                </h4>
+                <MemberBasicInfoForm
+                  formData={formData}
+                  handleChange={handleChange}
+                  errors={errors}
+                  isViewMode={false}
+                  isSubmitting={isSubmitting}
+                />
+              </div>
+
+              {/* 회원권 정보 섹션 */}
+              <div>
+                <h4 className={`text-sm font-medium text-gray-600 ${COMPACT_MODAL_CONFIG.SECTION.divider}`}>
+                  회원권 정보
+                </h4>
+                <MembershipInfoForm
+                  formData={formData}
+                  staffList={staffList}
+                  handleChange={handleChange}
+                  errors={errors}
+                  isSubmitting={isSubmitting}
+                />
+              </div>
             </div>
           )}
         </div>
 
+        {/* 결제 내역 (상세보기 모드에서만) */}
         {currentIsViewMode && formData.id && (
           <MemberPaymentHistory 
             memberId={formData.id} 
@@ -318,6 +331,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
           />
         )}
 
+        {/* 메모 섹션 */}
         <MemberNotesForm
           notes={formData.notes}
           handleChange={(e) =>
@@ -331,11 +345,12 @@ const MemberModal: React.FC<MemberModalProps> = ({
           isSubmitting={isSubmitting}
         />
 
-        <div className="flex justify-end space-x-3 pt-4">
+        {/* 버튼 영역 - 최소화된 스타일 적용 */}
+        <div className={`flex justify-end ${COMPACT_MODAL_CONFIG.BUTTON.spacing} pt-3 border-t border-gray-200`}>
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-secondary"
+            className={`${COMPACT_MODAL_CONFIG.BUTTON.padding} ${COMPACT_MODAL_CONFIG.BUTTON.height} ${COMPACT_MODAL_CONFIG.BUTTON.textSize} ${COMPACT_MODAL_CONFIG.BUTTON.fontWeight} text-gray-700 bg-white border border-gray-300 ${COMPACT_MODAL_CONFIG.BUTTON.borderRadius} hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors`}
             disabled={isSubmitting}
           >
             {currentIsViewMode ? '닫기' : '취소'}
@@ -344,7 +359,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
           {!currentIsViewMode && (
             <button
               type="submit"
-              className="btn btn-primary"
+              className={`${COMPACT_MODAL_CONFIG.BUTTON.padding} ${COMPACT_MODAL_CONFIG.BUTTON.height} ${COMPACT_MODAL_CONFIG.BUTTON.textSize} ${COMPACT_MODAL_CONFIG.BUTTON.fontWeight} text-white bg-blue-600 border border-transparent ${COMPACT_MODAL_CONFIG.BUTTON.borderRadius} hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors`}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -362,12 +377,12 @@ const MemberModal: React.FC<MemberModalProps> = ({
                       r="10"
                       stroke="currentColor"
                       strokeWidth="4"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    />
                   </svg>
                   저장 중...
                 </span>
@@ -380,7 +395,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
           {currentIsViewMode && onSwitchToEdit && (
             <button
               type="button"
-              className="btn btn-primary"
+              className={`${COMPACT_MODAL_CONFIG.BUTTON.padding} ${COMPACT_MODAL_CONFIG.BUTTON.height} ${COMPACT_MODAL_CONFIG.BUTTON.textSize} ${COMPACT_MODAL_CONFIG.BUTTON.fontWeight} text-white bg-blue-600 border border-transparent ${COMPACT_MODAL_CONFIG.BUTTON.borderRadius} hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
               onClick={onSwitchToEdit}
             >
               수정하기

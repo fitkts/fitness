@@ -3,6 +3,7 @@ import NewMemberSearchInput, { MemberOption } from './NewMemberSearchInput';
 import { Payment, MembershipType, Staff } from '../../models/types'; // 상대 경로 수정
 import { useToast } from '../../contexts/ToastContext'; // useToast 추가
 import { addPayment, updatePayment } from '../../database/ipcService'; // ipcService 추가
+import { COMMON_MODAL_CONFIG } from '../../config/commonFilterConfig';
 
 // PaymentForm 데이터 타입 (Payment 타입의 일부 + UI용 필드)
 interface PaymentFormData extends Partial<Omit<Payment, 'id' | 'createdAt' | 'updatedAt' | 'memberId' | 'staffId' | 'paymentType' | 'membershipType'>> {
@@ -207,186 +208,302 @@ const NewPaymentForm: React.FC<NewPaymentFormProps> = ({
   };
 
   const inputDisabled = isViewMode;
-  const commonInputClass = "w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500";
+  
+  // 공통 스타일 클래스 생성 함수
+  const createInputClass = (fieldName: string, errors: Record<string, string> = {}) => {
+    const hasError = errors[fieldName];
+    return `${COMMON_MODAL_CONFIG.INPUT.baseInput} ${
+      hasError ? COMMON_MODAL_CONFIG.INPUT.errorBorder : COMMON_MODAL_CONFIG.INPUT.normalBorder
+    }`;
+  };
+
+  const labelClass = `block ${COMMON_MODAL_CONFIG.INPUT.labelSize} text-gray-700 ${COMMON_MODAL_CONFIG.INPUT.labelMargin}`;
+  const helpTextClass = `${COMMON_MODAL_CONFIG.INPUT.helpTextSize} text-gray-500 ${COMMON_MODAL_CONFIG.INPUT.helpTextMargin}`;
 
   return (
-    <form id={formId} className="space-y-4" onSubmit={handleSubmit}>
-      {/* 회원 선택 */}
-      <div className="space-y-1">
-        <label htmlFor="memberSearch" className="block text-sm font-medium text-gray-700">
-          회원 <span className="text-red-500">*</span>
-        </label>
-        <NewMemberSearchInput 
-          options={members}
-          onMemberSelect={handleMemberSelected}
-          initialSearchTerm={formData.memberOption?.name || ''}
-          placeholder="회원 검색..."
-          disabled={inputDisabled}
-        />
-        {formData.memberOption && !isViewMode && (
-          <p className="mt-1 text-sm text-green-600">
-            선택된 회원: {formData.memberOption.name} (ID: {formData.memberOption.id})
-          </p>
-        )}
-        {isViewMode && initialPayment?.memberName && (
-            <p className="mt-1 text-sm text-gray-700">
-                {initialPayment.memberName} (ID: {initialPayment.memberId})
-            </p>
-        )}
+    <div className={COMMON_MODAL_CONFIG.MODAL.spacing}>
+      {/* 결제 기본 정보 섹션 */}
+      <div className={`${COMMON_MODAL_CONFIG.SECTION.background} ${COMMON_MODAL_CONFIG.SECTION.borderRadius} ${COMMON_MODAL_CONFIG.SECTION.border} ${COMMON_MODAL_CONFIG.SECTION.shadow} overflow-hidden`}>
+        <div className={`${COMMON_MODAL_CONFIG.SECTION.headerPadding} bg-gray-50 border-b border-gray-200`}>
+          <h3 className={`${COMMON_MODAL_CONFIG.SECTION.titleSize} text-gray-800`}>
+            기본 정보
+          </h3>
+        </div>
+        <div className={COMMON_MODAL_CONFIG.SECTION.contentPadding}>
+          <form id={formId} onSubmit={handleSubmit}>
+            <div className={`grid ${COMMON_MODAL_CONFIG.FORM.grid2Col} ${COMMON_MODAL_CONFIG.FORM.gridGap}`}>
+              
+              {/* 회원 선택 - 전체 너비 */}
+              <div className={`col-span-1 md:col-span-2 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="memberSearch" className={labelClass}>
+                  회원 <span className="text-red-500">*</span>
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('memberSearch')} bg-gray-50 flex items-center`}>
+                    {initialPayment?.memberName ? `${initialPayment.memberName} (ID: ${initialPayment.memberId})` : '-'}
+                  </div>
+                ) : (
+                  <>
+                    <NewMemberSearchInput 
+                      options={members}
+                      onMemberSelect={handleMemberSelected}
+                      initialSearchTerm={formData.memberOption?.name || ''}
+                      placeholder="회원 검색..."
+                      disabled={inputDisabled}
+                    />
+                    {formData.memberOption && (
+                      <p className="mt-1 text-xs text-green-600">
+                        선택된 회원: {formData.memberOption.name} (ID: {formData.memberOption.id})
+                      </p>
+                    )}
+                    <p className={helpTextClass}>결제할 회원을 검색하여 선택</p>
+                  </>
+                )}
+              </div>
+
+              {/* 이용권 종류 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="membershipTypeId" className={labelClass}>
+                  이용권 <span className="text-red-500">*</span>
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('membershipTypeId')} bg-gray-50 flex items-center`}>
+                    {formData.membershipType || '-'}
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      id="membershipTypeId"
+                      name="membershipTypeId"
+                      className={createInputClass('membershipTypeId')}
+                      value={formData.membershipTypeId || ''}
+                      onChange={handleMembershipTypeChange}
+                      disabled={inputDisabled}
+                    >
+                      <option value="">선택하세요</option>
+                      {membershipTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name} ({type.price.toLocaleString()}원)
+                        </option>
+                      ))}
+                    </select>
+                    <p className={helpTextClass}>금액 자동 설정</p>
+                  </>
+                )}
+              </div>
+
+              {/* 결제 금액 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="amount" className={labelClass}>
+                  결제 금액 <span className="text-red-500">*</span>
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('amount')} bg-gray-50 flex items-center`}>
+                    {formData.amount ? `${formData.amount.toLocaleString()}원` : '-'}
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      id="amount"
+                      type="number"
+                      name="amount"
+                      placeholder="0"
+                      className={createInputClass('amount')}
+                      value={formData.amount ?? ''}
+                      onChange={handleChange}
+                      disabled={inputDisabled}
+                    />
+                    <p className={helpTextClass}>원(₩) 단위로 입력</p>
+                  </>
+                )}
+              </div>
+              
+              {/* 결제일 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="paymentDate" className={labelClass}>
+                  결제일 <span className="text-red-500">*</span>
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('paymentDate')} bg-gray-50 flex items-center`}>
+                    {formData.paymentDate || '-'}
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      id="paymentDate"
+                      type="date"
+                      name="paymentDate"
+                      className={createInputClass('paymentDate')}
+                      value={formData.paymentDate || ''}
+                      onChange={handleChange}
+                      disabled={inputDisabled}
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                    <p className={helpTextClass}>오늘 이전 날짜 선택</p>
+                  </>
+                )}
+              </div>
+
+              {/* 결제 방법 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="paymentMethod" className={labelClass}>
+                  결제 방법 <span className="text-red-500">*</span>
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('paymentMethod')} bg-gray-50 flex items-center`}>
+                    {formData.paymentMethod === 'card' ? '카드' : 
+                     formData.paymentMethod === 'cash' ? '현금' : 
+                     formData.paymentMethod === 'transfer' ? '계좌이체' : '-'}
+                  </div>
+                ) : (
+                  <select
+                    id="paymentMethod"
+                    name="paymentMethod"
+                    className={createInputClass('paymentMethod')}
+                    value={formData.paymentMethod || 'card'}
+                    onChange={handleChange}
+                    disabled={inputDisabled}
+                  >
+                    <option value="card">카드</option>
+                    <option value="cash">현금</option>
+                    <option value="transfer">계좌이체</option>
+                  </select>
+                )}
+              </div>
+
+              {/* 담당 직원 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="staffId" className={labelClass}>
+                  담당 직원
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('staffId')} bg-gray-50 flex items-center`}>
+                    {staffList.find(s => s.id === formData.staffId)?.name || '-'}
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      id="staffId"
+                      name="staffId"
+                      className={createInputClass('staffId')}
+                      value={formData.staffId || ''} 
+                      onChange={handleChange}
+                      disabled={inputDisabled}
+                    >
+                      <option value="">선택하세요</option>
+                      {staffList.map((staff) => (
+                        <option key={staff.id} value={String(staff.id)}>
+                          {staff.name} ({staff.position})
+                        </option>
+                      ))}
+                    </select>
+                    <p className={helpTextClass}>선택사항</p>
+                  </>
+                )}
+              </div>
+
+              {/* 결제 상태 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="status" className={labelClass}>
+                  상태 <span className="text-red-500">*</span>
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('status')} bg-gray-50 flex items-center`}>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${
+                      formData.status === '완료' ? 'bg-green-100 text-green-800' :
+                      formData.status === '취소' ? 'bg-red-100 text-red-800' :
+                      formData.status === '환불' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {formData.status}
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    id="status"
+                    name="status"
+                    className={createInputClass('status')}
+                    value={formData.status}
+                    onChange={handleChange}
+                    disabled={inputDisabled}
+                  >
+                    <option value="완료">완료</option>
+                    <option value="취소">취소</option>
+                    <option value="환불">환불</option>
+                  </select>
+                )}
+              </div>
+
+              {/* 영수증 번호 */}
+              <div className={`col-span-1 ${COMMON_MODAL_CONFIG.FORM.fieldSpacing}`}>
+                <label htmlFor="receiptNumber" className={labelClass}>
+                  영수증 번호
+                </label>
+                {isViewMode ? (
+                  <div className={`${createInputClass('receiptNumber')} bg-gray-50 flex items-center`}>
+                    {formData.receiptNumber || '-'}
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      id="receiptNumber"
+                      type="text"
+                      name="receiptNumber"
+                      placeholder="영수증 번호"
+                      className={createInputClass('receiptNumber')}
+                      value={formData.receiptNumber || ''}
+                      onChange={handleChange}
+                      disabled={inputDisabled}
+                    />
+                    <p className={helpTextClass}>선택사항</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
 
-      {/* 이용권 종류 선택 */}
-      <div className="space-y-1">
-        <label htmlFor="membershipTypeId" className="block text-sm font-medium text-gray-700">
-          이용권 종류 <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="membershipTypeId"
-          name="membershipTypeId"
-          className={commonInputClass}
-          value={formData.membershipTypeId || ''}
-          onChange={handleMembershipTypeChange} // 금액 자동 변경을 위해 별도 핸들러 사용
-          disabled={inputDisabled}
-        >
-          <option value="">이용권을 선택하세요</option>
-          {membershipTypes.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name} ({type.price.toLocaleString()}원, {type.durationMonths}개월)
-            </option>
-          ))}
-        </select>
+      {/* 추가 정보 섹션 */}
+      <div className={`${COMMON_MODAL_CONFIG.SECTION.background} ${COMMON_MODAL_CONFIG.SECTION.borderRadius} ${COMMON_MODAL_CONFIG.SECTION.border} ${COMMON_MODAL_CONFIG.SECTION.shadow} overflow-hidden`}>
+        <div className={`${COMMON_MODAL_CONFIG.SECTION.headerPadding} bg-gray-50 border-b border-gray-200`}>
+          <h3 className={`${COMMON_MODAL_CONFIG.SECTION.titleSize} text-gray-800`}>
+            추가 정보
+          </h3>
+        </div>
+        <div className={COMMON_MODAL_CONFIG.SECTION.contentPadding}>
+          {/* 메모 */}
+          <div className={COMMON_MODAL_CONFIG.FORM.fieldSpacing}>
+            <label htmlFor="notes" className={labelClass}>
+              메모
+            </label>
+            {isViewMode ? (
+              <div className={`bg-gray-50 px-3 py-2 ${COMMON_MODAL_CONFIG.INPUT.borderRadius} min-h-[60px] ${COMMON_MODAL_CONFIG.INPUT.textSize}`}>
+                {formData.notes ? (
+                  <p className="whitespace-pre-wrap">{formData.notes}</p>
+                ) : (
+                  <p className="text-gray-500">등록된 메모가 없습니다.</p>
+                )}
+              </div>
+            ) : (
+              <>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  placeholder="특이사항이나 메모를 입력하세요"
+                  className={`w-full ${COMMON_MODAL_CONFIG.INPUT.padding} border border-gray-300 ${COMMON_MODAL_CONFIG.INPUT.borderRadius} ${COMMON_MODAL_CONFIG.INPUT.textSize} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors`}
+                  value={formData.notes || ''}
+                  onChange={handleChange}
+                  disabled={inputDisabled}
+                />
+                <p className={helpTextClass}>선택사항 - 결제 관련 특이사항</p>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-
-      {/* 결제 금액 */}
-      <div className="space-y-1">
-        <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-          결제 금액 <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="amount"
-          type="number"
-          name="amount"
-          placeholder="0"
-          className={commonInputClass}
-          value={formData.amount ?? ''} // null 또는 undefined일 경우 빈 문자열로
-          onChange={handleChange}
-          disabled={inputDisabled}
-        />
-      </div>
-      
-      {/* 결제일 */}
-      <div className="space-y-1">
-        <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700">
-          결제일 <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="paymentDate"
-          type="date"
-          name="paymentDate"
-          className={commonInputClass}
-          value={formData.paymentDate || ''}
-          onChange={handleChange}
-          disabled={inputDisabled}
-        />
-      </div>
-
-      {/* 결제 방법 */}
-      <div className="space-y-1">
-        <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">
-          결제 방법 <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="paymentMethod"
-          name="paymentMethod"
-          className={commonInputClass}
-          value={formData.paymentMethod || 'card'}
-          onChange={handleChange}
-          disabled={inputDisabled}
-        >
-          <option value="card">카드</option>
-          <option value="cash">현금</option>
-          <option value="transfer">계좌이체</option>
-        </select>
-      </div>
-
-      {/* 담당 직원 선택 (결제 방법 다음) */}
-      <div className="space-y-1">
-        <label htmlFor="staffId" className="block text-sm font-medium text-gray-700">
-          담당 직원
-        </label>
-        <select
-          id="staffId"
-          name="staffId"
-          className={commonInputClass}
-          value={formData.staffId || ''} 
-          onChange={handleChange}
-          disabled={inputDisabled}
-        >
-          <option value="">담당 직원을 선택하세요 (선택 사항)</option>
-          {staffList.map((staff) => (
-            <option key={staff.id} value={String(staff.id)}>
-              {staff.name} ({staff.position})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* 상태 (담당 직원 다음) */}
-      <div className="space-y-1">
-        <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-          상태 <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="status"
-          name="status"
-          className={commonInputClass}
-          value={formData.status}
-          onChange={handleChange}
-          disabled={inputDisabled}
-        >
-          <option value="완료">완료</option>
-          <option value="취소">취소</option>
-          <option value="환불">환불</option>
-        </select>
-      </div>
-
-      {/* 영수증 번호 (상태 다음) */}
-      <div className="space-y-1">
-        <label htmlFor="receiptNumber" className="block text-sm font-medium text-gray-700">
-          영수증 번호
-        </label>
-        <input
-          id="receiptNumber"
-          type="text"
-          name="receiptNumber"
-          placeholder="영수증 번호 입력 (선택)"
-          className={commonInputClass}
-          value={formData.receiptNumber || ''}
-          onChange={handleChange}
-          disabled={inputDisabled}
-        />
-      </div>
-
-      {/* 메모 */}
-      <div className="space-y-1">
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-          메모
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows={3}
-          placeholder="특이사항 입력 (선택)"
-          className={commonInputClass}
-          value={formData.notes || ''}
-          onChange={handleChange}
-          disabled={inputDisabled}
-        />
-      </div>
-
-      {/* isViewMode일 때는 submit 버튼이 없으므로, form 태그 바깥에 두거나 여기서는 아무것도 안함 */}
-      {/* 실제 submit은 Modal의 footer 버튼을 통해 이루어짐 */}
-    </form>
+    </div>
   );
 };
 

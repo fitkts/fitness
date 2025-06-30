@@ -1,12 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Member, Staff } from '../../models/types';
+import { COMPACT_MODAL_CONFIG } from '../../config/memberConfig';
 
 interface MembershipInfoFormProps {
   formData: Partial<Member>;
   staffList: Staff[];
-  handleChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => void;
+  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   errors: Record<string, string>;
   isSubmitting: boolean;
 }
@@ -27,9 +26,7 @@ const MembershipInfoForm: React.FC<MembershipInfoFormProps> = ({
   ];
 
   // 회원권 종류 변경 시 종료일 자동 계산
-  const handleMembershipTypeChange = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
+  const handleMembershipTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedType = membershipTypeOptions.find(
       (option) => option.value === e.target.value,
     );
@@ -38,7 +35,6 @@ const MembershipInfoForm: React.FC<MembershipInfoFormProps> = ({
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + selectedType.months);
 
-      // 종료일 이벤트 생성
       const endDateEvent = {
         target: {
           name: 'membershipEnd',
@@ -54,26 +50,54 @@ const MembershipInfoForm: React.FC<MembershipInfoFormProps> = ({
   };
 
   // 회원권 시작일 변경 시 가입일보다 이전일 수 없도록 제한
-  const handleMembershipStartChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleMembershipStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const startDate = new Date(e.target.value);
     const joinDate = new Date(formData.joinDate || '');
 
     if (startDate < joinDate) {
       e.target.value = formData.joinDate || '';
     }
+    
+    // 회원권 종류가 선택되어 있으면 종료일 자동 계산
+    if (formData.membershipType) {
+      const selectedType = membershipTypeOptions.find(
+        (option) => option.value === formData.membershipType,
+      );
+      if (selectedType) {
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + selectedType.months);
+        
+        const endDateEvent = {
+          target: {
+            name: 'membershipEnd',
+            value: endDate.toISOString().split('T')[0],
+          },
+        } as React.ChangeEvent<HTMLInputElement>;
+        
+        handleChange(e);
+        handleChange(endDateEvent);
+        return;
+      }
+    }
+    
     handleChange(e);
   };
 
+  const inputClass = (fieldName: string) => 
+    `block w-full ${COMPACT_MODAL_CONFIG.INPUT.padding} ${COMPACT_MODAL_CONFIG.INPUT.height} border ${
+      errors[fieldName] ? 'border-red-500' : 'border-gray-300'
+    } ${COMPACT_MODAL_CONFIG.INPUT.borderRadius} ${COMPACT_MODAL_CONFIG.INPUT.textSize} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`;
+
+  const labelClass = `block ${COMPACT_MODAL_CONFIG.INPUT.labelSize} text-gray-700 ${COMPACT_MODAL_CONFIG.INPUT.labelMargin}`;
+  const helpTextClass = `${COMPACT_MODAL_CONFIG.INPUT.helpTextSize} text-gray-500 ${COMPACT_MODAL_CONFIG.INPUT.helpTextMargin}`;
+  const errorClass = `${COMPACT_MODAL_CONFIG.INPUT.helpTextSize} text-red-600 ${COMPACT_MODAL_CONFIG.INPUT.helpTextMargin}`;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <div className={`grid ${COMPACT_MODAL_CONFIG.FORM.membershipGrid} ${COMPACT_MODAL_CONFIG.FORM.gridGap}`}>
+      
       {/* 가입일 */}
-      <div className="space-y-1">
-        <label
-          htmlFor="joinDate"
-          className="block text-sm font-medium text-gray-700"
-        >
+      <div className={`${COMPACT_MODAL_CONFIG.FIELD_SPANS.joinDate} ${COMPACT_MODAL_CONFIG.FORM.fieldSpacing}`}>
+        <label htmlFor="joinDate" className={labelClass}>
           가입일 <span className="text-red-500">*</span>
         </label>
         <input
@@ -83,57 +107,43 @@ const MembershipInfoForm: React.FC<MembershipInfoFormProps> = ({
           value={formData.joinDate || ''}
           onChange={handleChange}
           max={new Date().toISOString().split('T')[0]}
-          className={`mt-1 block w-full p-2 border ${errors.joinDate ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+          className={inputClass('joinDate')}
           disabled={isSubmitting}
           required
         />
-        <p className="text-xs text-gray-500">
-          오늘 이전의 날짜만 선택 가능합니다.
-        </p>
-        {errors.joinDate && (
-          <p className="mt-1 text-sm text-red-600">{errors.joinDate}</p>
-        )}
+        <p className={helpTextClass}>오늘 이전 날짜</p>
+        {errors.joinDate && <p className={errorClass}>{errors.joinDate}</p>}
       </div>
 
       {/* 회원권 종류 */}
-      <div className="space-y-1">
-        <label
-          htmlFor="membershipType"
-          className="block text-sm font-medium text-gray-700"
-        >
-          회원권 종류 <span className="text-red-500">*</span>
+      <div className={`${COMPACT_MODAL_CONFIG.FIELD_SPANS.membershipType} ${COMPACT_MODAL_CONFIG.FORM.fieldSpacing}`}>
+        <label htmlFor="membershipType" className={labelClass}>
+          회원권 <span className="text-red-500">*</span>
         </label>
         <select
           name="membershipType"
           id="membershipType"
           value={formData.membershipType || ''}
           onChange={handleMembershipTypeChange}
-          className={`mt-1 block w-full p-2 border ${errors.membershipType ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+          className={inputClass('membershipType')}
           disabled={isSubmitting}
           required
         >
-          <option value="">선택해주세요</option>
+          <option value="">선택하세요</option>
           {membershipTypeOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
-        <p className="text-xs text-gray-500">
-          회원권 종류를 선택하면 종료일이 자동으로 계산됩니다.
-        </p>
-        {errors.membershipType && (
-          <p className="mt-1 text-sm text-red-600">{errors.membershipType}</p>
-        )}
+        <p className={helpTextClass}>종료일 자동 계산</p>
+        {errors.membershipType && <p className={errorClass}>{errors.membershipType}</p>}
       </div>
 
       {/* 회원권 시작일 */}
-      <div className="space-y-1">
-        <label
-          htmlFor="membershipStart"
-          className="block text-sm font-medium text-gray-700"
-        >
-          회원권 시작일 <span className="text-red-500">*</span>
+      <div className={`${COMPACT_MODAL_CONFIG.FIELD_SPANS.membershipStart} ${COMPACT_MODAL_CONFIG.FORM.fieldSpacing}`}>
+        <label htmlFor="membershipStart" className={labelClass}>
+          시작일 <span className="text-red-500">*</span>
         </label>
         <input
           type="date"
@@ -142,24 +152,17 @@ const MembershipInfoForm: React.FC<MembershipInfoFormProps> = ({
           value={formData.membershipStart || ''}
           onChange={handleMembershipStartChange}
           min={formData.joinDate || ''}
-          className={`mt-1 block w-full p-2 border ${errors.membershipStart ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+          className={inputClass('membershipStart')}
           disabled={isSubmitting}
           required
         />
-        <p className="text-xs text-gray-500">
-          가입일 이후의 날짜만 선택 가능합니다.
-        </p>
-        {errors.membershipStart && (
-          <p className="mt-1 text-sm text-red-600">{errors.membershipStart}</p>
-        )}
+        <p className={helpTextClass}>가입일 이후</p>
+        {errors.membershipStart && <p className={errorClass}>{errors.membershipStart}</p>}
       </div>
 
       {/* 담당자 */}
-      <div className="space-y-1">
-        <label
-          htmlFor="staffId"
-          className="block text-sm font-medium text-gray-700"
-        >
+      <div className={`${COMPACT_MODAL_CONFIG.FIELD_SPANS.staff} ${COMPACT_MODAL_CONFIG.FORM.fieldSpacing}`}>
+        <label htmlFor="staffId" className={labelClass}>
           담당자 <span className="text-red-500">*</span>
         </label>
         <select
@@ -167,23 +170,19 @@ const MembershipInfoForm: React.FC<MembershipInfoFormProps> = ({
           id="staffId"
           value={formData.staffId || ''}
           onChange={handleChange}
-          className={`mt-1 block w-full p-2 border ${errors.staffId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+          className={inputClass('staffId')}
           disabled={isSubmitting}
           required
         >
-          <option value="">담당자 선택</option>
+          <option value="">선택하세요</option>
           {staffList.map((staff) => (
             <option key={staff.id} value={staff.id}>
-              {staff.name} ({staff.position})
+              {staff.name}
             </option>
           ))}
         </select>
-        <p className="text-xs text-gray-500">
-          회원을 담당할 직원을 선택해주세요.
-        </p>
-        {errors.staffId && (
-          <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>
-        )}
+        <p className={helpTextClass}>담당 직원 선택</p>
+        {errors.staffId && <p className={errorClass}>{errors.staffId}</p>}
       </div>
     </div>
   );

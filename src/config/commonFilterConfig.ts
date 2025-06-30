@@ -187,3 +187,116 @@ export const FILTER_PRESETS = {
     }
   }),
 } as const;
+
+// 공통 모달 설정 - 최소화 기반 공간 효율성 극대화
+export const COMMON_MODAL_CONFIG = {
+  MODAL: {
+    size: 'lg', // lg 크기 유지 (max-w-4xl)
+    maxWidth: 'max-w-4xl', // lg 크기 유지
+    padding: 'p-3', // 최소화된 패딩
+    spacing: 'space-y-3', // 최소화된 섹션 간격
+  },
+  FORM: {
+    sectionSpacing: 'space-y-2', // 최소화된 섹션 간격
+    fieldSpacing: 'space-y-1', // 최소화된 필드 간격
+    gridGap: 'gap-x-4 gap-y-2', // 가로 간격 약간 증가 (더 넓은 필드)
+    // 2열 기반 효율적 그리드 레이아웃 - 더 넓은 입력 필드
+    grid2Col: 'grid-cols-1 md:grid-cols-2', // 2열 레이아웃 (기본)
+    grid3Col: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3', // 3열 레이아웃 (선택적)
+    grid4Col: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4', // 4열 레이아웃 (선택적)
+  },
+  INPUT: {
+    height: 'h-8', // 최소화된 높이
+    padding: 'px-3 py-1.5', // 최소화된 패딩
+    textSize: 'text-sm', // 일관된 가독성
+    borderRadius: 'rounded-md', // 부드러운 모서리
+    labelSize: 'text-sm font-semibold', // 강조된 스타일
+    labelMargin: 'mb-1', // 최소화된 라벨 간격
+    helpTextSize: 'text-xs', // 적절한 크기
+    helpTextMargin: 'mt-1', // 최소화된 도움말 간격
+    // 상태별 스타일
+    baseInput: 'block w-full px-3 py-1.5 h-8 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors',
+    normalBorder: 'border-gray-300',
+    errorBorder: 'border-red-500',
+  },
+  SECTION: {
+    headerPadding: 'px-3 py-2', // 최소화된 헤더 패딩
+    contentPadding: 'p-3', // 최소화된 내용 패딩
+    titleSize: 'text-base font-bold', // 명확한 구분
+    borderRadius: 'rounded-md', // 부드러운 모서리
+    divider: 'border-b border-gray-100 pb-2 mb-2', // 최소화된 구분선
+    background: 'bg-white', // 배경색
+    border: 'border border-gray-200', // 테두리
+    shadow: 'shadow-sm', // 가벼운 그림자
+  },
+  BUTTON: {
+    height: 'h-8', // 입력 필드와 동일한 최소화된 높이
+    padding: 'px-4 py-1.5', // 최소화된 패딩
+    textSize: 'text-sm', // 일관된 텍스트 크기
+    fontWeight: 'font-medium', // 적절한 두께
+    borderRadius: 'rounded-md', // 부드러운 모서리
+    spacing: 'space-x-2', // 최소화된 간격
+    // 버튼 테마
+    primary: 'text-white bg-blue-600 border border-transparent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
+    secondary: 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
+    danger: 'text-white bg-red-600 border border-transparent hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500',
+    success: 'text-white bg-green-600 border border-transparent hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500',
+  },
+  // 반응형 최적화
+  RESPONSIVE: {
+    mobile: {
+      gridCols: 'grid-cols-1', // 모바일: 1열
+      spacing: 'space-y-2', // 최소화된 간격
+      padding: 'p-2', // 최소화된 패딩
+    },
+    tablet: {
+      gridCols: 'grid-cols-2', // 태블릿: 2열
+      spacing: 'space-y-2', // 최소화된 간격
+      padding: 'p-3', // 최소화된 패딩
+    },
+    desktop: {
+      gridCols: 'grid-cols-2', // 데스크톱: 2열 (숫자 필드 가독성 우선)
+      spacing: 'space-y-3', // 적절한 간격
+      padding: 'p-3', // 최소화된 패딩
+    },
+  },
+} as const;
+
+// 헬퍼 함수들 - 일관된 클래스명 생성
+export const createInputClass = (fieldName: string, errors: Record<string, string>) => {
+  const hasError = errors[fieldName];
+  return `${COMMON_MODAL_CONFIG.INPUT.baseInput} ${
+    hasError ? COMMON_MODAL_CONFIG.INPUT.errorBorder : COMMON_MODAL_CONFIG.INPUT.normalBorder
+  }`;
+};
+
+export const createLabelClass = () => 
+  `block ${COMMON_MODAL_CONFIG.INPUT.labelSize} text-gray-700 ${COMMON_MODAL_CONFIG.INPUT.labelMargin}`;
+
+export const createButtonClass = (theme: 'primary' | 'secondary' | 'danger' | 'success' = 'primary') => 
+  `${COMMON_MODAL_CONFIG.BUTTON.padding} ${COMMON_MODAL_CONFIG.BUTTON.height} ${COMMON_MODAL_CONFIG.BUTTON.textSize} ${COMMON_MODAL_CONFIG.BUTTON.fontWeight} ${COMMON_MODAL_CONFIG.BUTTON.borderRadius} ${COMMON_MODAL_CONFIG.BUTTON[theme]} disabled:opacity-50 transition-colors`;
+
+export const createSectionClass = () => 
+  `${COMMON_MODAL_CONFIG.SECTION.background} ${COMMON_MODAL_CONFIG.SECTION.borderRadius} ${COMMON_MODAL_CONFIG.SECTION.border} ${COMMON_MODAL_CONFIG.SECTION.shadow}`;
+
+export const createHelpTextClass = () => 
+  `${COMMON_MODAL_CONFIG.INPUT.helpTextSize} text-gray-500 ${COMMON_MODAL_CONFIG.INPUT.helpTextMargin}`;
+
+export const createErrorTextClass = () => 
+  `${COMMON_MODAL_CONFIG.INPUT.helpTextSize} text-red-600 ${COMMON_MODAL_CONFIG.INPUT.helpTextMargin}`;
+
+// 페이지별 모달 설정 팩토리
+export const createPageModalConfig = (options: {
+  fieldSpans?: Record<string, string>;
+  gridLayout?: '2col' | '3col' | '4col';
+  customSections?: Record<string, any>;
+}) => {
+  const { fieldSpans = {}, gridLayout = '2col', customSections = {} } = options;
+  
+  return {
+    ...COMMON_MODAL_CONFIG,
+    FIELD_SPANS: fieldSpans,
+    GRID_LAYOUT: COMMON_MODAL_CONFIG.FORM[gridLayout === '2col' ? 'grid2Col' : gridLayout === '3col' ? 'grid3Col' : 'grid4Col'],
+    CUSTOM_SECTIONS: customSections,
+  };
+};

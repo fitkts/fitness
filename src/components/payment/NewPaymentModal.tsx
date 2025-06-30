@@ -4,6 +4,7 @@ import { CreditCard } from 'lucide-react';
 import NewPaymentForm from './NewPaymentForm'; // 새로 만든 폼 임포트
 import { MemberOption } from './NewMemberSearchInput'; // MemberOption 타입 임포트
 import { Payment, MembershipType, Staff } from '../../models/types'; // Payment, MembershipType, Staff 타입 임포트
+import { COMMON_MODAL_CONFIG } from '../../config/commonFilterConfig';
 
 interface NewPaymentModalProps {
   isOpen: boolean;
@@ -55,11 +56,11 @@ const NewPaymentModal: React.FC<NewPaymentModalProps> = ({
   );
 
   const renderFooter = () => (
-    <>
+    <div className={`flex ${COMMON_MODAL_CONFIG.BUTTON.spacing} justify-end pt-3`}>
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
+        className={`${COMMON_MODAL_CONFIG.BUTTON.padding} ${COMMON_MODAL_CONFIG.BUTTON.height} ${COMMON_MODAL_CONFIG.BUTTON.textSize} ${COMMON_MODAL_CONFIG.BUTTON.fontWeight} ${COMMON_MODAL_CONFIG.BUTTON.borderRadius} ${COMMON_MODAL_CONFIG.BUTTON.secondary} disabled:opacity-50 transition-colors`}
         disabled={isSubmitting}
       >
         {isViewMode ? '닫기' : '취소'}
@@ -68,13 +69,13 @@ const NewPaymentModal: React.FC<NewPaymentModalProps> = ({
         <button
           type="submit" // NewPaymentForm의 submit을 트리거하기 위해 type="submit"
           form="payment-form" // NewPaymentForm 내부 form의 id와 연결
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`${COMMON_MODAL_CONFIG.BUTTON.padding} ${COMMON_MODAL_CONFIG.BUTTON.height} ${COMMON_MODAL_CONFIG.BUTTON.textSize} ${COMMON_MODAL_CONFIG.BUTTON.fontWeight} ${COMMON_MODAL_CONFIG.BUTTON.borderRadius} ${COMMON_MODAL_CONFIG.BUTTON.primary} disabled:opacity-50 transition-colors`}
           disabled={isSubmitting}
         >
           {isSubmitting ? '저장 중...' : (payment ? '수정' : '등록')}
         </button>
       )}
-    </>
+    </div>
   );
 
   return (
@@ -83,7 +84,9 @@ const NewPaymentModal: React.FC<NewPaymentModalProps> = ({
       onClose={onClose}
       title={renderHeader()}
       footer={renderFooter()}
-      size="lg" // 폼 크기를 고려하여 lg로 변경
+      size="lg" // 회원 관리 모달과 동일한 lg 크기 유지
+      maxWidth={COMMON_MODAL_CONFIG.MODAL.maxWidth} // max-w-4xl로 통일
+      className={COMMON_MODAL_CONFIG.MODAL.padding} // 최소화된 패딩 적용
     >
       <NewPaymentForm
         // formId를 전달하여 footer의 버튼과 연결
